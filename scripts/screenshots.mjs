@@ -28,9 +28,19 @@ for (let i = 0; i < 60; i++) {
 const browser = await chromium.launch({
   executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined,
 });
-const shot = async (page, name) => {
-  await page.waitForTimeout(700);
-  await page.screenshot({ path: join(OUT, `${name}.png`) });
+// SHOTS_ONLY="10-,14-" regrava só as imagens cujo nome começa com algum prefixo (a sessão roda inteira do mesmo jeito).
+const only = (process.env.SHOTS_ONLY ?? '').split(',').filter(Boolean);
+const wanted = (name) => only.length === 0 || only.some((prefix) => name.startsWith(prefix));
+const shot = async (target, name) => {
+  if (!wanted(name)) return;
+  await target.waitForTimeout?.(700);
+  await target.screenshot({ path: join(OUT, `${name}.png`) });
+  console.log('ok', name);
+};
+const shotElement = async (page, testId, name) => {
+  if (!wanted(name)) return;
+  await page.waitForTimeout(900);
+  await page.getByTestId(testId).screenshot({ path: join(OUT, `${name}.png`) });
   console.log('ok', name);
 };
 const open = async (viewport = { width: 1440, height: 900 }) => (await browser.newContext({ viewport })).newPage();
@@ -112,7 +122,7 @@ try {
   const codeRN = await createRoom(hostRN, 'exemplo-react-native-fundamentos', ['Primeiro botão', 'Contador com estado']);
   const ana = await joinRoom(codeRN, 'Ana', 'hex');
   const bia = await joinRoom(codeRN, 'Bia', 'cube');
-  await joinRoom(codeRN, 'Caio', 'orbit');
+  await joinRoom(codeRN, 'Caio', 'orbit'); // fica parado: mostra "ninguém avançou" nos itens
   await shot(ana, '06-lobby-aluno');
   await shot(hostRN, '07-lobby-professor');
 
@@ -135,14 +145,17 @@ try {
   await ana.getByTestId('answer-accepted').waitFor();
   await ana.frameLocator('iframe[title="Preview React Native"]').getByText('Clique aqui').waitFor();
   await shot(ana, 'rn-03-resposta-aceita');
+
+  // Bia usa o Button mas esquece o título; Caio não escreve nada.
+  await setCode(bia, 'export default function App() {\n  return <Button />;\n}');
+  await hostRN.getByTestId('insight-usar-button').and(hostRN.locator('[data-done="2"]')).waitFor({ timeout: 20000 });
   await shot(hostRN, '09-professor-acompanhando');
 
-  await setCode(bia, 'export default function App() {\n  return <Button title="Clique aqui" />;\n}');
-  await bia.getByTestId('answer-accepted').waitFor();
   await hostRN.getByTestId('finish-question').click();
   await hostRN.getByTestId('host-review').waitFor();
   await hostRN.waitForTimeout(1800);
   await shot(hostRN, '10-placar-professor');
+  await shotElement(hostRN, 'stuck-panel', '14-onde-a-turma-travou');
   await shot(ana, '11-placar-aluno');
 
   await hostRN.getByTestId('next-question').click();
@@ -166,6 +179,7 @@ try {
   await hostRN.getByTestId('end-session').click();
   await hostRN.getByTestId('report-table').waitFor();
   await shot(hostRN, '12-relatorio-final');
+  await shotElement(hostRN, 'session-insights', '15-revisao-da-turma');
   await shot(ana, '13-fim-de-sessao-aluno');
 
   /* ---------------- Plugin backend-http ---------------- */

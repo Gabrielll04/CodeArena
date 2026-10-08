@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import type { RoomSnapshot, SessionReport } from '@codearena/schemas';
+import type { QuestionResults, RoomSnapshot, SessionReport } from '@codearena/schemas';
 import { Avatar } from '../components/Avatar';
 import { Countdown } from '../components/Countdown';
+import { hardestAcrossSession, hardestRow, ItemInsights, rowsFromResults, type InsightRow } from '../components/ItemInsights';
 import { Leaderboard, Podium } from '../components/Leaderboard';
 import { Prompt } from '../components/Prompt';
 import { Timer } from '../components/Timer';
@@ -183,6 +184,13 @@ function HostQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
   const { busy, error, run } = useAction();
   const active = snapshot.question!;
   const total = active.question.checklist.filter((i) => !i.optional).length;
+  const liveRows: InsightRow[] = active.question.checklist.map((item) => ({
+    id: item.id,
+    label: item.label,
+    optional: item.optional,
+    total: snapshot.players.length,
+    done: snapshot.players.filter((p) => progress[p.id]?.doneIds?.includes(item.id)).length,
+  }));
 
   return (
     <div className="mx-auto grid max-w-7xl gap-6 px-5 py-6 lg:grid-cols-[1.3fr_1fr]" data-testid="host-question">
@@ -204,14 +212,9 @@ function HostQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
           <Timer startsAt={active.startsAt} endsAt={active.endsAt} finishedAt={active.finishedAt} size="lg" />
         </Panel>
         <Panel className="p-5">
-          <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-white/50">Checklist da questão</h3>
-          <ol className="space-y-1.5 text-sm text-white/80">
-            {active.question.checklist.map((item, i) => (
-              <li key={item.id} className="flex gap-2">
-                <span className="font-mono text-white/40">{i + 1}.</span> {item.label}
-              </li>
-            ))}
-          </ol>
+          <h3 className="mb-1 text-xs font-bold uppercase tracking-[0.14em] text-white/50">Itens da checklist, ao vivo</h3>
+          <p className="mb-4 text-xs text-white/40">Quantos alunos concluíram cada item agora. Barras curtas mostram onde a turma está travada.</p>
+          <ItemInsights rows={liveRows} />
         </Panel>
         {error && <p className="text-sm text-coral">{error}</p>}
         <Button variant="danger" loading={busy} onClick={() => void run(finishQuestion)} data-testid="finish-question">
@@ -297,6 +300,7 @@ function HostReview({ snapshot }: { snapshot: RoomSnapshot }) {
             </div>
           </Panel>
         )}
+        {results && results.items.length > 0 && <StuckPanel results={results} />}
         {lastFinished?.solution && (
           <Panel className="p-5">
             <Button variant="ghost" size="sm" onClick={() => setShowSolution((v) => !v)}>
@@ -316,6 +320,25 @@ function HostReview({ snapshot }: { snapshot: RoomSnapshot }) {
         </Button>
       </div>
     </div>
+  );
+}
+
+function StuckPanel({ results }: { results: QuestionResults }) {
+  const rows = rowsFromResults(results.items);
+  const hardest = hardestRow(rows);
+  return (
+    <Panel className="p-5" data-testid="stuck-panel">
+      <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">Onde a turma travou</h3>
+      <p className="mb-4 mt-1 text-sm text-white/65" data-testid="stuck-summary">
+        {hardest
+          ? `Item mais difícil: "${hardest.label}". ${hardest.done} de ${hardest.total} concluíram.`
+          : results.playerCount > 0
+            ? 'Todos os alunos concluíram todos os itens.'
+            : 'Nenhum aluno participou desta questão.'}
+      </p>
+      <ItemInsights rows={rows} highlightHardest showTime />
+      <p className="mt-4 text-[11px] text-white/35">O tempo é a mediana até o primeiro momento em que cada aluno concluiu o item.</p>
+    </Panel>
   );
 }
 
@@ -380,6 +403,8 @@ function HostEnded({ snapshot }: { snapshot: RoomSnapshot }) {
         </Panel>
       )}
 
+      <SessionInsights report={report} />
+
       <Panel className="overflow-x-auto p-2">
         <table className="w-full min-w-[640px] text-left text-sm" data-testid="report-table">
           <thead className="text-xs uppercase tracking-wider text-white/40">
@@ -433,6 +458,68 @@ function HostEnded({ snapshot }: { snapshot: RoomSnapshot }) {
         </table>
       </Panel>
     </div>
+  );
+}
+
+function itemsToCsv(report: SessionReport): string {
+  const header = ['questao', 'titulo', 'item', 'concluiram', 'alunos', 'tempo_mediano_s'];
+  const rows = report.questions.flatMap((q) =>
+    q.items.map((i) => [
+      q.index + 1,
+      `"${q.title.replace(/"/g, '""')}"`,
+      `"${i.label.replace(/"/g, '""')}"`,
+      i.completedCount,
+      i.playerCount,
+      i.medianTimeMs === null ? '' : (i.medianTimeMs / 1000).toFixed(1),
+    ]),
+  );
+  return [header, ...rows].map((row) => row.join(',')).join('\n');
+}
+
+function SessionInsights({ report }: { report: SessionReport }) {
+  const hardest = hardestAcrossSession(report);
+  return (
+    <section className="space-y-4" data-testid="session-insights" aria-label="Revisão da turma">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 className="font-display text-2xl font-bold">Onde a turma travou</h3>
+          <p className="text-sm text-white/50">Itens da checklist com menos conclusões. Bons candidatos para reexplicar na próxima aula.</p>
+        </div>
+        <Button variant="secondary" size="sm" onClick={() => downloadFile(`itens-${report.roomCode}.csv`, itemsToCsv(report), 'text/csv')}>
+          <Icon name="download" /> Itens (CSV)
+        </Button>
+      </div>
+
+      {hardest.length === 0 ? (
+        <Panel className="p-5 text-sm text-white/65">Todos os alunos concluíram todos os itens de todas as questões.</Panel>
+      ) : (
+        <ol className="grid gap-3 md:grid-cols-3" data-testid="session-hardest">
+          {hardest.map((item, i) => (
+            <li key={`${item.questionIndex}-${item.id}`} className="rounded-2xl border border-coral/25 bg-coral/[0.06] p-4">
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-coral">
+                <span className="font-mono">{i + 1}</span> Questão {item.questionIndex + 1} · {item.questionTitle}
+              </p>
+              <p className="mt-2 text-sm leading-snug text-white/90">{item.label}</p>
+              <p className="mt-3 font-mono text-2xl font-bold text-coral">
+                {item.done}/{item.total} <span className="text-xs font-medium text-white/40">concluíram</span>
+              </p>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {report.questions.map((q) => (
+          <Panel key={q.questionId} className="p-5">
+            <h4 className="mb-4 text-sm font-semibold">
+              <span className="mr-2 font-mono text-white/40">Q{q.index + 1}</span>
+              {q.title}
+            </h4>
+            <ItemInsights rows={rowsFromResults(q.items)} highlightHardest showTime />
+          </Panel>
+        ))}
+      </div>
+    </section>
   );
 }
 

@@ -75,7 +75,7 @@ Cliente -> servidor (todos com ack `{ ok: true, ... } | { ok: false, error, code
 | `host:start-question` / `host:finish-question` / `host:end-session` | professor | `{ code, hostToken }` |
 | `host:update-settings` | professor | `{ code, hostToken, settings }` |
 | `host:kick` | professor | `{ code, hostToken, playerId }` |
-| `question:progress` | aluno | `{ done, total }` (contagem, sem código) |
+| `question:progress` | aluno | `{ done, total, doneIds? }` (contagem e ids dos itens concluídos, sem código; informativo) |
 | `question:submit` | aluno | `{ code }` -> `{ answer }` |
 
 Servidor -> cliente:
@@ -86,10 +86,10 @@ Servidor -> cliente:
 | `player:joined` / `player:left` | todos | jogador |
 | `question:loaded` | todos | questão pública (sem `solution`), `startsAt`, `endsAt` |
 | `question:started` | todos | início efetivo (fim da contagem) |
-| `question:progress` | professor | `{ playerId, done, total, answered }` |
+| `question:progress` | professor | `{ playerId, done, total, answered, doneIds }` |
 | `question:submitted` | professor | quem enviou e se foi aceito |
 | `question:validated` | o aluno | resultado da validação oficial por item |
-| `question:finished` | todos | resultados, placar e `solution` |
+| `question:finished` | todos | resultados (incluindo `items`: conclusão e tempo mediano por item), placar e `solution` |
 | `leaderboard:update` | todos | placar |
 | `session:ended` | todos | relatório final |
 | `room:closed` | aluno removido | motivo |
@@ -121,7 +121,7 @@ A interface de armazenamento é pequena (`list/get/create/update/delete`) para p
 | Entrada maliciosa | Todos os payloads validados com Zod; código limitado a 50 000 caracteres; Socket.IO com limite de 256 KB por mensagem |
 | XSS | React escapa todo conteúdo; enunciados são texto (crases viram `<code>` sem HTML) |
 | Controle da sala | Ações de professor exigem `hostToken` |
-| Exposição do código | O professor recebe apenas contagens de progresso |
+| Exposição do código | O professor recebe apenas contagens e ids de itens concluídos; os ids informados pelo cliente só alimentam a revisão da turma e nunca a pontuação |
 
 Limitação documentada: o modelo de permissões do Node não bloqueia rede de saída. Em ambiente público, rode o servidor
 (ou só o runner) em contêiner sem rede.

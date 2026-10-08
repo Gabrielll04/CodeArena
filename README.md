@@ -7,6 +7,7 @@ obrigatórios estão concluídos, a resposta é enviada, o servidor valida de no
 - Motor de checklist determinístico (`contains`, `regex`, `notContains`, `pluginRule`), o mesmo no navegador e no servidor.
 - Multiplayer em tempo real (Socket.IO) com servidor como fonte oficial de tempo e pontuação.
 - Arquitetura de plugins: `react-native` (preview em celular) e `backend-http` (cliente HTTP e validação por requisições).
+- Revisão da turma por item da checklist: o professor vê, ao vivo e no relatório, onde a turma travou.
 - Importação/exportação de packs em JSON validados com Zod, editor manual com teste ao vivo e avisos de qualidade.
 - Documentação para agentes de IA gerarem questões e plugins (`AGENTS.md`, `docs/agents/`).
 
@@ -46,6 +47,12 @@ Uma resposta "decorada" (sempre `{ "id": "42" }`) passa em `/users/42`, mas falh
 | Professor acompanhando | Placar do professor |
 | --- | --- |
 | ![Progresso por aluno sem mostrar código](docs/images/09-professor-acompanhando.png) | ![Placar com XP ganho e posições](docs/images/10-placar-professor.png) |
+
+### Revisão da turma
+
+| Itens ao vivo | Onde a turma travou |
+| --- | --- |
+| ![Quantos alunos concluíram cada item, ao vivo](docs/images/09-professor-acompanhando.png) | ![Item que mais travou, com mediana de tempo](docs/images/14-onde-a-turma-travou.png) |
 
 Mais telas: [`docs/images`](docs/images) (home, biblioteca, importação com erros, editor de questões, relatório final).
 
@@ -123,6 +130,7 @@ pnpm screenshots   # sobe um servidor temporário na porta 3200 e regrava docs/i
 ```
 
 O script (`scripts/screenshots.mjs`) conduz uma sessão completa com Playwright; rode-o depois de mudar a interface.
+Para regravar só algumas imagens: `SHOTS_ONLY="10-,14-" pnpm screenshots` (prefixos dos nomes de arquivo).
 
 ## Criando conteúdo com IA
 

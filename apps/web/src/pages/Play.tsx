@@ -157,9 +157,10 @@ function ActiveQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
 
   // Progresso (contagem de itens, sem código) para o painel do professor.
   const { requiredDone, requiredTotal } = live.evaluation;
+  const doneKey = live.evaluation.items.filter((i) => i.status === 'done').map((i) => i.id).join(',');
   useEffect(() => {
-    if (!accepted) reportProgress(requiredDone, requiredTotal);
-  }, [requiredDone, requiredTotal, accepted, reportProgress]);
+    if (!accepted) reportProgress(requiredDone, requiredTotal, doneKey ? doneKey.split(',') : []);
+  }, [requiredDone, requiredTotal, doneKey, accepted, reportProgress]);
 
   // Envio automático quando a checklist completa (avaliação atualizada para o código atual).
   useEffect(() => {

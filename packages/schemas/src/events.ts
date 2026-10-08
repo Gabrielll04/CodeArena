@@ -121,11 +121,27 @@ export interface ProgressEntry {
   done: number;
   total: number;
   answered: boolean;
+  /** Ids dos itens da checklist que o aluno concluiu agora (somente ids; nunca o código). */
+  doneIds: string[];
+}
+
+/** Como a turma foi em um item da checklist: base da "revisão da turma". */
+export interface ItemInsight {
+  id: string;
+  label: string;
+  optional: boolean;
+  /** Alunos com o item concluído quando a questão terminou. */
+  completedCount: number;
+  playerCount: number;
+  /** Mediana do tempo (desde o início da questão) até o item ser concluído pela primeira vez. */
+  medianTimeMs: number | null;
 }
 
 export interface QuestionResults {
   questionId: string;
+  title: string;
   index: number;
+  items: ItemInsight[];
   playerCount: number;
   correctCount: number;
   averageTimeMs: number | null;
@@ -233,6 +249,8 @@ export const HostKickPayloadSchema = HostAuthPayloadSchema.extend({ playerId: z.
 export const ProgressPayloadSchema = z.object({
   done: z.number().int().min(0).max(100),
   total: z.number().int().min(0).max(100),
+  /** Itens concluídos no cliente. Informativo (painel do professor); a pontuação nunca depende disso. */
+  doneIds: z.array(z.string().max(64)).max(12).optional(),
 });
 
 export const SubmitPayloadSchema = z.object({

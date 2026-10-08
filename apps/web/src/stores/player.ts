@@ -33,7 +33,7 @@ interface PlayerStore {
   resume(code: string): Promise<boolean>;
   leave(): void;
   submit(code: string): Promise<PlayerAnswer | { error: string }>;
-  reportProgress(done: number, total: number): void;
+  reportProgress(done: number, total: number, doneIds: string[]): void;
 }
 
 let listening = false;
@@ -136,8 +136,8 @@ export const usePlayer = create<PlayerStore>((set, get) => {
       return res.ok ? res.answer : { error: res.error };
     },
 
-    reportProgress(done, total) {
-      getSocket().emit('question:progress', { done, total });
+    reportProgress(done, total, doneIds) {
+      getSocket().emit('question:progress', { done, total, doneIds });
     },
   };
 });

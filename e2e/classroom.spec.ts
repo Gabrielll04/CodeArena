@@ -25,6 +25,10 @@ test('sessão ao vivo com React Native: checklist automática, validação no se
   await expect(ana.getByTestId('checklist-count')).toHaveText('1/4');
   // O professor vê o progresso (contagem), não o código.
   await expect(host.getByTestId('host-progress')).toContainText('1/4');
+  // Revisão ao vivo por item: 1 de 2 alunos concluiu "Criar o componente App"; ninguém concluiu o botão ainda.
+  await expect(host.getByTestId('insight-componente-app')).toHaveAttribute('data-done', '1');
+  await expect(host.getByTestId('insight-componente-app')).toHaveAttribute('data-total', '2');
+  await expect(host.getByTestId('insight-usar-button')).toHaveAttribute('data-done', '0');
 
   // Checklist completa: envio automático, validação no servidor e editor travado.
   await setEditorCode(ana, SOLUTION);
@@ -45,6 +49,7 @@ test('sessão ao vivo com React Native: checklist automática, validação no se
   await expect(rows.first()).toHaveAttribute('data-player', 'Ana');
   await expect(ana.getByTestId('review')).toContainText('1º lugar');
   await expect(bia.getByTestId('review')).toContainText('2º lugar');
+  await expect(host.getByTestId('stuck-summary')).toHaveText('Todos os alunos concluíram todos os itens.');
 
   // Segunda questão: só Ana responde; o professor encerra manualmente. O XP acumula.
   await host.getByTestId('next-question').click();
@@ -57,12 +62,18 @@ test('sessão ao vivo com React Native: checklist automática, validação no se
   await host.getByTestId('finish-question').click();
   await expect(host.getByTestId('host-review')).toBeVisible();
   await expect(ana.getByTestId('review')).toBeVisible();
+  // Bia não avançou: a revisão aponta o item mais difícil (1 de 2 concluíram).
+  await expect(host.getByTestId('stuck-summary')).toContainText('Item mais difícil');
+  await expect(host.getByTestId('stuck-summary')).toContainText('1 de 2 concluíram');
+  await expect(host.getByTestId('stuck-panel').getByText('Mais travou')).toBeVisible();
   const anaXP = Number((await ana.getByTestId('my-xp').textContent())!.replace(/\D/g, ''));
   expect(anaXP).toBeGreaterThan(1500);
 
   await host.getByTestId('end-session').click();
   await expect(host.getByTestId('report-table')).toContainText('Ana');
   await expect(host.getByTestId('report-table')).toContainText('2/2');
+  await expect(host.getByTestId('session-insights')).toContainText('Onde a turma travou');
+  await expect(host.getByTestId('session-hardest').locator('li')).not.toHaveCount(0);
   await expect(bia.getByTestId('session-ended')).toBeVisible();
 });
 

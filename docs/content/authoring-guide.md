@@ -30,7 +30,7 @@ Para cada questão:
 1. Biblioteca > Abrir sala: escolha as questões e as opções (modo discreto, bônus de sequência).
 2. Projete a tela do lobby: ela mostra o endereço e o código de 6 dígitos.
 3. "Iniciar questão" dispara uma contagem de 3 s para todos.
-4. Durante a questão você vê quantos itens cada aluno concluiu, sem ver o código.
+4. Durante a questão você vê quantos itens cada aluno concluiu e, em "Itens da checklist, ao vivo", quantos alunos já concluíram cada item. Nunca aparece o código.
 5. A questão termina quando todos os conectados acertam, quando o tempo acaba ou em "Encerrar questão agora".
 6. O placar mostra XP ganho, mudança de posição e a solução esperada.
 7. "Encerrar sessão" gera o relatório (XP, acertos, tempo médio por aluno e acertos por questão), exportável em CSV e JSON.
@@ -62,6 +62,30 @@ Sala: lobby com o código, acompanhamento por aluno (sem mostrar código), placa
 Visão do aluno na mesma sessão:
 
 ![Placar do aluno](../images/11-placar-aluno.png)
+
+## Revisão da turma: onde cada item travou
+
+A checklist mostra exatamente em que passo cada aluno parou, então o app transforma isso em um diagnóstico da turma.
+
+**Ao vivo.** Cada item mostra quantos alunos o concluíram naquele momento. Se a barra de um item fica curta enquanto as anteriores enchem,
+a turma está travada nele: é a hora de dar uma dica em voz alta ou de encerrar a questão.
+
+![Itens da checklist ao vivo](../images/09-professor-acompanhando.png)
+
+**Ao fim de cada questão.** O painel "Onde a turma travou" aponta o item mais difícil (menor taxa de conclusão; empate pelo maior tempo)
+e mostra a mediana de tempo até cada item ser concluído pela primeira vez.
+
+![Onde a turma travou](../images/14-onde-a-turma-travou.png)
+
+**No relatório final.** Os três itens mais difíceis da sessão, com a questão de origem, e o detalhe de todas as questões.
+O botão "Itens (CSV)" exporta `questao, titulo, item, concluiram, alunos, tempo_mediano_s` para planilhas.
+
+![Revisão da turma no relatório final](../images/15-revisao-da-turma.png)
+
+Como é calculado: um item conta como concluído quando o aluno o tem concluído **no fim da questão**. Alunos que enviaram resposta aceita
+contam todos os itens; para os demais vale o último estado informado pelo navegador, somado ao que o servidor confirmou em envios recusados.
+O contador do navegador é informativo (serve só ao professor); a pontuação continua dependendo apenas da validação do servidor.
+Só ids de itens trafegam, nunca o código do aluno.
 
 ## Boas práticas
 
