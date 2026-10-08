@@ -130,7 +130,8 @@ const draftKey = (room: string, questionId: string) => `codearena:draft:${room}:
 
 function ActiveQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
   const active = snapshot.question!;
-  const question: PublicQuestion = active.question;
+  // Cada room:update traz um objeto novo; a questão não muda durante a rodada, então fixamos pela id.
+  const question: PublicQuestion = useMemo(() => active.question, [active.question.id]);
   const answer = snapshot.me!.answer;
   const plugin = clientPlugins.get(question.pluginId);
   const { submit, reportProgress } = usePlayer();
@@ -140,6 +141,7 @@ function ActiveQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
   );
   const [submitting, setSubmitting] = useState(false);
   const [lastResult, setLastResult] = useState<PlayerAnswer | { error: string } | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
   const lastSubmitted = useRef<string | null>(null);
   const accepted = answer?.status === 'accepted';
   const locked = accepted && question.lockOnComplete;
@@ -169,8 +171,15 @@ function ActiveQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
       setSubmitting(false);
       setLastResult(result);
       if ('status' in result && result.status === 'accepted') playCue('success');
+      if ('error' in result) {
+        // Falha de rede ou limite de envio: tenta de novo com o mesmo código em instantes.
+        setTimeout(() => {
+          lastSubmitted.current = null;
+          setRetryTick((t) => t + 1);
+        }, 1500);
+      }
     });
-  }, [accepted, submitting, live, code, submit]);
+  }, [accepted, submitting, live, code, submit, retryTick]);
 
   const rejected = lastResult && 'status' in lastResult && lastResult.status === 'rejected' ? lastResult : null;
   const failure = lastResult && 'error' in lastResult ? lastResult.error : null;

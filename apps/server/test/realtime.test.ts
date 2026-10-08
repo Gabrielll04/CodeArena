@@ -131,6 +131,7 @@ describe('sala em tempo real', () => {
     expect(rejected.answer.items.find((i) => i.id === 'componente-app')?.passed).toBe(true);
 
     const solution = 'export default function App() {\n  return <Button title="Clique aqui" />;\n}';
+    await new Promise((r) => setTimeout(r, 550)); // intervalo mínimo entre envios do mesmo aluno
     const accepted = await emit<{ ok: true; answer: { status: string; xp: number; remainingMs: number } }>(ana, 'question:submit', { code: solution });
     expect(accepted.answer.status).toBe('accepted');
     await new Promise((r) => setTimeout(r, 30));
@@ -187,6 +188,7 @@ describe('sala em tempo real', () => {
     expect(bad.answer.status).toBe('rejected');
     expect(bad.answer.items.find((i) => i.id === 'responde-7')).toMatchObject({ passed: false });
 
+    await new Promise((r) => setTimeout(r, 550));
     const good = `const app = require('express')();\napp.get('/users/:id', (req, res) => res.json({ id: req.params.id }));`;
     const ok = await emit<{ ok: true; answer: { status: string } }>(student, 'question:submit', { code: good });
     expect(ok.answer.status).toBe('accepted');

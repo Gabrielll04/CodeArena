@@ -88,6 +88,7 @@ interface QuestionRecord {
   answers: Map<string, PlayerAnswer>;
   progress: Map<string, { done: number; total: number }>;
   pending: Map<string, Promise<void>>;
+  lastSubmitAt: Map<string, number>;
   results: QuestionResults | null;
 }
 
@@ -104,6 +105,9 @@ export interface RoomOptions {
 }
 
 const randomId = () => globalThis.crypto.randomUUID();
+
+/** Intervalo mínimo entre envios do mesmo aluno (protege o runner de validação contra spam). */
+export const SUBMIT_INTERVAL_MS = 500;
 
 export class Room {
   readonly code: string;
@@ -293,6 +297,7 @@ export class Room {
       answers: new Map(),
       progress: new Map(),
       pending: new Map(),
+      lastSubmitAt: new Map(),
       results: null,
     };
     this.current = record;
@@ -357,6 +362,11 @@ export class Room {
     if (this.phase === 'countdown' || receivedAt < record.startsAt) {
       throw new RoomError('invalid_state', 'A questão ainda não começou');
     }
+    const previous = record.lastSubmitAt.get(playerId);
+    if (previous !== undefined && receivedAt - previous < SUBMIT_INTERVAL_MS && record.finishedAt === null) {
+      throw new RoomError('invalid_state', 'Aguarde um instante antes de reenviar');
+    }
+    record.lastSubmitAt.set(playerId, receivedAt);
 
     const timeLimitMs = record.question.timeLimitSeconds * 1000;
     const remainingMs = Math.max(0, record.endsAt - receivedAt);
@@ -473,12 +483,14 @@ export class Room {
       this.phase = 'review';
       this.touch();
       const leaderboard = this.leaderboard();
+      // No modo discreto, a transmissão geral leva só o top 3; cada aluno recebe a própria posição no snapshot.
+      const publicBoard = this.settings.discreetMode ? leaderboard.filter((e) => e.rank <= 3) : leaderboard;
       this.sink.emit({ kind: 'all' }, 'question:finished', {
         results: record.results,
-        leaderboard,
+        leaderboard: publicBoard,
         solution: record.question.solution,
       });
-      this.sink.emit({ kind: 'all' }, 'leaderboard:update', leaderboard);
+      this.sink.emit({ kind: 'all' }, 'leaderboard:update', publicBoard);
       this.sink.sync();
     })().finally(() => {
       this.finishing = null;

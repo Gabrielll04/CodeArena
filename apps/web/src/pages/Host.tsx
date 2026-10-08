@@ -161,9 +161,18 @@ function HostLobby({ snapshot }: { snapshot: RoomSnapshot }) {
           </ul>
         )}
         {error && <p className="mt-3 text-sm text-coral">{error}</p>}
-        <Button variant="primary" size="lg" className="mt-5" loading={busy} onClick={() => void run(startQuestion)} data-testid="start-question">
+        <Button
+          variant="primary"
+          size="lg"
+          className="mt-5"
+          loading={busy}
+          disabled={snapshot.players.length === 0}
+          onClick={() => void run(startQuestion)}
+          data-testid="start-question"
+        >
           <Icon name="play" /> Iniciar questão 1 de {snapshot.questionCount}
         </Button>
+        {snapshot.players.length === 0 && <p className="mt-2 text-center text-xs text-white/40">Disponível quando o primeiro aluno entrar.</p>}
       </Panel>
     </div>
   );

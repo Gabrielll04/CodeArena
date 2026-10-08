@@ -17,13 +17,15 @@ export interface LeaderboardProps {
 
 export function Leaderboard({ entries, highlightId, reveal = false, limit, size = 'md' }: LeaderboardProps) {
   const [revealed, setRevealed] = useState(!reveal);
+  // Snapshots chegam a todo momento; a revelação só reinicia quando o placar realmente muda.
+  const signature = entries.map((e) => `${e.playerId}:${e.totalXP}:${e.rank}`).join('|');
 
   useEffect(() => {
     if (!reveal) return;
     setRevealed(false);
     const timer = setTimeout(() => setRevealed(true), 900);
     return () => clearTimeout(timer);
-  }, [reveal, entries]);
+  }, [reveal, signature]);
 
   const ordered = useMemo(() => {
     if (revealed) return entries;

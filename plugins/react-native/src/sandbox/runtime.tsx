@@ -88,7 +88,6 @@ function compile(code: string): CompileResult {
   }
   const module: { exports: Record<string, unknown> } = { exports: {} };
   try {
-    // eslint-disable-next-line no-new-func
     const run = new Function('require', 'module', 'exports', ...scopeNames, compiled);
     run(requireShim, module, module.exports, ...scopeValues);
   } catch (err) {

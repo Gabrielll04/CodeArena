@@ -140,6 +140,7 @@ describe('Room: ciclo de uma questão', () => {
     const wrong = await room.submit(ana.playerId, 'errado');
     expect(wrong.status).toBe('rejected');
     expect(wrong.xp).toBe(0);
+    await expect(room.submit(ana.playerId, 'ok')).rejects.toThrow(/Aguarde/);
     await clock.advance(1000);
     const right = await room.submit(ana.playerId, 'ok');
     expect(right.status).toBe('accepted');
@@ -232,7 +233,7 @@ describe('Room: placar e relatório', () => {
   });
 
   it('modo discreto mostra ao aluno só o top 3 e a própria posição', async () => {
-    const { room, clock } = setup({ countdownSeconds: 0 });
+    const { room, clock, events } = setup({ countdownSeconds: 0 });
     const players = ['Ana', 'Bia', 'Caio', 'Duda', 'Edu'].map((name) => room.join({ name, avatar: 'bolt' }));
     room.updateSettings({ discreetMode: true });
     room.startNextQuestion();
@@ -241,6 +242,8 @@ describe('Room: placar e relatório', () => {
       await clock.advance(1000);
     }
     await clock.advance(100_000);
+    const finished = events.find((e) => e.event === 'question:finished')!.payload as { leaderboard: unknown[] };
+    expect(finished.leaderboard).toHaveLength(3);
     const view = room.snapshotForPlayer(players[4]!.playerId);
     expect(view.leaderboard.map((e) => e.name)).toEqual(['Ana', 'Bia', 'Caio', 'Edu']);
     expect(room.snapshotForHost().leaderboard).toHaveLength(5);
