@@ -42,7 +42,7 @@ duplas, template strings e `{'texto'}`. Se o código tiver erro de sintaxe, o it
 1. Um item para a estrutura (componente exportado, componente usado).
 2. Um item por requisito visível do enunciado (texto, título, placeholder, estilo).
 3. Para estado, combine `reactNativeUsesHook` com um item que verifique o uso (`onPress`, setter).
-4. Adicione `reactNativeCompiles` quando os demais itens forem regex: garante que o preview funciona.
+4. **Sempre** inclua `reactNativeCompiles` quando os demais itens forem regex ou texto: sem ele, código com erro de sintaxe pode completar a checklist, ser aceito e travar o editor com um app quebrado (veja as imagens abaixo).
 
 ## Questões progressivas (exemplo)
 
@@ -69,6 +69,26 @@ Veja todas implementadas em `content/packs/react-native-fundamentos.json`.
   ]
 }
 ```
+
+## Como fica na prática
+
+Checklist parcial: ao escrever `export default function App()`, o primeiro item é marcado imediatamente.
+
+![Checklist parcial no plugin react-native](../images/rn-01-checklist-parcial.png)
+
+Erros de sintaxe aparecem no preview (com a linha) e não derrubam o app. Observe que os três itens de texto já estão
+concluídos, mas o item `reactNativeCompiles` continua pendente: **sem um item de sintaxe, código quebrado que casa as
+regex seria aceito e o editor travaria com um app que não renderiza**. Por isso o pack de exemplo inclui esse item.
+
+![Erro de sintaxe no preview](../images/rn-02-erro-no-preview.png)
+
+Checklist completa: o servidor valida de novo, concede o XP e o editor fica somente leitura. O preview continua interativo.
+
+![Resposta aceita e preview](../images/rn-03-resposta-aceita.png)
+
+Questões com estado (`useState`) funcionam no preview; os toques do aluno rodam o código dele.
+
+![Contador com estado](../images/rn-04-contador-com-estado.png)
 
 ## Diferenças entre React Native e web (alerte nos enunciados quando relevante)
 

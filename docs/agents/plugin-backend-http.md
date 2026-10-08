@@ -130,6 +130,23 @@ Implementadas em `content/packs/backend-http-basico.json`:
 }
 ```
 
+## Como fica na prática
+
+O painel "Cliente HTTP" mostra as rotas detectadas no código, permite montar a requisição (método, caminho, headers, body)
+e exibe status, headers, body e console da resposta. Quando um item dinâmico falha, a mensagem diz o que diferiu.
+
+![Requisição retornando 503 e item falhando](../images/backend-01-requisicao-falhando.png)
+
+Com o código corrigido, o item passa, a resposta é validada pelo servidor e o editor trava. O console mostra o que o
+código do aluno imprimiu durante a requisição.
+
+![Resposta aceita no plugin backend-http](../images/backend-02-resposta-aceita.png)
+
+Dois casos de teste evitam respostas "decoradas": o código abaixo responde sempre `"42"`, passa em `/users/42` e é
+recusado em `/users/7`.
+
+![Resposta fixa recusada](../images/backend-03-resposta-decorada-recusada.png)
+
 ## Limites do runner (o que não usar em questões)
 
 - Banco de dados, arquivos, variáveis de ambiente reais, chamadas HTTP de saída (`fetch`, `axios`).

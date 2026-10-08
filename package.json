@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "typecheck": "pnpm -r --parallel typecheck",
-    "validate:packs": "tsx scripts/validate-packs.ts"
+    "validate:packs": "tsx scripts/validate-packs.ts",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.56.1",

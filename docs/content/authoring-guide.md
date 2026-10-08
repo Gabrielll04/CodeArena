@@ -37,6 +37,32 @@ Para cada questão:
 
 **Modo discreto:** alunos veem só o top 3 e a própria posição, sem pódio. Use quando a competição aberta puder constranger.
 
+## Telas do fluxo do professor
+
+Biblioteca de packs, com os plugins de cada um e as ações abrir sala, editar, duplicar e exportar:
+
+![Biblioteca de questões](../images/02-biblioteca.png)
+
+Importação de JSON: cada problema aparece com o caminho exato do campo, antes de qualquer coisa ser salva:
+
+![Importação com erros de validação](../images/03-importar-json-erros.png)
+
+Editor de questão (enunciado, tempo, XP, código inicial e solução) e, abaixo, a checklist com teste ao vivo e avisos de qualidade:
+
+![Editor de questão](../images/04-editor-questao.png)
+![Checklist, teste ao vivo e qualidade](../images/05-editor-checklist-e-teste.png)
+
+Sala: lobby com o código, acompanhamento por aluno (sem mostrar código), placar e relatório final:
+
+![Lobby do professor](../images/07-lobby-professor.png)
+![Acompanhamento da questão](../images/09-professor-acompanhando.png)
+![Placar](../images/10-placar-professor.png)
+![Relatório final](../images/12-relatorio-final.png)
+
+Visão do aluno na mesma sessão:
+
+![Placar do aluno](../images/11-placar-aluno.png)
+
 ## Boas práticas
 
 - 3 a 6 questões por aula curta; aumente a dificuldade aos poucos.

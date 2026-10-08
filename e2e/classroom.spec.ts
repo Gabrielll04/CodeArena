@@ -22,9 +22,9 @@ test('sessão ao vivo com React Native: checklist automática, validação no se
   await setEditorCode(ana, 'export default function App() {');
   await expect(ana.getByTestId('checklist-item-componente-app')).toHaveAttribute('data-status', 'done');
   await expect(ana.getByTestId('checklist-item-usar-button')).toHaveAttribute('data-status', 'pending');
-  await expect(ana.getByTestId('checklist-count')).toHaveText('1/3');
+  await expect(ana.getByTestId('checklist-count')).toHaveText('1/4');
   // O professor vê o progresso (contagem), não o código.
-  await expect(host.getByTestId('host-progress')).toContainText('1/3');
+  await expect(host.getByTestId('host-progress')).toContainText('1/4');
 
   // Checklist completa: envio automático, validação no servidor e editor travado.
   await setEditorCode(ana, SOLUTION);
