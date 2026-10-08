@@ -338,6 +338,11 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium">
                         {i + 1}. {q.title ?? q.prompt}
+                        {q.kind === 'debug' && (
+                          <Badge tone="coral" className="ml-2 align-middle">
+                            Depuração
+                          </Badge>
+                        )}
                       </span>
                       <span className="text-xs text-white/40">
                         {q.timeLimitSeconds} s · {q.baseXP} + até {q.speedBonusMax} XP · {plural(q.checklist.length, 'item', 'itens')}

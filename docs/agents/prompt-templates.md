@@ -94,7 +94,35 @@ Campos: id, title, prompt, timeLimitSeconds, baseXP, speedBonusMax, starterCode,
 Checklist com 3 itens objetivos. Responda apenas com o objeto JSON.
 ```
 
-## 6. Criar um plugin novo
+## 6. Gerar um pack de depuração
+
+Contexto: `AGENTS.md`, `docs/agents/question-pack-schema.md`, `docs/agents/checklist-rules.md`, `docs/agents/debug-questions.md`
+e o guia do plugin escolhido.
+
+```text
+Você é um autor de questões de depuração para o CodeArena.
+
+Gere um arquivo JSON válido compatível com o schema do CodeArena.
+
+Regras:
+- Use pluginId "<react-native ou backend-http>" e "kind": "debug" em todas as questões.
+- Crie <3> questões, cada uma com UM bug realista para estudantes de nível <iniciante>: <tipos de bug desejados>.
+- "starterCode" é o código com o bug e deve compilar; "solution" é a correção mínima.
+- O enunciado descreve o sintoma (o que deveria acontecer e o que acontece), nunca a causa nem a linha.
+- Cada checklist tem entre 3 e 5 itens:
+  - pelo menos 1 item obrigatório deve FALHAR no código com bug;
+  - pelo menos 1 item de proteção deve passar no código com bug (o que já funciona e não pode quebrar);
+  - labels descrevem comportamento esperado, nunca o conserto.
+- No backend-http, use "httpRequest" com dois casos de teste quando uma resposta fixa poderia passar.
+- No react-native, inclua "reactNativeCompiles" e prefira validadores de AST.
+- Use timeLimitSeconds entre 180 e 300, baseXP 500 e speedBonusMax 500.
+- Não use emojis. Não inclua comentários dentro do JSON.
+- Responda apenas com JSON válido.
+```
+
+Depois rode `pnpm validate:packs arquivo.json`: cada questão deve mostrar `INFO ... O bug é detectado por N de M itens`.
+
+## 7. Criar um plugin novo
 
 Contexto: `docs/plugins/creating-a-plugin.md`, `packages/plugin-sdk/src/types.ts`, `plugins/react-native/src/index.ts`.
 

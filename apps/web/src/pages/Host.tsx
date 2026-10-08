@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type { QuestionResults, RoomSnapshot, SessionReport } from '@codearena/schemas';
 import { Avatar } from '../components/Avatar';
+import { SolutionView } from '../components/CodeDiff';
 import { Countdown } from '../components/Countdown';
 import { hardestAcrossSession, hardestRow, ItemInsights, rowsFromResults, type InsightRow } from '../components/ItemInsights';
 import { Leaderboard, Podium } from '../components/Leaderboard';
@@ -11,6 +12,7 @@ import { Timer } from '../components/Timer';
 import { ConnectionBanner, TopBar } from '../components/TopBar';
 import { Badge, Button, cx, Dialog, EmptyState, Icon, Panel, Spinner, Toggle } from '../components/ui';
 import { downloadFile, formatDuration, formatXP } from '../lib/format';
+import { clientPlugins } from '../plugins/registry';
 import { useHost } from '../stores/host';
 
 export function HostPage() {
@@ -197,9 +199,12 @@ function HostQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
       <div className="space-y-5">
         <Panel className="space-y-4 p-6">
           <div className="flex items-center justify-between gap-3">
-            <Badge tone="violet">
-              Questão {active.index + 1} de {active.total}
-            </Badge>
+            <span className="flex items-center gap-2">
+              <Badge tone="violet">
+                Questão {active.index + 1} de {active.total}
+              </Badge>
+              {active.question.kind === 'debug' && <Badge tone="coral">Depuração</Badge>}
+            </span>
             <span className="text-sm text-white/60">
               <strong className="font-mono text-lg text-lime" data-testid="host-answered">
                 {snapshot.answeredCount}
@@ -306,7 +311,14 @@ function HostReview({ snapshot }: { snapshot: RoomSnapshot }) {
             <Button variant="ghost" size="sm" onClick={() => setShowSolution((v) => !v)}>
               <Icon name="eye" /> {showSolution ? 'Ocultar solução' : 'Mostrar solução esperada'}
             </Button>
-            {showSolution && <pre className="mt-3 overflow-auto rounded-xl bg-ink-950/70 p-3 font-mono text-xs text-white/85">{lastFinished.solution}</pre>}
+            {showSolution && (
+              <SolutionView
+                solution={lastFinished.solution}
+                starter={snapshot.question?.question.starterCode ?? ''}
+                debug={snapshot.question?.question.kind === 'debug'}
+                language={clientPlugins.get(snapshot.question?.question.pluginId ?? '')?.editorLanguage ?? 'javascript'}
+              />
+            )}
           </Panel>
         )}
         {error && <p className="text-sm text-coral">{error}</p>}

@@ -21,7 +21,8 @@ o servidor valida de novo e concede XP (base + bônus por velocidade).
 | `packages/plugin-sdk/src/types.ts` | Contrato de plugins (`QuizPlugin`, `ChecklistValidator`) |
 | `plugins/react-native/src/index.ts` | Validadores do plugin `react-native` |
 | `plugins/backend-http/src/index.ts` | Validadores do plugin `backend-http` |
-| `content/packs/*.json` | Packs de exemplo válidos |
+| `docs/agents/debug-questions.md` | Como criar questões de depuração (`kind: "debug"`) |
+| `content/packs/*.json` | Packs de exemplo válidos (inclui `depuracao-*.json`) |
 | `docs/agents/` | Instruções detalhadas para gerar conteúdo |
 | `scripts/validate-packs.ts` | Validador de packs (schema + checklist contra a solução) |
 
@@ -45,6 +46,15 @@ Leia nesta ordem antes de gerar questões:
 8. O **`starterCode` não pode completar a checklist** sozinho.
 9. Não use emojis em enunciados, labels ou dicas.
 10. Ids em `kebab-case` minúsculo, únicos no pack (questões) e na questão (itens).
+
+## Regras extras para questões de depuração (`"kind": "debug"`)
+
+Leia `docs/agents/debug-questions.md`. Em resumo:
+
+11. O `starterCode` é o **código com bug** (obrigatório) e a `solution` é a correção.
+12. O enunciado descreve o **sintoma**, nunca a causa.
+13. Pelo menos um item obrigatório **falha** no código com bug; os demais devem ser itens de proteção que já passam.
+14. Labels descrevem o comportamento esperado, não o conserto.
 
 ## Como verificar o que você gerou
 

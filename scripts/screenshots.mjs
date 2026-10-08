@@ -43,17 +43,17 @@ const shotElement = async (page, testId, name) => {
   await page.getByTestId(testId).screenshot({ path: join(OUT, `${name}.png`) });
   console.log('ok', name);
 };
-const open = async (viewport = { width: 1440, height: 900 }) => (await browser.newContext({ viewport })).newPage();
+const open = async (viewport = { width: 1440, height: 900 }) =>
+  (await browser.newContext({ viewport, permissions: ['clipboard-read', 'clipboard-write'] })).newPage();
 
+// Cola o código (clipboard) em vez de digitar: o Monaco reindenta cada linha digitada e estragaria os prints.
 async function setCode(page, code) {
   const editor = page.locator('.monaco-editor').first();
   await editor.waitFor();
+  await page.evaluate((text) => navigator.clipboard.writeText(text), code);
   await editor.click();
   await page.keyboard.press('ControlOrMeta+A');
-  await page.keyboard.press('Delete');
-  await page.keyboard.insertText(code);
-  await page.keyboard.press('ControlOrMeta+Shift+End');
-  await page.keyboard.press('Delete');
+  await page.keyboard.press('ControlOrMeta+V');
 }
 
 async function createRoom(host, packId, titles) {
@@ -181,6 +181,51 @@ try {
   await shot(hostRN, '12-relatorio-final');
   await shotElement(hostRN, 'session-insights', '15-revisao-da-turma');
   await shot(ana, '13-fim-de-sessao-aluno');
+
+  /* ---------------- Questões de depuração ---------------- */
+  const hostDebug = await open();
+  const codeDebug = await createRoom(hostDebug, 'exemplo-depuracao-react-native', ['O botão sem texto']);
+  const dana = await joinRoom(codeDebug, 'Dana', 'spark');
+  await joinRoom(codeDebug, 'Edu', 'gear');
+  await hostDebug.getByTestId('start-question').click();
+  await dana.getByTestId('debug-bar').waitFor({ timeout: 20000 });
+  await dana.frameLocator('iframe[title="Preview React Native"]').locator('body').waitFor();
+  await dana.waitForTimeout(2500);
+  await shot(dana, '16-depuracao-codigo-com-bug');
+
+  await setCode(
+    dana,
+    "import { View, Button } from 'react-native';\n\nexport default function App() {\n  return (\n    <View>\n      <Button title=\"Salvar\">Salvar</Button>\n    </View>\n  );\n}\n",
+  );
+  await dana.getByTestId('checklist-count').and(dana.locator(':has-text("3/4")')).waitFor();
+  await dana.getByTestId('debug-diff').click();
+  await dana.getByRole('dialog').locator('.monaco-diff-editor').waitFor();
+  await dana.waitForTimeout(1500);
+  await shot(dana, '17-depuracao-o-que-mudei');
+  await dana.keyboard.press('Escape');
+
+  await setCode(
+    dana,
+    "import { View, Button } from 'react-native';\n\nexport default function App() {\n  return (\n    <View>\n      <Button title=\"Salvar\" />\n    </View>\n  );\n}\n",
+  );
+  await dana.getByTestId('answer-accepted').waitFor({ timeout: 20000 });
+  await hostDebug.getByTestId('finish-question').click();
+  await hostDebug.getByTestId('host-review').waitFor();
+  await hostDebug.getByRole('button', { name: 'Mostrar solução esperada' }).click();
+  await hostDebug.getByTestId('solution-diff').waitFor();
+  await hostDebug.waitForTimeout(1500);
+  await shot(hostDebug, '18-depuracao-correcao-esperada');
+
+  const hostDebugBE = await open();
+  const codeDebugBE = await createRoom(hostDebugBE, 'exemplo-depuracao-backend-http', ['A rota que nunca responde']);
+  const gil = await joinRoom(codeDebugBE, 'Gil', 'node');
+  await joinRoom(codeDebugBE, 'Hana', 'ring');
+  await hostDebugBE.getByTestId('start-question').click();
+  await gil.getByTestId('debug-bar').waitFor({ timeout: 20000 });
+  await gil.getByTestId('checklist-item-ping-responde').and(gil.locator('[data-status=failed]')).waitFor({ timeout: 30000 });
+  await gil.getByRole('button', { name: 'Enviar' }).click();
+  await gil.getByTestId('http-client').getByText(/não respondeu/).waitFor({ timeout: 15000 });
+  await shot(gil, '19-depuracao-backend');
 
   /* ---------------- Plugin backend-http ---------------- */
   const hostBE = await open();

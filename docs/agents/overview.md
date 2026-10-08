@@ -41,6 +41,12 @@ Este documento explica o que é uma questão do CodeArena e como ela é avaliada
 Prefira `pluginRule` quando existir um validador adequado: ele entende a estrutura do código (ignora comentários,
 aceita aspas simples e duplas, executa o servidor de verdade) e gera menos falsos positivos que regex.
 
+## Tipos de questão
+
+- `build` (padrão): o aluno constrói a solução.
+- `debug`: o aluno recebe um código com bug e o corrige; a checklist verifica o comportamento corrigido.
+  Veja `debug-questions.md`.
+
 ## O que torna uma questão boa
 
 - Enunciado curto (1 a 3 frases) com o resultado esperado explícito: nomes, textos, rotas, status.

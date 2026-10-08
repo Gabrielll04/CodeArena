@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { PlayerAnswer, PublicQuestion, RoomSnapshot } from '@codearena/schemas';
 import { Avatar } from '../components/Avatar';
+import { SolutionView } from '../components/CodeDiff';
 import { Countdown } from '../components/Countdown';
 import { CountUp } from '../components/CountUp';
 import { Leaderboard, Podium } from '../components/Leaderboard';
@@ -261,6 +262,11 @@ function ActiveQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
           modelPath={`file:///${snapshot.code}/${question.id}/${plugin?.editorFileName ?? 'code.js'}`}
           status={status}
           editorOverlay={accepted ? <AcceptedOverlay xp={answer!.xp} /> : null}
+          onRestore={() => {
+            const original = plugin?.getStarterCode(question) ?? question.starterCode;
+            setCode(original);
+            lastSubmitted.current = null;
+          }}
         />
       </div>
     </div>
@@ -357,10 +363,15 @@ function Review({ snapshot }: { snapshot: RoomSnapshot }) {
       {solution && (
         <div>
           <Button variant="ghost" size="sm" onClick={() => setShowSolution((v) => !v)}>
-            <Icon name="eye" /> {showSolution ? 'Ocultar solução esperada' : 'Ver solução esperada'}
+            <Icon name="eye" /> {showSolution ? 'Ocultar solução esperada' : snapshot.question?.question.kind === 'debug' ? 'Ver a correção esperada' : 'Ver solução esperada'}
           </Button>
           {showSolution && (
-            <pre className="mt-2 overflow-auto rounded-xl bg-ink-950/70 p-4 font-mono text-xs leading-relaxed text-white/85">{solution}</pre>
+            <SolutionView
+              solution={solution}
+              starter={snapshot.question?.question.starterCode ?? ''}
+              debug={snapshot.question?.question.kind === 'debug'}
+              language={clientPlugins.get(snapshot.question?.question.pluginId ?? '')?.editorLanguage ?? 'javascript'}
+            />
           )}
         </div>
       )}

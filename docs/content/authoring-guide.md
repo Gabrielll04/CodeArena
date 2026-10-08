@@ -63,6 +63,23 @@ Visão do aluno na mesma sessão:
 
 ![Placar do aluno](../images/11-placar-aluno.png)
 
+## Questões de depuração
+
+Além de "construir do zero", o editor tem o tipo **Depurar**: o código inicial é um código com bug e a checklist verifica o
+comportamento depois da correção. Escreva o sintoma no enunciado, não a causa.
+
+- O aluno vê a faixa **Depuração**, pode abrir **Ver o que mudei** (diff com o original) e **Restaurar original**.
+- O editor avisa se o bug não é detectado: *"O código com bug já cumpre todos os itens"*. Para ter certeza, use
+  "Usar código com bug" em "Testar a checklist" e veja quais itens ficam pendentes.
+- Itens que já passam no código com bug são **proteção** ("a rota continua registrada") e impedem consertos que apagam tudo.
+- Ao fim da questão, a correção esperada aparece como diff.
+
+![Código com bug e checklist](../images/16-depuracao-codigo-com-bug.png)
+![Correção esperada em diff](../images/18-depuracao-correcao-esperada.png)
+
+Há dois packs prontos para usar ou duplicar: `Depuração em React Native` e `Depuração de APIs com Express`.
+Guia completo (inclusive para agentes de IA): [`docs/agents/debug-questions.md`](../agents/debug-questions.md).
+
 ## Revisão da turma: onde cada item travou
 
 A checklist mostra exatamente em que passo cada aluno parou, então o app transforma isso em um diagnóstico da turma.

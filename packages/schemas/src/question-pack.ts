@@ -88,6 +88,11 @@ export const QuestionSchema = z
     title: z.string().trim().max(80).optional(),
     prompt: z.string().trim().min(1, 'prompt é obrigatório').max(2000, 'prompt deve ter no máximo 2000 caracteres'),
     pluginId: slug('pluginId').optional(),
+    /**
+     * build: o aluno escreve a solução a partir de pouco ou nada.
+     * debug: o `starterCode` é um código com bug e a checklist verifica o comportamento corrigido.
+     */
+    kind: z.enum(['build', 'debug']).default('build'),
     timeLimitSeconds: z
       .number({ invalid_type_error: 'timeLimitSeconds deve ser um número' })
       .int('timeLimitSeconds deve ser inteiro')

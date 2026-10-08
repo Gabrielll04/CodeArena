@@ -7,6 +7,7 @@ obrigatórios estão concluídos, a resposta é enviada, o servidor valida de no
 - Motor de checklist determinístico (`contains`, `regex`, `notContains`, `pluginRule`), o mesmo no navegador e no servidor.
 - Multiplayer em tempo real (Socket.IO) com servidor como fonte oficial de tempo e pontuação.
 - Arquitetura de plugins: `react-native` (preview em celular) e `backend-http` (cliente HTTP e validação por requisições).
+- Questões de depuração: o aluno corrige um código com bug, com diff do que mudou e correção esperada em diff.
 - Revisão da turma por item da checklist: o professor vê, ao vivo e no relatório, onde a turma travou.
 - Importação/exportação de packs em JSON validados com Zod, editor manual com teste ao vivo e avisos de qualidade.
 - Documentação para agentes de IA gerarem questões e plugins (`AGENTS.md`, `docs/agents/`).
@@ -48,6 +49,16 @@ Uma resposta "decorada" (sempre `{ "id": "42" }`) passa em `/users/42`, mas falh
 | --- | --- |
 | ![Progresso por aluno sem mostrar código](docs/images/09-professor-acompanhando.png) | ![Placar com XP ganho e posições](docs/images/10-placar-professor.png) |
 
+### Questões de depuração
+
+| Código com bug | O que o aluno mudou |
+| --- | --- |
+| ![Faixa de depuração, checklist e preview](docs/images/16-depuracao-codigo-com-bug.png) | ![Diff entre o código original e o do aluno](docs/images/17-depuracao-o-que-mudei.png) |
+
+![Depuração no backend: a rota nunca responde](docs/images/19-depuracao-backend.png)
+
+Guia: [`docs/agents/debug-questions.md`](docs/agents/debug-questions.md).
+
 ### Revisão da turma
 
 | Itens ao vivo | Onde a turma travou |
@@ -83,7 +94,7 @@ acompanhe o progresso. Ao final, exporte o relatório (CSV/JSON).
 
 **Aluno:** `/join` - código da sala, nome e avatar. Responda no editor; a checklist marca sozinha e a resposta é enviada ao completar.
 
-Packs de exemplo: `content/packs/react-native-fundamentos.json` (5 questões) e `content/packs/backend-http-basico.json` (4 questões).
+Packs de exemplo: `react-native-fundamentos.json` (5 questões), `backend-http-basico.json` (4) e, de depuração, `depuracao-react-native.json` e `depuracao-backend-http.json` (3 cada), todos em `content/packs/`.
 
 ## Estrutura
 

@@ -34,10 +34,11 @@ for (const file of files) {
       continue;
     }
     const warnings = await lintQuestion(question, plugin);
-    if (!warnings.length) console.log(`  ok     ${question.id}`);
+    if (!warnings.some((w) => w.level !== 'info')) console.log(`  ok     ${question.id}`);
     for (const w of warnings) {
       if (w.level === 'error') failed = true;
-      console.log(`  ${w.level === 'error' ? 'ERRO ' : 'AVISO'}  ${question.id}${w.itemId ? `/${w.itemId}` : ''}: ${w.message}`);
+      const tag = w.level === 'error' ? 'ERRO ' : w.level === 'warning' ? 'AVISO' : 'INFO ';
+      console.log(`  ${tag}  ${question.id}${w.itemId ? `/${w.itemId}` : ''}: ${w.message}`);
     }
   }
 }

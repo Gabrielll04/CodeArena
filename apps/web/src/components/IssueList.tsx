@@ -22,13 +22,26 @@ export function IssueList({ issues, title = 'Corrija os campos abaixo' }: { issu
 }
 
 export function WarningList({ warnings }: { warnings: AuthoringWarning[] }) {
-  if (!warnings.length) {
+  if (!warnings.some((w) => w.level !== 'info')) {
+    const infos = warnings.filter((w) => w.level === 'info');
+    if (infos.length) {
+      return (
+        <ul className="space-y-1.5" data-testid="authoring-warnings">
+          <li className="text-xs text-lime">Nenhum problema encontrado.</li>
+          {infos.map((w, i) => (
+            <li key={i} className="text-xs text-white/55">
+              {w.message}
+            </li>
+          ))}
+        </ul>
+      );
+    }
     return <p className="text-xs text-lime">Nenhum problema encontrado: a solução completa a checklist e as regras parecem robustas.</p>;
   }
   return (
     <ul className="space-y-1.5" data-testid="authoring-warnings">
       {warnings.map((w, i) => (
-        <li key={i} className={cx('flex gap-2 text-xs', w.level === 'error' ? 'text-coral' : 'text-amber')}>
+        <li key={i} className={cx('flex gap-2 text-xs', w.level === 'error' ? 'text-coral' : w.level === 'warning' ? 'text-amber' : 'text-white/55')}>
           <Icon name="warning" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>
             {w.itemId && <code className="mr-1 rounded bg-black/30 px-1 font-mono text-[11px]">{w.itemId}</code>}

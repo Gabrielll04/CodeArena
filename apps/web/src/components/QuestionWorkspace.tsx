@@ -3,10 +3,11 @@ import type { ClientQuizPlugin } from '@codearena/plugin-sdk/ui';
 import type { PublicQuestion } from '@codearena/schemas';
 import type { LiveChecklist } from '../hooks/useChecklist';
 import { Checklist } from './Checklist';
+import { DebugBar } from './DebugBar';
 import { CodeEditor } from './CodeEditor';
 import { PluginPanel, pluginPanelTitle } from './PluginPanel';
 import { Prompt } from './Prompt';
-import { cx } from './ui';
+import { Badge, cx } from './ui';
 
 export interface QuestionWorkspaceProps {
   question: PublicQuestion;
@@ -22,6 +23,8 @@ export interface QuestionWorkspaceProps {
   /** Sobreposição no topo do editor (ex.: resposta registrada). */
   editorOverlay?: ReactNode;
   heading?: ReactNode;
+  /** Volta o editor ao código inicial (usado nas questões de depuração). */
+  onRestore?: () => void;
 }
 
 type MobileTab = 'task' | 'code' | 'panel';
@@ -39,7 +42,7 @@ export function MissingPlugin({ pluginId }: { pluginId: string }) {
 }
 
 export function QuestionWorkspace(props: QuestionWorkspaceProps) {
-  const { question, plugin, code, onCodeChange, readOnly, live, mode, modelPath, status, editorOverlay, heading } = props;
+  const { question, plugin, code, onCodeChange, readOnly, live, mode, modelPath, status, editorOverlay, heading, onRestore } = props;
   const [tab, setTab] = useState<MobileTab>('code');
 
   if (!plugin) return <MissingPlugin pluginId={question.pluginId} />;
@@ -77,6 +80,11 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
         <aside className={cx('min-h-0 flex-col gap-4 overflow-auto p-4 lg:flex lg:border-r lg:border-white/[0.07]', tab === 'task' ? 'flex' : 'hidden')}>
           {heading}
           <div className="rounded-2xl border border-white/[0.07] bg-ink-850/60 p-4" data-testid="question-prompt">
+            {question.kind === 'debug' && (
+              <Badge tone="coral" className="mb-2">
+                Depuração
+              </Badge>
+            )}
             {question.title && <h2 className="mb-1.5 font-display text-lg font-bold leading-tight">{question.title}</h2>}
             <Prompt text={question.prompt} />
           </div>
@@ -98,6 +106,15 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
               {readOnly && <span className="font-semibold text-lime">Somente leitura</span>}
             </span>
           </div>
+          {question.kind === 'debug' && (
+            <DebugBar
+              original={plugin.getStarterCode(question)}
+              current={code}
+              language={plugin.editorLanguage}
+              readOnly={readOnly}
+              onRestore={() => onRestore?.()}
+            />
+          )}
           <div className="relative min-h-0 flex-1">
             <CodeEditor
               value={code}

@@ -54,6 +54,7 @@ function newItem(index: number): ChecklistItem {
 function newQuestion(plugin: ClientQuizPlugin<any> | undefined, index: number): Question {
   return {
     id: `questao-${index}`,
+    kind: 'build',
     prompt: '',
     timeLimitSeconds: 180,
     baseXP: 500,
@@ -382,6 +383,38 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
             <Input id="q-id" value={question.id} className="font-mono" onChange={(e) => set('id', slugify(e.target.value, ''))} />
           </Field>
         </div>
+        <div className="space-y-1.5">
+          <span className="block text-xs font-semibold uppercase tracking-wider text-white/55">Tipo da questão</span>
+          <div role="radiogroup" aria-label="Tipo da questão" className="inline-flex rounded-xl bg-ink-950/60 p-1 ring-1 ring-white/10">
+            {(
+              [
+                ['build', 'Construir', 'O aluno escreve a solução.'],
+                ['debug', 'Depurar', 'O aluno corrige um código com bug.'],
+              ] as const
+            ).map(([value, label, hint]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={question.kind === value}
+                title={hint}
+                data-testid={`kind-${value}`}
+                onClick={() => set('kind', value)}
+                className={cx(
+                  'rounded-lg px-4 py-1.5 text-sm font-semibold transition',
+                  question.kind === value ? (value === 'debug' ? 'bg-coral/20 text-coral' : 'bg-white/10 text-white') : 'text-white/50 hover:text-white',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-white/40">
+            {question.kind === 'debug'
+              ? 'O código inicial é o código com bug. Descreva o sintoma no enunciado e verifique o comportamento corrigido na checklist.'
+              : 'O código inicial é o ponto de partida (pode ficar vazio).'}
+          </p>
+        </div>
         <Field label="Enunciado" htmlFor="q-prompt" hint="Curto e objetivo. Use `crases` para destacar código.">
           <Textarea id="q-prompt" value={question.prompt} onChange={(e) => set('prompt', e.target.value)} placeholder='Ex.: Faça um app com um botão escrito "Clique aqui" em React Native.' />
         </Field>
@@ -404,7 +437,9 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel className="overflow-hidden">
-          <p className="border-b border-white/[0.07] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white/50">Código inicial</p>
+          <p className="border-b border-white/[0.07] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white/50">
+            {question.kind === 'debug' ? 'Código com bug (ponto de partida)' : 'Código inicial'}
+          </p>
           <div className="h-56">
             <CodeEditor value={question.starterCode} onChange={(v) => set('starterCode', v)} language={plugin.editorLanguage} path={`file:///authoring/${question.id}/starter-${plugin.editorFileName ?? 'code'}`} fontSize={13} />
           </div>
@@ -463,7 +498,7 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
               Usar solução
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setTestCode(question.starterCode)}>
-              Usar código inicial
+              {question.kind === 'debug' ? 'Usar código com bug' : 'Usar código inicial'}
             </Button>
             <Button size="sm" loading={serverBusy} onClick={() => void testOnServer()} data-testid="test-on-server">
               Validar no servidor
@@ -701,6 +736,7 @@ function StudentPreview({ open, onClose, question, plugin }: { open: boolean; on
           live={live}
           mode="preview"
           modelPath={`file:///preview/${question.id}/${plugin.editorFileName ?? 'code'}`}
+          onRestore={() => setCode(question.starterCode)}
         />
       </div>
     </Dialog>

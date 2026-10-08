@@ -170,6 +170,65 @@ test('configurações da sala abrem centralizadas sobre a tela inteira', async (
   await expect(dialog).toBeHidden();
 });
 
+test('questão de depuração: código com bug, diferenças, restaurar e correção esperada', async ({ page: host, browser }) => {
+  const code = await createRoom(host, 'pack-exemplo-depuracao-react-native');
+  const ana = await joinRoom(browser, code, 'Ana');
+  await joinRoom(browser, code, 'Bia');
+  await host.getByTestId('start-question').click();
+
+  // Código com bug: os itens de comportamento começam pendentes e os de "não quebrar" já passam.
+  await expect(ana.getByTestId('debug-bar')).toBeVisible();
+  await expect(ana.getByTestId('question-prompt')).toContainText('Depuração');
+  await expect(ana.getByTestId('checklist-count')).toHaveText('2/4');
+  await expect(ana.getByTestId('checklist-item-botao-salvar')).toHaveAttribute('data-status', 'pending');
+  await expect(ana.getByTestId('checklist-item-mantem-view')).toHaveAttribute('data-status', 'done');
+  await expect(ana.getByTestId('debug-diff')).toBeDisabled();
+  await expect(host.getByText('Depuração').first()).toBeVisible();
+
+  // Correção parcial: ainda sobra o </Button>. "Ver o que mudei" mostra o diff.
+  const partial =
+    "import { View, Button } from 'react-native';\n\nexport default function App() {\n  return (\n    <View>\n      <Button title=\"Salvar\">Salvar</Button>\n    </View>\n  );\n}\n";
+  await setEditorCode(ana, partial);
+  await expect(ana.getByTestId('checklist-count')).toHaveText('3/4');
+  await ana.getByTestId('debug-diff').click();
+  const dialog = ana.getByRole('dialog');
+  await expect(dialog.locator('.monaco-diff-editor')).toBeVisible();
+  await expect(dialog).toContainText('Seu código');
+  await ana.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+
+  // Restaurar volta ao código com bug (com confirmação).
+  await ana.getByTestId('debug-restore').click();
+  await ana.getByTestId('debug-restore-confirm').click();
+  await expect(ana.getByTestId('checklist-count')).toHaveText('2/4');
+  await expect(ana.getByTestId('debug-diff')).toBeDisabled();
+
+  // Correção completa: aceita pelo servidor.
+  await setEditorCode(
+    ana,
+    "import { View, Button } from 'react-native';\n\nexport default function App() {\n  return (\n    <View>\n      <Button title=\"Salvar\" />\n    </View>\n  );\n}\n",
+  );
+  await expect(ana.getByTestId('answer-accepted')).toBeVisible();
+
+  // Ao fim, a correção esperada aparece como diff para a turma e para o professor.
+  await host.getByTestId('finish-question').click();
+  await expect(host.getByTestId('host-review')).toBeVisible();
+  await host.getByRole('button', { name: 'Mostrar solução esperada' }).click();
+  await expect(host.getByTestId('solution-diff')).toBeVisible();
+  await ana.getByRole('button', { name: 'Ver a correção esperada' }).click();
+  await expect(ana.getByTestId('solution-diff')).toBeVisible();
+});
+
+test('editor manual cria questão de depuração e avisa quando o bug não é detectado', async ({ page }) => {
+  await page.goto('/teacher/packs/new');
+  await page.getByTestId('kind-debug').click();
+  await page.getByLabel('Enunciado').fill('O botão não mostra o texto.');
+  // O item padrão (regex vazia) é satisfeito por qualquer código: a checklist não consegue detectar o bug.
+  await expect(page.getByTestId('authoring-warnings')).toContainText('a checklist não detecta o bug');
+  await page.getByTestId('kind-build').click();
+  await expect(page.getByTestId('authoring-warnings')).toContainText('O código inicial já completa a checklist');
+});
+
 test('preview React Native volta a renderizar quando o iframe recarrega sozinho', async ({ page: host, browser }) => {
   const code = await createRoom(host, 'pack-exemplo-react-native-fundamentos');
   const ana = await joinRoom(browser, code, 'Ana');
