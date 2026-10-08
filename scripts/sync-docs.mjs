@@ -6,7 +6,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
-const repo = 'https://github.com/Gabrielll04/kahoot-ti/blob/main';
+const repo = 'https://github.com/Gabrielll04/CodeArena/blob/HEAD';
 
 let text = await readFile(resolve(root, 'CONTRIBUTING.md'), 'utf8');
 text = text

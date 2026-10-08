@@ -21,8 +21,8 @@ o que construir, onde mexer e como saber que terminou.
 Requisitos: **Node.js 22.13+** e **pnpm 10** (`corepack enable`).
 
 ```bash
-git clone https://github.com/Gabrielll04/kahoot-ti.git
-cd kahoot-ti
+git clone https://github.com/Gabrielll04/CodeArena.git
+cd CodeArena
 pnpm install
 pnpm dev        # API em :3001 e interface em :5173
 ```

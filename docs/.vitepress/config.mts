@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitepress';
 
-const repo = 'https://github.com/Gabrielll04/kahoot-ti';
+const repo = 'https://github.com/Gabrielll04/CodeArena';
 
 export default defineConfig({
   lang: 'pt-BR',
@@ -74,7 +74,7 @@ export default defineConfig({
         },
       },
     },
-    editLink: { pattern: `${repo}/edit/main/docs/:path`, text: 'Editar esta página no GitHub' },
+    editLink: { pattern: `${repo}/edit/HEAD/docs/:path`, text: 'Editar esta página no GitHub' },
     outline: { label: 'Nesta página', level: [2, 3] },
     docFooter: { prev: 'Anterior', next: 'Próxima' },
     darkModeSwitchLabel: 'Aparência',

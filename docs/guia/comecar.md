@@ -10,8 +10,8 @@ Em menos de cinco minutos você tem uma sala funcionando na sua máquina.
 ## Rodando
 
 ```bash
-git clone https://github.com/Gabrielll04/kahoot-ti.git
-cd kahoot-ti
+git clone https://github.com/Gabrielll04/CodeArena.git
+cd CodeArena
 pnpm install
 
 # desenvolvimento: API em :3001 e interface em :5173
