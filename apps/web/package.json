@@ -11,6 +11,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@babel/parser": "^7.29.0",
     "@codearena/core": "workspace:*",
     "@codearena/plugin-backend-http": "workspace:*",
     "@codearena/plugin-react-native": "workspace:*",
@@ -23,8 +24,10 @@
     "monaco-editor": "0.52.2",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "react-native-web": "0.21.4",
     "react-router-dom": "^6.28.0",
     "socket.io-client": "^4.8.1",
+    "sucrase": "^3.35.0",
     "zustand": "^5.0.3"
   },
   "devDependencies": {

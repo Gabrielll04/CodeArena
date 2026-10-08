@@ -14,7 +14,8 @@ export function TeacherPage() {
   const [packs, setPacks] = useState<PackSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
-  const [roomPack, setRoomPack] = useState<PackSummary | null>(null);
+  const [roomDialog, setRoomDialog] = useState<{ summary: PackSummary; stored: StoredPack } | null>(null);
+  const [opening, setOpening] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const load = useCallback(() => {
@@ -28,6 +29,19 @@ export function TeacherPage() {
   const exportPack = async (id: string) => {
     const stored = await api.getPack(id);
     downloadFile(`${stored.id}.json`, JSON.stringify(stored.pack, null, 2));
+  };
+
+  // Busca o pack antes de abrir o diálogo: assim ele já aparece completo, sem spinner e sem mudar de tamanho.
+  const openRoom = async (pack: PackSummary) => {
+    setOpening(pack.id);
+    setError(null);
+    try {
+      setRoomDialog({ summary: pack, stored: await api.getPack(pack.id) });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setOpening(null);
+    }
   };
 
   const removePack = async (pack: PackSummary) => {
@@ -90,7 +104,7 @@ export function TeacherPage() {
                     <p className="mt-2 text-xs text-white/40">{plural(pack.questionCount, 'questão', 'questões')}</p>
                     {missing.length > 0 && <p className="mt-2 text-xs text-coral">Plugin não instalado: {missing.join(', ')}</p>}
                     <div className="mt-auto flex flex-wrap gap-2 pt-4">
-                      <Button variant="primary" size="sm" onClick={() => setRoomPack(pack)} disabled={missing.length > 0} data-testid="open-room">
+                      <Button variant="primary" size="sm" onClick={() => void openRoom(pack)} disabled={missing.length > 0 || opening !== null} data-testid="open-room">
                         <Icon name="play" /> Abrir sala
                       </Button>
                       {pack.source === 'user' ? (
@@ -129,7 +143,7 @@ export function TeacherPage() {
           load();
         }}
       />
-      {roomPack && <CreateRoomDialog pack={roomPack} onClose={() => setRoomPack(null)} />}
+      {roomDialog && <CreateRoomDialog pack={roomDialog.summary} stored={roomDialog.stored} onClose={() => setRoomDialog(null)} />}
     </div>
   );
 }
@@ -256,25 +270,16 @@ function ImportDialog({ open, onClose, onImported }: { open: boolean; onClose: (
   );
 }
 
-function CreateRoomDialog({ pack, onClose }: { pack: PackSummary; onClose: () => void }) {
+function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored: StoredPack; onClose: () => void }) {
   const navigate = useNavigate();
   const create = useHost((s) => s.create);
-  const [stored, setStored] = useState<StoredPack | null>(null);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(stored.pack.questions.map((q) => q.id)));
   const [discreetMode, setDiscreet] = useState(false);
   const [streakEnabled, setStreak] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    void api.getPack(pack.id).then((p) => {
-      setStored(p);
-      setSelected(new Set(p.pack.questions.map((q) => q.id)));
-    });
-  }, [pack.id]);
-
   const submit = async () => {
-    if (!stored) return;
     setCreating(true);
     setError(null);
     const questionIds = stored.pack.questions.filter((q) => selected.has(q.id)).map((q) => q.id);
@@ -301,10 +306,7 @@ function CreateRoomDialog({ pack, onClose }: { pack: PackSummary; onClose: () =>
         </>
       }
     >
-      {!stored ? (
-        <Spinner className="h-5 w-5" />
-      ) : (
-        <div className="space-y-5">
+      <div className="space-y-5">
           <div>
             <div className="mb-2 flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wider text-white/55">Questões</p>
@@ -351,8 +353,7 @@ function CreateRoomDialog({ pack, onClose }: { pack: PackSummary; onClose: () =>
             <Toggle label="Bônus de sequência" description="XP extra para acertos consecutivos." checked={streakEnabled} onChange={setStreak} />
           </div>
           {error && <p className="text-sm text-coral">{error}</p>}
-        </div>
-      )}
+      </div>
     </Dialog>
   );
 }

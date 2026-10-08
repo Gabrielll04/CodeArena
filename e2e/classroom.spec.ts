@@ -128,3 +128,48 @@ test('professor importa um pack JSON e vê erros de validação antes', async ({
   await page.getByTestId('confirm-import').click();
   await expect(page.getByTestId('pack-list')).toContainText('Pack importado E2E');
 });
+
+test('abrir sala mostra o diálogo já completo, sem etapa de carregamento', async ({ page }) => {
+  // API lenta: antes o diálogo abria só com um spinner e depois mudava de tamanho.
+  await page.route('**/api/packs/*', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    await route.continue();
+  });
+  await page.goto('/teacher');
+  await page.getByTestId('pack-exemplo-react-native-fundamentos').getByTestId('open-room').click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  expect(await dialog.getByRole('checkbox').count()).toBeGreaterThanOrEqual(5);
+});
+
+test('configurações da sala abrem centralizadas sobre a tela inteira', async ({ page }) => {
+  await createRoom(page, 'pack-exemplo-react-native-fundamentos');
+  await page.getByRole('button', { name: 'Configurações' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  const box = (await dialog.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  // Centralizado na janela (antes ficava preso dentro da barra superior).
+  expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThan(2);
+  expect(Math.abs(box.y + box.height / 2 - viewport.height / 2)).toBeLessThan(60);
+  expect(box.height).toBeGreaterThan(150);
+  await dialog.getByText('Modo discreto').click();
+  await expect(page.getByRole('switch').first()).toBeChecked();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+});
+
+test('preview React Native volta a renderizar quando o iframe recarrega sozinho', async ({ page: host, browser }) => {
+  const code = await createRoom(host, 'pack-exemplo-react-native-fundamentos');
+  const ana = await joinRoom(browser, code, 'Ana');
+  await host.getByTestId('start-question').click();
+  await setEditorCode(ana, 'export default function App() {\n  return <Text>OIII TESTE</Text>;\n}');
+  const preview = ana.frameLocator('iframe[title="Preview React Native"]');
+  await expect(preview.getByText('OIII TESTE')).toBeVisible();
+
+  // Simula o recarregamento do sandbox (ex.: Vite reotimizando dependências em desenvolvimento).
+  const sandbox = ana.frames().find((frame) => frame.url().includes('sandbox.html'))!;
+  await sandbox.evaluate(() => location.reload());
+  // Sem digitar nada, o app reenvia o código quando o iframe avisa que está pronto.
+  await expect(preview.getByText('OIII TESTE')).toBeVisible();
+});

@@ -69,6 +69,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@babel/parser':
+        specifier: ^7.29.0
+        version: 7.29.9
       '@codearena/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -105,12 +108,18 @@ importers:
       react-dom:
         specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
+      react-native-web:
+        specifier: 0.21.4
+        version: 0.21.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-router-dom:
         specifier: ^6.28.0
         version: 6.30.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       socket.io-client:
         specifier: ^4.8.1
         version: 4.8.4
+      sucrase:
+        specifier: ^3.35.0
+        version: 3.35.1
       zustand:
         specifier: ^5.0.3
         version: 5.0.15(@types/react@18.3.31)(react@18.3.1)

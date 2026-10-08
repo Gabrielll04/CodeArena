@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import {
   forwardRef,
   useEffect,
@@ -160,7 +161,9 @@ export function Dialog({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  return (
+  // Portal em document.body: ancestrais com backdrop-filter/transform (ex.: a barra superior)
+  // viram o "containing block" de elementos fixed e prenderiam o diálogo dentro deles.
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -168,16 +171,17 @@ export function Dialog({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.12 }}
         >
-          <div className="absolute inset-0 bg-ink-950/80 backdrop-blur-sm" onClick={onClose} aria-hidden />
+          <div className="absolute inset-0 bg-ink-950/85" onClick={onClose} aria-hidden />
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            initial={{ y: 16, scale: 0.98 }}
-            animate={{ y: 0, scale: 1 }}
-            exit={{ y: 8, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+            initial={{ y: 12, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 8, opacity: 0 }}
+            transition={{ duration: 0.16, ease: 'easeOut' }}
             className={cx(
               'relative flex max-h-full w-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-ink-850 shadow-2xl',
               wide === 'full' ? 'h-full max-w-[1500px]' : wide ? 'max-w-3xl' : 'max-w-lg',
@@ -196,7 +200,8 @@ export function Dialog({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
 
