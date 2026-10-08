@@ -1,0 +1,40 @@
+{
+  "name": "@codearena/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Interface web do CodeArena (professor e aluno).",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@codearena/core": "workspace:*",
+    "@codearena/plugin-backend-http": "workspace:*",
+    "@codearena/plugin-react-native": "workspace:*",
+    "@codearena/plugin-sdk": "workspace:*",
+    "@codearena/schemas": "workspace:*",
+    "@fontsource-variable/jetbrains-mono": "^5.1.1",
+    "@fontsource-variable/space-grotesk": "^5.1.1",
+    "@monaco-editor/react": "^4.7.0",
+    "framer-motion": "^11.18.2",
+    "monaco-editor": "0.52.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "^6.28.0",
+    "socket.io-client": "^4.8.1",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.4.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.1"
+  }
+}

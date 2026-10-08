@@ -1,0 +1,35 @@
+{
+  "name": "@codearena/plugin-react-native",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Plugin CodeArena para questões de React Native com preview em moldura de celular.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ui": "./src/ui/index.tsx",
+    "./sandbox": "./src/sandbox/runtime.tsx"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.29.0",
+    "@babel/types": "^7.29.0",
+    "@codearena/plugin-sdk": "workspace:*",
+    "@codearena/schemas": "workspace:*",
+    "react-native-web": "0.21.4",
+    "sucrase": "^3.35.0",
+    "zod": "^3.25.76"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@codearena/core": "workspace:*",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
+}

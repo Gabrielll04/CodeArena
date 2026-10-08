@@ -1,0 +1,10 @@
+{
+  "name": "@codearena/scripts",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@codearena/core": "workspace:*",
+    "@codearena/schemas": "workspace:*",
+    "@codearena/server": "workspace:*"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "codearena",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "CodeArena: desafios de programação multiplayer em tempo real, validados por checklist automática.",
+  "license": "MIT",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @codearena/server --filter @codearena/web dev",
+    "build": "pnpm --filter @codearena/web build",
+    "start": "pnpm --filter @codearena/server start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "validate:packs": "tsx scripts/validate-packs.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "^22.10.0",
+    "socket.io-client": "^4.8.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

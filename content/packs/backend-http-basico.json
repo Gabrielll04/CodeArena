@@ -1,0 +1,163 @@
+{
+  "pack": {
+    "title": "API básica com Node",
+    "description": "Primeiros endpoints com Express: status, JSON, body e parâmetros de rota.",
+    "pluginId": "backend-http",
+    "version": "1.0.0",
+    "tags": ["backend", "node", "http", "express"],
+    "author": "CodeArena",
+    "language": "pt-BR"
+  },
+  "questions": [
+    {
+      "id": "health-endpoint",
+      "title": "Health check",
+      "prompt": "Crie um servidor com um endpoint GET /health que retorna status 200 e o JSON { \"status\": \"ok\" }.",
+      "timeLimitSeconds": 300,
+      "baseXP": 500,
+      "speedBonusMax": 500,
+      "starterCode": "const express = require('express');\nconst app = express();\n\n// escreva aqui\n\napp.listen(3000);",
+      "solution": "const express = require('express');\nconst app = express();\n\napp.get('/health', (req, res) => {\n  res.status(200).json({ status: 'ok' });\n});\n\napp.listen(3000);",
+      "checklist": [
+        {
+          "id": "usar-express",
+          "label": "Usar Express",
+          "rule": { "type": "regex", "pattern": "require\\([\"']express[\"']\\)|from\\s+[\"']express[\"']" }
+        },
+        {
+          "id": "rota-health",
+          "label": "Criar rota GET /health",
+          "rule": { "type": "regex", "pattern": "app\\.get\\([\"']/health[\"']" }
+        },
+        {
+          "id": "health-responde-ok",
+          "label": "Endpoint responde com status 200 e JSON correto",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "httpRequest",
+            "params": {
+              "request": { "method": "GET", "path": "/health" },
+              "expect": { "status": 200, "json": { "status": "ok" } }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "echo-post",
+      "title": "Eco de JSON",
+      "prompt": "Crie POST /echo que recebe um JSON no body e devolve o mesmo JSON com status 201.",
+      "timeLimitSeconds": 300,
+      "baseXP": 500,
+      "speedBonusMax": 500,
+      "starterCode": "const express = require('express');\nconst app = express();\n\n\napp.listen(3000);\n",
+      "solution": "const express = require('express');\nconst app = express();\napp.use(express.json());\n\napp.post('/echo', (req, res) => {\n  res.status(201).json(req.body);\n});\n\napp.listen(3000);\n",
+      "checklist": [
+        {
+          "id": "json-parser",
+          "label": "Ler o body JSON com express.json()",
+          "rule": { "type": "regex", "pattern": "express\\.json\\(\\s*\\)" }
+        },
+        {
+          "id": "rota-echo",
+          "label": "Registrar a rota POST /echo",
+          "rule": { "type": "pluginRule", "validator": "httpRouteDefined", "params": { "method": "POST", "path": "/echo" } }
+        },
+        {
+          "id": "echo-responde",
+          "label": "POST /echo devolve o mesmo JSON com status 201",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "httpRequest",
+            "params": {
+              "request": { "method": "POST", "path": "/echo", "body": { "linguagem": "js", "nivel": 2 } },
+              "expect": { "status": 201, "json": { "linguagem": "js", "nivel": 2 } }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "parametro-rota",
+      "title": "Parâmetro de rota",
+      "prompt": "Crie GET /users/:id que responde com o JSON { \"id\": <id recebido na URL> }. Ex.: GET /users/42 responde { \"id\": \"42\" }.",
+      "timeLimitSeconds": 300,
+      "baseXP": 600,
+      "speedBonusMax": 600,
+      "starterCode": "const express = require('express');\nconst app = express();\n\n\napp.listen(3000);\n",
+      "solution": "const express = require('express');\nconst app = express();\n\napp.get('/users/:id', (req, res) => {\n  res.json({ id: req.params.id });\n});\n\napp.listen(3000);\n",
+      "checklist": [
+        {
+          "id": "rota-users",
+          "label": "Registrar a rota GET /users/:id",
+          "rule": { "type": "pluginRule", "validator": "httpRouteDefined", "params": { "method": "GET", "path": "/users/:id" } }
+        },
+        {
+          "id": "usa-params",
+          "label": "Ler o id em req.params",
+          "rule": { "type": "regex", "pattern": "req\\.params(\\.id|\\[[\"']id[\"']\\]|\\s*;|\\s*\\))|\\{\\s*id\\s*\\}\\s*=\\s*req\\.params" }
+        },
+        {
+          "id": "responde-42",
+          "label": "GET /users/42 responde { \"id\": \"42\" }",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "httpRequest",
+            "params": { "request": { "method": "GET", "path": "/users/42" }, "expect": { "status": 200, "json": { "id": "42" } } }
+          }
+        },
+        {
+          "id": "responde-7",
+          "label": "GET /users/7 responde { \"id\": \"7\" }",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "httpRequest",
+            "params": { "request": { "method": "GET", "path": "/users/7" }, "expect": { "status": 200, "json": { "id": "7" } } }
+          }
+        }
+      ]
+    },
+    {
+      "id": "lista-tarefas",
+      "title": "Lista de tarefas em memória",
+      "prompt": "Guarde tarefas em um array. POST /todos recebe { \"title\": \"...\" }, adiciona ao array e responde 201 com a tarefa. GET /todos responde a lista.",
+      "timeLimitSeconds": 420,
+      "baseXP": 700,
+      "speedBonusMax": 700,
+      "starterCode": "const express = require('express');\nconst app = express();\napp.use(express.json());\n\nconst todos = [];\n\n\napp.listen(3000);\n",
+      "solution": "const express = require('express');\nconst app = express();\napp.use(express.json());\n\nconst todos = [];\n\napp.post('/todos', (req, res) => {\n  const todo = { title: req.body.title };\n  todos.push(todo);\n  res.status(201).json(todo);\n});\n\napp.get('/todos', (req, res) => {\n  res.json(todos);\n});\n\napp.listen(3000);\n",
+      "checklist": [
+        {
+          "id": "post-cria",
+          "label": "POST /todos responde 201 com a tarefa criada",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "httpRequest",
+            "params": {
+              "request": { "method": "POST", "path": "/todos", "body": { "title": "Estudar HTTP" } },
+              "expect": { "status": 201, "jsonIncludes": { "title": "Estudar HTTP" } }
+            }
+          }
+        },
+        {
+          "id": "get-lista",
+          "label": "GET /todos lista as tarefas cadastradas",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "httpRequest",
+            "params": {
+              "setup": [{ "method": "POST", "path": "/todos", "body": { "title": "Revisar código" } }],
+              "request": { "method": "GET", "path": "/todos" },
+              "expect": { "status": 200, "bodyContains": "Revisar código" }
+            }
+          }
+        },
+        {
+          "id": "usa-push",
+          "label": "Adicionar a tarefa ao array com push",
+          "rule": { "type": "regex", "pattern": "\\.push\\s*\\(" }
+        }
+      ]
+    }
+  ]
+}

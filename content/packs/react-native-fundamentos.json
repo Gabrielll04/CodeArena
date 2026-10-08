@@ -1,0 +1,196 @@
+{
+  "pack": {
+    "title": "Fundamentos de React Native",
+    "description": "Componentes básicos, props, estado e estilos. Cinco questões progressivas.",
+    "pluginId": "react-native",
+    "version": "1.0.0",
+    "tags": ["mobile", "react-native", "iniciante"],
+    "author": "CodeArena",
+    "language": "pt-BR"
+  },
+  "questions": [
+    {
+      "id": "botao-clique-aqui",
+      "title": "Primeiro botão",
+      "prompt": "Faça um app com um botão escrito \"Clique aqui\" em React Native.",
+      "timeLimitSeconds": 180,
+      "baseXP": 500,
+      "speedBonusMax": 500,
+      "starterCode": "",
+      "solution": "export default function App() {\n  return (\n    <Button title=\"Clique aqui\" />\n  );\n}",
+      "checklist": [
+        {
+          "id": "componente-app",
+          "label": "Criar o componente App",
+          "rule": { "type": "regex", "pattern": "export\\s+default\\s+function\\s+App\\s*\\(", "flags": "m" }
+        },
+        {
+          "id": "usar-button",
+          "label": "Utilizar o componente Button",
+          "rule": { "type": "regex", "pattern": "<Button\\b" }
+        },
+        {
+          "id": "titulo-clique-aqui",
+          "label": "Escrever title='Clique aqui'",
+          "rule": { "type": "regex", "pattern": "title=[\"']Clique aqui[\"']" }
+        }
+      ]
+    },
+    {
+      "id": "texto-ola",
+      "title": "Texto na tela",
+      "prompt": "Mostre o texto \"Olá, CodeArena\" usando um `Text` dentro de uma `View`.",
+      "timeLimitSeconds": 150,
+      "baseXP": 500,
+      "speedBonusMax": 500,
+      "starterCode": "import { View, Text } from 'react-native';\n\nexport default function App() {\n  return null;\n}\n",
+      "solution": "import { View, Text } from 'react-native';\n\nexport default function App() {\n  return (\n    <View>\n      <Text>Olá, CodeArena</Text>\n    </View>\n  );\n}\n",
+      "checklist": [
+        {
+          "id": "usar-view",
+          "label": "Usar o componente View",
+          "rule": { "type": "pluginRule", "validator": "reactNativeHasComponent", "params": { "component": "View" } }
+        },
+        {
+          "id": "usar-text",
+          "label": "Usar o componente Text",
+          "rule": { "type": "pluginRule", "validator": "reactNativeHasComponent", "params": { "component": "Text" } }
+        },
+        {
+          "id": "texto-ola",
+          "label": "Exibir o texto \"Olá, CodeArena\" dentro do Text",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "reactNativeHasText",
+            "params": { "component": "Text", "text": "Olá, CodeArena" }
+          }
+        },
+        {
+          "id": "sem-erros",
+          "label": "Manter o código sem erros de sintaxe",
+          "rule": { "type": "pluginRule", "validator": "reactNativeCompiles", "params": {} }
+        }
+      ]
+    },
+    {
+      "id": "campo-nome",
+      "title": "Campo de texto",
+      "prompt": "Adicione um `TextInput` com o placeholder \"Seu nome\". Importe o componente de react-native.",
+      "timeLimitSeconds": 150,
+      "baseXP": 500,
+      "speedBonusMax": 500,
+      "starterCode": "import { View } from 'react-native';\n\nexport default function App() {\n  return (\n    <View>\n    </View>\n  );\n}\n",
+      "solution": "import { View, TextInput } from 'react-native';\n\nexport default function App() {\n  return (\n    <View>\n      <TextInput placeholder=\"Seu nome\" />\n    </View>\n  );\n}\n",
+      "checklist": [
+        {
+          "id": "importar-textinput",
+          "label": "Importar TextInput de react-native",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "reactNativeImports",
+            "params": { "module": "react-native", "names": ["TextInput"] }
+          }
+        },
+        {
+          "id": "usar-textinput",
+          "label": "Usar o componente TextInput",
+          "rule": { "type": "pluginRule", "validator": "reactNativeHasComponent", "params": { "component": "TextInput" } }
+        },
+        {
+          "id": "placeholder",
+          "label": "Definir placeholder=\"Seu nome\"",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "reactNativeHasComponentProp",
+            "params": { "component": "TextInput", "prop": "placeholder", "value": "Seu nome" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "contador",
+      "title": "Contador com estado",
+      "prompt": "Crie um contador: um `Text` mostra o valor e um `Button` com título \"Somar\" aumenta o valor em 1 a cada toque. Use `useState`.",
+      "timeLimitSeconds": 240,
+      "baseXP": 600,
+      "speedBonusMax": 600,
+      "starterCode": "import { useState } from 'react';\nimport { View, Text, Button } from 'react-native';\n\nexport default function App() {\n  return (\n    <View>\n    </View>\n  );\n}\n",
+      "solution": "import { useState } from 'react';\nimport { View, Text, Button } from 'react-native';\n\nexport default function App() {\n  const [count, setCount] = useState(0);\n  return (\n    <View>\n      <Text>{count}</Text>\n      <Button title=\"Somar\" onPress={() => setCount(count + 1)} />\n    </View>\n  );\n}\n",
+      "checklist": [
+        {
+          "id": "usar-usestate",
+          "label": "Chamar useState para guardar o valor",
+          "rule": { "type": "pluginRule", "validator": "reactNativeUsesHook", "params": { "hook": "useState" } }
+        },
+        {
+          "id": "botao-somar",
+          "label": "Criar Button com title=\"Somar\"",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "reactNativeHasComponentProp",
+            "params": { "component": "Button", "prop": "title", "value": "Somar" }
+          }
+        },
+        {
+          "id": "onpress",
+          "label": "Tratar o toque com onPress no Button",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "reactNativeHasComponentProp",
+            "params": { "component": "Button", "prop": "onPress" }
+          }
+        },
+        {
+          "id": "atualiza-estado",
+          "label": "Somar 1 ao valor no onPress",
+          "rule": { "type": "regex", "pattern": "set[A-Z]\\w*\\(\\s*(\\w+\\s*\\+\\s*1|1\\s*\\+\\s*\\w+|\\(?\\s*\\w+\\s*\\)?\\s*=>\\s*\\w+\\s*\\+\\s*1)\\s*\\)" }
+        },
+        {
+          "id": "sem-alert",
+          "label": "Não usar alert() para mostrar o valor",
+          "rule": { "type": "notContains", "value": "alert(" }
+        }
+      ]
+    },
+    {
+      "id": "estilo-cartao",
+      "title": "Estilos com StyleSheet",
+      "prompt": "Crie estilos com `StyleSheet.create` e aplique em uma `View` um fundo \"#1D2242\" e padding 16.",
+      "timeLimitSeconds": 240,
+      "baseXP": 600,
+      "speedBonusMax": 600,
+      "starterCode": "import { View, Text, StyleSheet } from 'react-native';\n\nexport default function App() {\n  return (\n    <View>\n      <Text>Cartão</Text>\n    </View>\n  );\n}\n",
+      "solution": "import { View, Text, StyleSheet } from 'react-native';\n\nexport default function App() {\n  return (\n    <View style={styles.card}>\n      <Text style={{ color: '#fff' }}>Cartão</Text>\n    </View>\n  );\n}\n\nconst styles = StyleSheet.create({\n  card: {\n    backgroundColor: '#1D2242',\n    padding: 16,\n  },\n});\n",
+      "checklist": [
+        {
+          "id": "stylesheet-create",
+          "label": "Chamar StyleSheet.create",
+          "rule": { "type": "regex", "pattern": "StyleSheet\\.create\\s*\\(" }
+        },
+        {
+          "id": "fundo",
+          "label": "Definir backgroundColor: \"#1D2242\"",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "reactNativeHasStyle",
+            "params": { "property": "backgroundColor", "value": "#1D2242" }
+          }
+        },
+        {
+          "id": "padding",
+          "label": "Definir padding: 16",
+          "rule": { "type": "pluginRule", "validator": "reactNativeHasStyle", "params": { "property": "padding", "value": 16 } }
+        },
+        {
+          "id": "aplicar-estilo",
+          "label": "Aplicar o estilo na View com a prop style",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "reactNativeHasComponentProp",
+            "params": { "component": "View", "prop": "style" }
+          }
+        }
+      ]
+    }
+  ]
+}

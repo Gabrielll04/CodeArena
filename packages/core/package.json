@@ -1,0 +1,20 @@
+{
+  "name": "@codearena/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Motor de checklist, pontua\u00e7\u00e3o e ciclo de vida de salas do CodeArena (sem depend\u00eancia de transporte).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@codearena/plugin-sdk": "workspace:*",
+    "@codearena/schemas": "workspace:*"
+  },
+  "devDependencies": {
+    "zod": "^3.25.76"
+  }
+}
