@@ -44,6 +44,23 @@ features:
     linkText: Prompts prontos
 ---
 
+<script setup>
+import { withBase } from 'vitepress'
+</script>
+
+<section class="ca-section">
+
+## Uma aula em 65 segundos
+
+Um professor, duas alunas e uma terceira parada. À esquerda, a narração; no alto, a tela do professor com a quantidade de
+alunos que concluiu cada item; embaixo, as telas de Ana e Bia escrevendo o código, com a checklist se marcando e o preview funcionando.
+
+<video class="ca-video" controls preload="metadata" aria-label="Vídeo de uma aula no CodeArena: professor abre a sala, alunas escrevem o código, a checklist se marca e o professor vê onde a turma travou" :poster="withBase('/videos/aula-demo-poster.jpg')">
+  <source :src="withBase('/videos/aula-demo.mp4')" type="video/mp4" />
+</video>
+
+</section>
+
 <section class="ca-section">
 
 ## Como funciona na prática

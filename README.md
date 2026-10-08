@@ -12,6 +12,12 @@ obrigatórios estão concluídos, a resposta é enviada, o servidor valida de no
 - Importação/exportação de packs em JSON validados com Zod, editor manual com teste ao vivo e avisos de qualidade.
 - Documentação para agentes de IA gerarem questões e plugins (`AGENTS.md`, `docs/agents/`).
 
+## Veja uma aula em 65 segundos
+
+[![Uma aula completa: professor, duas alunas e a revisão da turma](docs/images/aula-demo.gif)](docs/public/videos/aula-demo.mp4)
+
+Clique na imagem para ver o vídeo completo. Ele é gravado de uma sessão real com `pnpm demo:video`.
+
 ## Como funciona (telas)
 
 Todas as imagens são geradas por uma sessão real com `pnpm screenshots` (ver [Atualizando as imagens](#atualizando-as-imagens)).
@@ -142,6 +148,7 @@ pnpm screenshots   # sobe um servidor temporário na porta 3200 e regrava docs/i
 
 O script (`scripts/screenshots.mjs`) conduz uma sessão completa com Playwright; rode-o depois de mudar a interface.
 Para regravar só algumas imagens: `SHOTS_ONLY="10-,14-" pnpm screenshots` (prefixos dos nomes de arquivo).
+O vídeo da aula (`docs/public/videos/aula-demo.mp4` e o GIF) é regravado com `pnpm build && pnpm demo:video` (precisa de `ffmpeg` instalado).
 
 ## Site de documentação
 

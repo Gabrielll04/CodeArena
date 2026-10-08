@@ -22,7 +22,8 @@
     "docs:dev": "pnpm docs:sync && vitepress dev docs",
     "docs:build": "pnpm docs:sync && vitepress build docs",
     "docs:preview": "vitepress preview docs",
-    "docs:sync": "node scripts/sync-docs.mjs"
+    "docs:sync": "node scripts/sync-docs.mjs",
+    "demo:video": "node scripts/demo-video.mjs"
   },
   "devDependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.3.0",

@@ -73,7 +73,8 @@ docs/                 documentação (também publicada como site, VitePress)
    (ex.: `Fix settings dialog stuck in navbar`). Português ou inglês, mas seja consistente no PR.
 3. Adicione ou atualize **testes** para o que mudou. Mudou algo da sala ou da interface do professor/aluno? Cubra com um
    teste em `e2e/`.
-4. Mudou a aparência? Regrave as imagens afetadas: `pnpm build && SHOTS_ONLY="10-,14-" pnpm screenshots`.
+4. Mudou a aparência? Regrave as imagens afetadas: `pnpm build && SHOTS_ONLY="10-,14-" pnpm screenshots`
+   (e, se o fluxo da aula mudou, o vídeo: `pnpm demo:video`, que precisa do `ffmpeg`).
 5. Abra o pull request preenchendo o modelo. O CI roda os mesmos comandos acima.
 
 ### Contribuindo com um pack
