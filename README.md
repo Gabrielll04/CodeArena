@@ -143,6 +143,22 @@ pnpm screenshots   # sobe um servidor temporário na porta 3200 e regrava docs/i
 O script (`scripts/screenshots.mjs`) conduz uma sessão completa com Playwright; rode-o depois de mudar a interface.
 Para regravar só algumas imagens: `SHOTS_ONLY="10-,14-" pnpm screenshots` (prefixos dos nomes de arquivo).
 
+## Site de documentação
+
+Toda a documentação (`docs/`) também é um site, com a identidade visual do jogo, busca e navegação por perfil
+(professores, agentes de IA, plugins, contribuição).
+
+![Site de documentação](docs/images/20-site-documentacao.png)
+
+```bash
+pnpm docs:dev       # http://localhost:5173 (ou a porta indicada), com atualização ao salvar
+pnpm docs:build     # gera docs/.vitepress/dist
+pnpm docs:preview   # serve o build
+```
+
+Publicação: o workflow `.github/workflows/docs.yml` publica no GitHub Pages a cada push em `main`. Ative uma vez em
+**Settings > Pages > Source: GitHub Actions**. O endereço será `https://<usuario>.github.io/<repositorio>/`.
+
 ## Criando conteúdo com IA
 
 Use os prompts de [`docs/agents/prompt-templates.md`](docs/agents/prompt-templates.md) com `AGENTS.md` e os guias de

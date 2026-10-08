@@ -47,6 +47,26 @@ const open = async (viewport = { width: 1440, height: 900 }) =>
   (await browser.newContext({ viewport, permissions: ['clipboard-read', 'clipboard-write'] })).newPage();
 
 // Cola o código (clipboard) em vez de digitar: o Monaco reindenta cada linha digitada e estragaria os prints.
+/** Site de documentação (precisa de `pnpm docs:build`): captura a home e uma página de guia. */
+async function captureSite() {
+  if (!wanted('20-') && !wanted('21-')) return;
+  const site = spawn(join(root, 'node_modules/.bin/vitepress'), ['preview', 'docs', '--port', '4174'], { cwd: root, stdio: 'ignore' });
+  try {
+    for (let i = 0; i < 40; i++) {
+      if (await fetch('http://localhost:4174/').then((r) => r.ok).catch(() => false)) break;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    const page = await open();
+    await page.goto('http://localhost:4174/');
+    await shot(page, '20-site-documentacao');
+    await page.goto('http://localhost:4174/agents/debug-questions');
+    await shot(page, '21-site-guia');
+  } finally {
+    site.kill('SIGTERM');
+  }
+}
+const siteOnly = only.length > 0 && only.every((prefix) => prefix.startsWith('20-') || prefix.startsWith('21-'));
+
 async function setCode(page, code) {
   const editor = page.locator('.monaco-editor').first();
   await editor.waitFor();
@@ -77,6 +97,12 @@ async function joinRoom(code, name, avatar) {
 }
 
 try {
+  if (siteOnly) {
+    await captureSite();
+    await browser.close();
+    process.exitCode = 0;
+    throw Object.assign(new Error('site-only'), { siteOnly: true });
+  }
   /* ---------------- Telas gerais e do professor ---------------- */
   const teacher = await open();
   await teacher.goto(BASE);
@@ -259,7 +285,10 @@ try {
   await eva.getByRole('button', { name: 'Enviar' }).click();
   await shot(eva, 'backend-03-resposta-decorada-recusada');
 
+  await captureSite();
   await browser.close();
+} catch (error) {
+  if (!error?.siteOnly) throw error;
 } finally {
   server.kill('SIGTERM');
   await rm(dataDir, { recursive: true, force: true });

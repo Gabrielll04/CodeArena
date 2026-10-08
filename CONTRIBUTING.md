@@ -34,6 +34,7 @@ pnpm typecheck        # TypeScript estrito em todos os pacotes
 pnpm test             # Vitest: schema, checklist, XP, sala, plugins e servidor
 pnpm validate:packs   # packs de content/packs contra o schema e a própria solução
 pnpm test:e2e         # Playwright: fluxos de sala (precisa de um build; roda sozinho)
+pnpm docs:build       # site de documentação (acusa links quebrados)
 ```
 
 O `test:e2e` usa Chromium. Se ele já estiver instalado: `PLAYWRIGHT_CHROMIUM_PATH=/caminho/chromium pnpm test:e2e`.
@@ -51,7 +52,7 @@ plugins/*             react-native, backend-http (e os seus)
 apps/server           Fastify + Socket.IO
 apps/web              React + Vite + Tailwind
 content/packs         packs de exemplo
-docs/                 documentação (também publicada como site)
+docs/                 documentação (também publicada como site, VitePress)
 ```
 
 ## Regras do projeto

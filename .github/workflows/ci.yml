@@ -24,6 +24,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm validate:packs
+      - run: pnpm docs:build
+        env:
+          DOCS_BASE: /kahoot-ti/
 
   e2e:
     name: Fluxos de sala (Playwright)

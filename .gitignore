@@ -10,3 +10,6 @@ playwright-report/
 .DS_Store
 .env
 .e2e-data/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+docs/contribuindo.md
