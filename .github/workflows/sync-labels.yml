@@ -1,0 +1,32 @@
+name: Sincronizar labels
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/labels.json"]
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  labels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const wanted = JSON.parse(fs.readFileSync('.github/labels.json', 'utf8'));
+            const { owner, repo } = context.repo;
+            for (const label of wanted) {
+              try {
+                await github.rest.issues.updateLabel({ owner, repo, name: label.name, color: label.color, description: label.description });
+                core.info(`atualizada: ${label.name}`);
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.issues.createLabel({ owner, repo, ...label });
+                core.info(`criada: ${label.name}`);
+              }
+            }

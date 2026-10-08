@@ -1,0 +1,47 @@
+name: Bug
+description: Algo não funciona como esperado
+labels: ["bug"]
+body:
+  - type: textarea
+    id: o-que-aconteceu
+    attributes:
+      label: O que aconteceu
+      description: Descreva o problema e o que você esperava.
+    validations:
+      required: true
+  - type: textarea
+    id: como-reproduzir
+    attributes:
+      label: Como reproduzir
+      description: Passos numerados. Se envolver uma questão, cole o JSON do pack e o código do aluno.
+      placeholder: |
+        1. Abrir uma sala com o pack ...
+        2. Entrar como aluno ...
+        3. Escrever o código ...
+    validations:
+      required: true
+  - type: dropdown
+    id: onde
+    attributes:
+      label: Onde acontece
+      options:
+        - Tela do aluno
+        - Tela do professor
+        - Preview react-native
+        - Cliente HTTP / backend-http
+        - Servidor / sala em tempo real
+        - Documentação
+        - Outro
+    validations:
+      required: true
+  - type: input
+    id: ambiente
+    attributes:
+      label: Ambiente
+      description: Navegador, sistema operacional, versão do Node e modo (pnpm dev ou build).
+      placeholder: Chrome 130, Windows 11, Node 22.13, pnpm dev
+  - type: textarea
+    id: console
+    attributes:
+      label: Mensagens do console (F12)
+      render: shell

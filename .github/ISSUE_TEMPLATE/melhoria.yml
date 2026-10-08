@@ -1,0 +1,27 @@
+name: Melhoria ou ideia
+description: Sugira algo novo para professores ou alunos
+labels: ["melhoria"]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Qual problema isso resolve
+      description: Conte a situação de sala de aula.
+    validations:
+      required: true
+  - type: textarea
+    id: proposta
+    attributes:
+      label: Como poderia funcionar
+    validations:
+      required: true
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas consideradas
+  - type: checkboxes
+    id: ajuda
+    attributes:
+      label: Contribuição
+      options:
+        - label: Posso implementar isso com orientação

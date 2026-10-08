@@ -153,6 +153,13 @@ Use os prompts de [`docs/agents/prompt-templates.md`](docs/agents/prompt-templat
 Veja [`docs/plugins/creating-a-plugin.md`](docs/plugins/creating-a-plugin.md). Um plugin é um pacote em `plugins/<id>`
 registrado em `apps/server/src/plugins.ts` e `apps/web/src/plugins/registry.tsx`; o núcleo não muda.
 
+## Contribuindo
+
+Contribuições de professores e desenvolvedores são bem-vindas: packs de questões, plugins de outras disciplinas, tradução e
+acessibilidade. Veja o [`CONTRIBUTING.md`](CONTRIBUTING.md) e procure as issues com as labels
+**`bom primeiro plugin`**, **`bom primeiro pack`** e **`good first issue`**. Participar significa seguir o
+[Código de Conduta](CODE_OF_CONDUCT.md). Vulnerabilidades: [`SECURITY.md`](SECURITY.md).
+
 ## Limitações conhecidas do MVP
 
 - Salas ficam em memória: reiniciar o servidor encerra as sessões em andamento (packs ficam salvos em disco).
