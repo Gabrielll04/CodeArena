@@ -28,7 +28,7 @@ O gerador cria um repositório de plugin completo: validador de exemplo, painel 
 para agentes de IA, build e CI.
 
 ```bash
-npm create codearena-plugin@latest codearena-plugin-eletrica -- --id eletrica --name "Circuitos elétricos"
+npm create @codearena/plugin@latest codearena-plugin-eletrica -- --id eletrica --name "Circuitos elétricos"
 cd codearena-plugin-eletrica
 npm install
 npm test

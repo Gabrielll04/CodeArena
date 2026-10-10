@@ -17,8 +17,9 @@ Escolha os pacotes, o tipo de versão e escreva uma nota curta em português:
 Enquanto os pacotes estão em `0.x`, uma quebra de contrato sobe o `minor` (`0.1.0` para `0.2.0`), e os plugins
 declaram `"sdk": "^0.1.0"`.
 
-Os plugins oficiais (`plugins/*`) ficam de fora (`ignore`): pela decisão 0001 eles são publicados a partir dos
-próprios repositórios. Quando uma mudança no SDK exigir uma nova faixa (ex.: `0.1.x` para `0.2.0`), atualize no mesmo
+Os plugins oficiais (`plugins/*`) ficam de fora do versionamento (`ignore`): pela decisão 0001 eles passam a ser
+publicados a partir dos próprios repositórios. Atenção: enquanto estiverem aqui, `changeset publish` publica qualquer
+pacote não privado cuja versão ainda não esteja no npm, então mudar a versão de um plugin aqui também o publica. Quando uma mudança no SDK exigir uma nova faixa (ex.: `0.1.x` para `0.2.0`), atualize no mesmo
 PR o `codearena.sdk` e o `peerDependencies` de cada plugin oficial; o CI recusa plugins com faixa incompatível.
 
 Ao chegar na branch principal, o workflow `release.yml` abre um PR "Versionar pacotes"; ao fazer merge dele, os pacotes

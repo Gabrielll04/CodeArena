@@ -1,9 +1,13 @@
 {
-  "name": "create-codearena-plugin",
+  "name": "@codearena/create-plugin",
   "version": "0.1.0",
   "type": "module",
-  "description": "Cria um plugin do CodeArena pronto para testar e publicar: npm create codearena-plugin@latest",
-  "keywords": ["codearena", "codearena-plugin", "create"],
+  "description": "Cria um plugin do CodeArena pronto para testar e publicar: npm create @codearena/plugin@latest",
+  "keywords": [
+    "codearena",
+    "codearena-plugin",
+    "create"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -21,7 +25,11 @@
       "default": "./index.mjs"
     }
   },
-  "files": ["index.mjs", "index.d.mts", "template"],
+  "files": [
+    "index.mjs",
+    "index.d.mts",
+    "template"
+  ],
   "engines": {
     "node": ">=20"
   },

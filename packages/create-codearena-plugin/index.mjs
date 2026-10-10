@@ -2,7 +2,7 @@
 /**
  * Cria um plugin do CodeArena num repositório novo.
  *
- *   npm create codearena-plugin@latest [pasta] -- --id eletrica --name "Circuitos elétricos"
+ *   npm create @codearena/plugin@latest [pasta] -- --id eletrica --name "Circuitos elétricos"
  *
  * Sem --id ou --name, pergunta no terminal. Com --yes, usa os valores padrão.
  */

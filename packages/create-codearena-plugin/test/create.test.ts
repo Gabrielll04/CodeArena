@@ -21,7 +21,7 @@ async function allFiles(root: string): Promise<string[]> {
     .sort();
 }
 
-describe('create-codearena-plugin', () => {
+describe('@codearena/create-plugin', () => {
   it('gera o plugin com o id, o nome e a faixa do SDK preenchidos', async () => {
     const target = createPlugin({ dir: join(dir, 'codearena-plugin-eletrica'), id: 'eletrica', name: 'Circuitos elétricos', author: 'Ana' });
     const files = await allFiles(target);
