@@ -1,6 +1,12 @@
+import { fileURLToPath } from 'node:url';
+import { pluginContentGlobs } from '@codearena/plugin-host/vite';
+
+const rootDir = fileURLToPath(new URL('../..', import.meta.url));
+
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{ts,tsx}', '../../plugins/*/src/**/*.{ts,tsx}'],
+  // Classes usadas pelos painéis dos plugins ativos em codearena.config.json.
+  content: ['./index.html', './src/**/*.{ts,tsx}', ...pluginContentGlobs({ rootDir, configPath: process.env.CODEARENA_CONFIG })],
   theme: {
     extend: {
       colors: {

@@ -118,3 +118,9 @@ export interface QuizPlugin<S = unknown> {
 
   authoring?: PluginAuthoring;
 }
+
+/**
+ * Export default da entrada "." ou "server" de um pacote de plugin (ver manifesto `codearena` no package.json):
+ * o próprio plugin ou uma função que o cria.
+ */
+export type PluginEntry<P extends QuizPlugin<any> = QuizPlugin<any>> = P | (() => MaybePromise<P>);

@@ -91,9 +91,9 @@ Plugins são **pacotes separados**, cada um em seu próprio repositório
 Os plugins oficiais são `react-native` e `backend-http` (Express).
 
 1. Siga [`docs/plugins/creating-a-plugin.md`](docs/plugins/creating-a-plugin.md).
-2. Enquanto o SDK não está publicado no npm (migração em andamento), desenvolva em `plugins/<id>/` e registre em
-   `apps/server/src/plugins.ts` e `apps/web/src/plugins/registry.tsx`. Depois da migração, o plugin vai para um
-   repositório próprio e é ativado em `codearena.config.json`, sem PR aqui.
+2. Enquanto o SDK não está publicado no npm (migração em andamento), desenvolva em `plugins/<id>/`, instale na raiz
+   (`pnpm add -w @codearena/plugin-<id>@workspace:*`) e ative em `codearena.config.json`. Nenhum arquivo de `apps/`
+   muda. Depois da migração, o plugin vai para um repositório próprio, sem PR aqui.
 3. Coloque os packs de exemplo dentro do plugin (`packs/`) e o guia para agentes em `docs/agents.md` do plugin.
 4. Se o plugin executa código, o isolamento é obrigatório e precisa estar descrito no PR (veja `SECURITY.md`).
 5. Precisa de algo novo no SDK? Abra uma issue aqui: mudanças no contrato seguem versionamento semântico.

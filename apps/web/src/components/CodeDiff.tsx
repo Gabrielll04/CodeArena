@@ -1,6 +1,7 @@
 import { DiffEditor } from '@monaco-editor/react';
 import '../monaco';
 import { Spinner } from './ui';
+import { useClientPlugin } from '../plugins/registry';
 
 export interface CodeDiffProps {
   original: string;
@@ -44,7 +45,8 @@ export function CodeDiff({ original, modified, language, fontSize = 13 }: CodeDi
 }
 
 /** Correção esperada ao fim da questão: texto simples em questões comuns, diff em questões de depuração. */
-export function SolutionView({ solution, starter, debug, language }: { solution: string; starter: string; debug: boolean; language: string }) {
+export function SolutionView({ solution, starter, debug, pluginId }: { solution: string; starter: string; debug: boolean; pluginId: string }) {
+  const language = useClientPlugin(pluginId).plugin?.editorLanguage ?? 'javascript';
   if (!debug) {
     return <pre className="mt-2 overflow-auto rounded-xl bg-ink-950/70 p-4 font-mono text-xs leading-relaxed text-white/85">{solution}</pre>;
   }

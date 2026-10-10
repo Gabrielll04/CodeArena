@@ -1,0 +1,3 @@
+{
+  "plugins": ["@codearena/plugin-react-native", "@codearena/plugin-backend-http"]
+}

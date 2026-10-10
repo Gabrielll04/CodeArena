@@ -1,4 +1,4 @@
-import type { ClientQuizPlugin } from '@codearena/plugin-sdk/ui';
+import type { ClientPluginEntry, ClientQuizPlugin } from '@codearena/plugin-sdk/ui';
 import { reactNativePlugin, type ReactNativeSession } from '../index';
 import { ReactNativePreview } from './ReactNativePreview';
 
@@ -16,3 +16,7 @@ export function createReactNativeClientPlugin(options: ReactNativeClientOptions)
     renderPreview: (context) => <ReactNativePreview code={context.code} sandboxUrl={options.sandboxUrl} />,
   };
 }
+
+/** Entrada "ui" do manifesto: o app informa a URL do iframe isolado. */
+const entry: ClientPluginEntry<ReactNativeSession> = (options) => createReactNativeClientPlugin(options);
+export default entry;

@@ -19,6 +19,7 @@ o servidor valida de novo e concede XP (base + bônus por velocidade).
 | `packages/core/src/scoring.ts` | Fórmula de XP e ordenação do placar |
 | `packages/core/src/authoring.ts` | Avisos de qualidade de questões (`lintQuestion`) |
 | `packages/plugin-sdk/src/types.ts` | Contrato de plugins (`QuizPlugin`, `ChecklistValidator`) |
+| `codearena.config.json` | Plugins ativos na instalação (lidos por `packages/plugin-host`) |
 | `plugins/react-native/src/index.ts` | Validadores do plugin `react-native` |
 | `plugins/backend-http/src/index.ts` | Validadores do plugin `backend-http` |
 | `docs/agents/debug-questions.md` | Como criar questões de depuração (`kind: "debug"`) |

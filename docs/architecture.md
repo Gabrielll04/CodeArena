@@ -15,7 +15,7 @@
               | apps/server (Fastify + Socket.IO)                   |          v
               |  PackStore (JSON em disco)   RoomManager (memória)  |   iframe sandbox (preview RN)
               |  validação oficial = @codearena/core + plugins      |   Web Worker (runner HTTP)
-              |  plugins listados em codearena.config.json (alvo)   |
+              |  plugins listados em codearena.config.json          |
               +--------------------------+--------------------------+
                                          | stdin/stdout (JSON por linha)
                                          v
@@ -43,11 +43,11 @@ Decisão registrada em [0001: Plugins como pacotes separados](./decisoes/0001-pl
 | Aspecto | Hoje | Modelo alvo |
 | --- | --- | --- |
 | Onde ficam os plugins | `plugins/` neste repositório | um repositório e um pacote npm por plugin |
-| Como são ativados | importados de forma fixa em `apps/server/src/plugins.ts`, `apps/web/src/plugins/registry.tsx` e `sandboxes.ts` | listados em `codearena.config.json` |
-| Carregamento no navegador | todos no bundle principal | sob demanda, só ao abrir uma questão do plugin; plugins não listados nem entram no build |
+| Como são ativados | listados em `codearena.config.json` (feito) | igual |
+| Carregamento no navegador | sob demanda; plugins não listados nem entram no build (feito) | igual |
 | Packs de exemplo | `content/packs/` no núcleo | dentro do pacote do plugin (`packs/`), declarados no manifesto |
 | SDK | pacote do workspace (`workspace:*`) | `@codearena/plugin-sdk`, `@codearena/schemas` e `@codearena/core` publicados com versão semântica |
-| Compatibilidade | implícita | plugin declara a faixa do SDK; incompatível é recusado ao iniciar |
+| Compatibilidade | plugin declara a faixa do SDK (`^0.1.0`); incompatível é recusado ao iniciar (feito) | igual, com SDK `1.x` |
 
 Plugins oficiais: **`react-native`** (componentes com preview em celular) e **`backend-http`** (servidores Express validados
 por requisições HTTP).
@@ -59,8 +59,9 @@ por requisições HTTP).
 | `packages/schemas` | Zod do question pack, payloads de eventos, tipos de snapshot, avatares | zod |
 | `packages/plugin-sdk` | Contratos `QuizPlugin`/`ClientQuizPlugin`, `definePlugin`, `PluginRegistry`, utilitários | schemas |
 | `packages/core` | Motor de checklist, XP, ranking, `Room`/`RoomManager`, lint de autoria | schemas, plugin-sdk |
-| `apps/server` | REST, Socket.IO, persistência de packs, **carregamento dos plugins configurados** | core |
-| `apps/web` | Interface do professor e do aluno, **carregamento sob demanda das interfaces dos plugins** | core |
+| `packages/plugin-host` | Lê `codearena.config.json`, valida manifestos e versões, gera o carregamento sob demanda no Vite | zod, semver |
+| `apps/server` | REST, Socket.IO, persistência de packs, **carregamento dos plugins configurados** | core, plugin-host |
+| `apps/web` | Interface do professor e do aluno, **carregamento sob demanda das interfaces dos plugins** | core, plugin-host (build) |
 
 ### Anatomia de um pacote de plugin
 
@@ -95,6 +96,7 @@ O `package.json` declara o manifesto no campo `codearena`:
   },
   "codearena": {
     "pluginId": "react-native",
+    "displayName": "React Native",
     "sdk": "^1.0.0",
     "server": "./server",
     "ui": "./ui",
@@ -105,7 +107,11 @@ O `package.json` declara o manifesto no campo `codearena`:
 ```
 
 - `server` é opcional: sem ele, o servidor usa a definição de `.` (suficiente para validadores estáticos).
+- `ui` é opcional: sem ele, o navegador usa `.` sem painéis.
 - `sandbox` só existe para plugins com preview em iframe isolado.
+- Cada entrada tem `export default`: o plugin ou uma função que o cria (`PluginEntry`, `ClientPluginEntry` e
+  `SandboxEntry` em `@codearena/plugin-sdk`). O `id` do plugin precisa ser igual a `codearena.pluginId`.
+- `packs` passa a ser lido na etapa 3; até lá, os packs de exemplo continuam em `content/packs/`.
 - As dependências pesadas (react-native-web, simuladores, parsers) são dependências **do plugin**, nunca do núcleo.
 - O SDK e o React são `peerDependencies`, para existir uma única cópia na instalação.
 
@@ -119,10 +125,13 @@ Cada instalação lista os plugins em `codearena.config.json`, na raiz:
 }
 ```
 
-Durante o desenvolvimento de um plugin, a lista também aceita caminhos locais (`"../codearena-plugin-eletrica"`), sem publicar nada.
+- Nomes de pacote são procurados nos `node_modules` da raiz: instale com `pnpm add -w <pacote>`.
+- Caminhos locais (`"../codearena-plugin-eletrica"`), relativos ao arquivo, servem para desenvolver um plugin sem publicar.
+- `CODEARENA_CONFIG=/caminho/config.json` troca o arquivo, no servidor, no build e em `pnpm validate:packs`.
+- Sem o arquivo, a instalação não tem plugins (e o terminal avisa).
 
-Ativar um plugin será `pnpm add <pacote>`, mais a linha na configuração e um novo `pnpm build`. Um comando
-(`pnpm codearena plugins add <pacote>`) vai fazer os três passos.
+Ativar um plugin: `pnpm add -w <pacote>`, a linha na configuração e um novo `pnpm build` (em `pnpm dev`, o Vite reinicia
+sozinho quando a configuração muda). Um comando (`pnpm codearena plugins add <pacote>`) vai fazer os três passos.
 
 ### Carregamento
 
@@ -130,14 +139,17 @@ Ativar um plugin será `pnpm add <pacote>`, mais a linha na configuração e um 
 codearena.config.json
    |                                    servidor (ao iniciar)
    +--> para cada plugin: lê o manifesto -> confere pluginId e faixa do SDK -> import(server ou .)
-   |                       -> registra na PluginRegistry -> carrega os packs de exemplo como somente leitura
+   |                       -> confere o id -> registra na PluginRegistry
    |                       (falha em um plugin: erro no log, servidor continua, packs dele ficam "não instalado")
+   |                       (etapa 3: carrega também os packs de exemplo do manifesto, somente leitura)
    |
-   +--> build do navegador (plugin do Vite)
+   +--> build do navegador (codearenaPlugins, de @codearena/plugin-host/vite)
           gera o módulo virtual "virtual:codearena/plugins":
-            { "react-native": () => import("@codearena/plugin-react-native/ui"), ... }
-            e o mapa de runtimes do iframe isolado (sandbox.html)
+            installedPlugins  id, nome e descrição de cada plugin, sem carregar o código
+            uiLoaders         { "react-native": () => import(".../ui"), ... }
+            sandboxLoaders    runtimes do iframe isolado (sandbox.html)
           a interface só chama import() quando abre uma questão daquele plugin
+          (o aluno baixa durante a contagem regressiva; o editor de packs, ao escolher o plugin)
 ```
 
 - **O servidor continua sendo a fonte oficial.** A validação de uma resposta usa a definição de servidor do plugin.
@@ -176,7 +188,7 @@ Cada etapa mantém o app funcionando e os testes passando.
 
 | # | Etapa | Resultado |
 | --- | --- | --- |
-| 1 | `codearena.config.json` e carregamento sob demanda, ainda com os plugins em `plugins/` | Bundle sem plugins não usados; `registry.tsx`, `plugins.ts` e `sandboxes.ts` deixam de ter imports fixos |
+| 1 | `codearena.config.json` e carregamento sob demanda, ainda com os plugins em `plugins/` (**concluída**) | Bundle sem plugins não usados; o app não importa nenhum plugin diretamente |
 | 2 | Build (`dist` + tipos) e publicação de `schemas`, `plugin-sdk` e `core` | Plugins podem depender das versões publicadas |
 | 3 | Packs de exemplo para dentro dos plugins, com `codearena.packs` no manifesto | `content/packs/` sai do núcleo |
 | 4 | `react-native` e `backend-http` para repositórios próprios | O núcleo os instala como dependências; E2E usa as versões publicadas |

@@ -7,6 +7,13 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@codearena/plugin-backend-http':
+        specifier: workspace:*
+        version: link:plugins/backend-http
+      '@codearena/plugin-react-native':
+        specifier: workspace:*
+        version: link:plugins/react-native
     devDependencies:
       '@fontsource-variable/jetbrains-mono':
         specifier: ^5.3.0
@@ -41,12 +48,9 @@ importers:
       '@codearena/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@codearena/plugin-backend-http':
+      '@codearena/plugin-host':
         specifier: workspace:*
-        version: link:../../plugins/backend-http
-      '@codearena/plugin-react-native':
-        specifier: workspace:*
-        version: link:../../plugins/react-native
+        version: link:../../packages/plugin-host
       '@codearena/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
@@ -78,18 +82,9 @@ importers:
 
   apps/web:
     dependencies:
-      '@babel/parser':
-        specifier: ^7.29.0
-        version: 7.29.9
       '@codearena/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@codearena/plugin-backend-http':
-        specifier: workspace:*
-        version: link:../../plugins/backend-http
-      '@codearena/plugin-react-native':
-        specifier: workspace:*
-        version: link:../../plugins/react-native
       '@codearena/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
@@ -117,22 +112,19 @@ importers:
       react-dom:
         specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
-      react-native-web:
-        specifier: 0.21.4
-        version: 0.21.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-router-dom:
         specifier: ^6.28.0
         version: 6.30.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       socket.io-client:
         specifier: ^4.8.1
         version: 4.8.4
-      sucrase:
-        specifier: ^3.35.0
-        version: 3.35.1
       zustand:
         specifier: ^5.0.3
         version: 5.0.15(@types/react@18.3.31)(react@18.3.1)
     devDependencies:
+      '@codearena/plugin-host':
+        specifier: workspace:*
+        version: link:../../packages/plugin-host
       '@types/react':
         specifier: ^18.3.12
         version: 18.3.31
@@ -170,6 +162,22 @@ importers:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
+
+  packages/plugin-host:
+    dependencies:
+      semver:
+        specifier: ^7.7.2
+        version: 7.8.5
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/semver':
+        specifier: ^7.7.0
+        version: 7.8.0
+      vite:
+        specifier: ^6.4.1
+        version: 6.4.4(@types/node@22.20.5)(jiti@1.21.7)(tsx@4.23.15)
 
   packages/plugin-sdk:
     dependencies:
@@ -1228,6 +1236,9 @@ packages:
 
   '@types/react@18.3.31':
     resolution: {integrity: sha512-vfEqpXTvwT91yhmwdfouStN2hSKwTvyRs8qpLfADyrq/kxDw0hZM7Wk9Ug1FELj8hIby+S/+kQCSRFF32nv2Qw==}
+
+  '@types/semver@7.8.0':
+    resolution: {integrity: sha512-1mAINjtQCXXeLkJ9ehXkwOcBpqtLxiVtKhpUf83DdRNdQKV0iXZpaHYqRr7nj+wvxuJzoAmAwXI+sCNMv1CzLQ==}
 
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
@@ -3373,6 +3384,8 @@ snapshots:
     dependencies:
       '@types/prop-types': 15.7.15
       csstype: 3.2.3
+
+  '@types/semver@7.8.0': {}
 
   '@types/unist@3.0.3': {}
 

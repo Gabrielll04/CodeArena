@@ -12,7 +12,6 @@ import { Timer } from '../components/Timer';
 import { ConnectionBanner, TopBar } from '../components/TopBar';
 import { Badge, Button, cx, Dialog, EmptyState, Icon, Panel, Spinner, Toggle } from '../components/ui';
 import { downloadFile, formatDuration, formatXP } from '../lib/format';
-import { clientPlugins } from '../plugins/registry';
 import { useHost } from '../stores/host';
 
 export function HostPage() {
@@ -316,7 +315,7 @@ function HostReview({ snapshot }: { snapshot: RoomSnapshot }) {
                 solution={lastFinished.solution}
                 starter={snapshot.question?.question.starterCode ?? ''}
                 debug={snapshot.question?.question.kind === 'debug'}
-                language={clientPlugins.get(snapshot.question?.question.pluginId ?? '')?.editorLanguage ?? 'javascript'}
+                pluginId={snapshot.question?.question.pluginId ?? ''}
               />
             )}
           </Panel>

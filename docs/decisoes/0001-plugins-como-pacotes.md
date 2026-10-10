@@ -1,6 +1,6 @@
 # 0001: Plugins como pacotes separados; packs como conteúdo
 
-- **Status:** aceita (migração planejada, ainda não implementada)
+- **Status:** aceita (etapa 1 da migração concluída: `codearena.config.json` e carregamento sob demanda)
 - **Data:** 2026-10-10
 
 ## Contexto

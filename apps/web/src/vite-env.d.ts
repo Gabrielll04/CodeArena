@@ -6,3 +6,18 @@ declare module 'monaco-editor/esm/vs/language/json/monaco.contribution';
 declare module 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution';
 declare module 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution';
 declare module 'monaco-editor/esm/vs/basic-languages/python/python.contribution';
+
+/** Gerado por @codearena/plugin-host/vite a partir de codearena.config.json. */
+declare module 'virtual:codearena/plugins' {
+  export interface InstalledPluginInfo {
+    id: string;
+    displayName: string;
+    description: string;
+    version: string;
+    hasSandbox: boolean;
+  }
+  export const installedPlugins: InstalledPluginInfo[];
+  export const pluginProblems: { specifier: string; message: string }[];
+  export const uiLoaders: Record<string, () => Promise<{ default?: unknown }>>;
+  export const sandboxLoaders: Record<string, () => Promise<{ default?: unknown }>>;
+}

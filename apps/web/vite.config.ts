@@ -1,11 +1,13 @@
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { codearenaPlugins } from '@codearena/plugin-host/vite';
 
 const API_TARGET = process.env.CODEARENA_API ?? 'http://localhost:3001';
 
 export default defineConfig({
-  plugins: [react()],
+  // Só os plugins de codearena.config.json entram no build, e cada um é carregado sob demanda.
+  plugins: [codearenaPlugins({ rootDir: resolve(__dirname, '../..'), htmlEntries: ['index.html', 'sandbox.html'] }), react()],
   server: {
     port: 5173,
     host: true,
@@ -26,8 +28,5 @@ export default defineConfig({
         sandbox: resolve(__dirname, 'sandbox.html'),
       },
     },
-  },
-  optimizeDeps: {
-    include: ['react-native-web', 'sucrase', '@babel/parser'],
   },
 });

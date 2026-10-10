@@ -3,7 +3,7 @@ import type { QuizPlugin } from './types';
 
 export class PluginNotFoundError extends Error {
   constructor(public readonly pluginId: string) {
-    super(`O plugin "${pluginId}" não está instalado. Registre-o no app ou corrija o pluginId do pack.`);
+    super(`O plugin "${pluginId}" não está instalado. Ative-o em codearena.config.json ou corrija o pluginId do pack.`);
     this.name = 'PluginNotFoundError';
   }
 }

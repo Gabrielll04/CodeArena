@@ -112,6 +112,8 @@ packages/
   schemas/         Zod do question pack e contratos de eventos
   plugin-sdk/      Contratos e registro de plugins
   core/            Checklist, XP, ranking, ciclo de vida da sala, lint de autoria
+  plugin-host/     Lê codearena.config.json e carrega os plugins (servidor e build)
+codearena.config.json  Plugins ativos nesta instalação
 plugins/           (temporário: sairão para repositórios próprios, ver decisão 0001)
   react-native/    Validadores AST + preview isolado (react-native-web)
   backend-http/    Runtime Express + Worker + processo Node restrito + cliente HTTP
@@ -178,7 +180,8 @@ Use os prompts de [`docs/agents/prompt-templates.md`](docs/agents/prompt-templat
   carrega as dependências dele. Oficiais: `react-native` e `backend-http` (Express).
 - **Packs**: questões em JSON. Nunca contêm código; só apontam para um `pluginId`.
 
-A migração para esse modelo está em andamento: hoje os dois plugins ainda ficam em `plugins/`. Decisão, modelo alvo e
+Para ativar ou desativar um plugin, edite `codearena.config.json` e rode `pnpm build`. Cada interface de plugin só é
+baixada quando uma questão dele é aberta. A migração continua: hoje os dois plugins ainda ficam em `plugins/`. Decisão, modelo alvo e
 etapas em [`docs/decisoes/0001-plugins-como-pacotes.md`](docs/decisoes/0001-plugins-como-pacotes.md) e
 [`docs/architecture.md`](docs/architecture.md#nucleo-plugins-e-packs). Para criar um plugin:
 [`docs/plugins/creating-a-plugin.md`](docs/plugins/creating-a-plugin.md).

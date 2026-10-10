@@ -16,6 +16,8 @@ const sockets: ClientSocket[] = [];
 beforeAll(async () => {
   dataDir = await mkdtemp(join(tmpdir(), 'codearena-test-'));
   server = await buildServer({
+    rootDir: resolve(__dirname, '../../..'),
+    pluginConfigPath: resolve(__dirname, '../../../codearena.config.json'),
     dataDir,
     contentDir: resolve(__dirname, '../../../content/packs'),
     webDist: null,

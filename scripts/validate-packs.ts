@@ -7,7 +7,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { lintQuestion } from '@codearena/core';
 import { parseQuestionPackJson, resolveQuestions } from '@codearena/schemas';
-import { createServerPluginRegistry } from '../apps/server/src/plugins';
+import { loadServerPlugins } from '../apps/server/src/plugins';
 
 const root = resolve(import.meta.dirname, '..');
 const args = process.argv.slice(2);
@@ -15,7 +15,11 @@ const files = args.length
   ? args.map((f) => resolve(f))
   : (await readdir(join(root, 'content/packs'))).filter((f) => f.endsWith('.json')).map((f) => join(root, 'content/packs', f));
 
-const plugins = createServerPluginRegistry();
+const { registry: plugins } = await loadServerPlugins({
+  rootDir: root,
+  configPath: process.env.CODEARENA_CONFIG,
+  log: (message) => console.log(`  ERRO   ${message}`),
+});
 let failed = false;
 
 for (const file of files) {

@@ -129,10 +129,11 @@ Contexto: `docs/plugins/creating-a-plugin.md`, `packages/plugin-sdk/src/types.ts
 ```text
 Crie um plugin do CodeArena para <disciplina/ambiente, ex.: SQL com SQLite em memória>.
 Siga docs/plugins/creating-a-plugin.md:
-- pacote em plugins/<id>/ com package.json, src/index.ts (definição com definePlugin) e src/ui/index.tsx (ClientQuizPlugin);
+- pacote em plugins/<id>/ com package.json (manifesto "codearena"), src/index.ts (definição com definePlugin) e
+  src/ui/index.tsx (ClientQuizPlugin), cada entrada com export default;
 - validadores com schema Zod de params, modo "static" ou "dynamic" e mensagens curtas em português;
 - testes em plugins/<id>/test usando evaluateChecklist de @codearena/core;
-- registro em apps/server/src/plugins.ts e apps/web/src/plugins/registry.tsx;
+- ativação com pnpm add -w e uma linha em codearena.config.json (nenhum arquivo de apps/ muda);
 - documentação para agentes em docs/agents/plugin-<id>.md e um pack de exemplo em content/packs/.
-Não altere packages/core nem packages/schemas.
+Não altere packages/core, packages/schemas nem apps/.
 ```

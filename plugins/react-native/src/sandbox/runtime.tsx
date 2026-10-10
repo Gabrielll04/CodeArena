@@ -164,3 +164,6 @@ export function mountReactNativeSandbox(container: HTMLElement): void {
 
   post({ channel: PREVIEW_CHANNEL, type: 'ready' });
 }
+
+/** Entrada "sandbox" do manifesto. */
+export default mountReactNativeSandbox;

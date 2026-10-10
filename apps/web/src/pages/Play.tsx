@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import type { ClientQuizPlugin } from '@codearena/plugin-sdk/ui';
 import type { PlayerAnswer, PublicQuestion, RoomSnapshot } from '@codearena/schemas';
 import { Avatar } from '../components/Avatar';
 import { SolutionView } from '../components/CodeDiff';
@@ -15,7 +16,7 @@ import { useChecklist } from '../hooks/useChecklist';
 import { formatDuration, formatXP } from '../lib/format';
 import { playCue } from '../lib/sound';
 import { session as sessionStore } from '../lib/storage';
-import { clientPlugins } from '../plugins/registry';
+import { loadClientPlugin, useClientPlugin } from '../plugins/registry';
 import { usePlayer } from '../stores/player';
 
 export function PlayPage() {
@@ -79,11 +80,16 @@ export function PlayPage() {
 
 function PhaseView({ snapshot }: { snapshot: RoomSnapshot }) {
   const { phase, question } = snapshot;
+  const pluginId = question?.question.pluginId;
+  // Baixa a interface do plugin já na contagem regressiva, para a questão abrir sem espera.
+  useEffect(() => {
+    if (pluginId) loadClientPlugin(pluginId).catch(() => undefined);
+  }, [pluginId]);
   if (phase === 'lobby') return <Lobby snapshot={snapshot} />;
   if (phase === 'countdown' && question) {
     return <Countdown startsAt={question.startsAt} index={question.index} total={question.total} title={question.question.title} />;
   }
-  if (phase === 'question' && question) return <ActiveQuestion key={question.question.id} snapshot={snapshot} />;
+  if (phase === 'question' && question) return <QuestionGate key={question.question.id} snapshot={snapshot} />;
   if (phase === 'review') return <Review snapshot={snapshot} />;
   return <Ended snapshot={snapshot} />;
 }
@@ -129,12 +135,34 @@ function Lobby({ snapshot }: { snapshot: RoomSnapshot }) {
 
 const draftKey = (room: string, questionId: string) => `codearena:draft:${room}:${questionId}`;
 
-function ActiveQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
+function QuestionGate({ snapshot }: { snapshot: RoomSnapshot }) {
+  const state = useClientPlugin(snapshot.question!.question.pluginId);
+  if (state.status === 'loading') {
+    return (
+      <div className="flex h-full items-center justify-center gap-2 text-white/50" data-testid="plugin-loading">
+        <Spinner className="h-5 w-5" /> Carregando a questão
+      </div>
+    );
+  }
+  if (state.status === 'error') {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+        <p className="text-coral">Não foi possível carregar o plugin desta questão.</p>
+        <p className="max-w-md text-sm text-white/50">{state.error}</p>
+        <Button variant="ghost" onClick={() => window.location.reload()}>
+          Recarregar
+        </Button>
+      </div>
+    );
+  }
+  return <ActiveQuestion snapshot={snapshot} plugin={state.plugin} />;
+}
+
+function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: ClientQuizPlugin<any> | undefined }) {
   const active = snapshot.question!;
   // Cada room:update traz um objeto novo; a questão não muda durante a rodada, então fixamos pela id.
   const question: PublicQuestion = useMemo(() => active.question, [active.question.id]);
   const answer = snapshot.me!.answer;
-  const plugin = clientPlugins.get(question.pluginId);
   const { submit, reportProgress } = usePlayer();
   const storageKey = draftKey(snapshot.code, question.id);
   const [code, setCode] = useState(
@@ -370,7 +398,7 @@ function Review({ snapshot }: { snapshot: RoomSnapshot }) {
               solution={solution}
               starter={snapshot.question?.question.starterCode ?? ''}
               debug={snapshot.question?.question.kind === 'debug'}
-              language={clientPlugins.get(snapshot.question?.question.pluginId ?? '')?.editorLanguage ?? 'javascript'}
+              pluginId={snapshot.question?.question.pluginId ?? ''}
             />
           )}
         </div>

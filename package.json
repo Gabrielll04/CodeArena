@@ -25,6 +25,10 @@
     "docs:sync": "node scripts/sync-docs.mjs",
     "demo:video": "node scripts/demo-video.mjs"
   },
+  "dependencies": {
+    "@codearena/plugin-backend-http": "workspace:*",
+    "@codearena/plugin-react-native": "workspace:*"
+  },
   "devDependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@fontsource-variable/space-grotesk": "^5.3.0",

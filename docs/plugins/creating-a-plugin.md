@@ -14,8 +14,9 @@ O contrato está em `packages/plugin-sdk` (`@codearena/plugin-sdk` e `@codearena
 ::: info Plugin é um pacote separado
 Pela decisão [0001: Plugins como pacotes separados](../decisoes/0001-plugins-como-pacotes.md), cada plugin é um pacote
 npm com repositório próprio, ativado por instalação em `codearena.config.json`. O núcleo não traz as dependências de
-nenhum plugin. A migração está planejada (ver [Arquitetura](../architecture.md#etapas-da-migracao)); enquanto ela não
-termina, siga a seção "Hoje (durante a migração)" abaixo.
+nenhum plugin. A ativação por `codearena.config.json` e o carregamento sob demanda já funcionam; a saída dos plugins
+para repositórios próprios ainda está em andamento (ver [Arquitetura](../architecture.md#etapas-da-migracao)).
+Enquanto isso, siga as seções "Hoje (durante a migração)".
 :::
 
 ## Anatomia (modelo alvo)
@@ -43,6 +44,7 @@ codearena-plugin-meu-plugin/      repositório próprio
   "devDependencies": { "@codearena/core": "^1.0.0" },
   "codearena": {
     "pluginId": "meu-plugin",
+    "displayName": "Meu plugin",
     "sdk": "^1.0.0",
     "ui": "./ui",
     "packs": ["./packs/meu-plugin-basico.json"]
@@ -50,16 +52,23 @@ codearena-plugin-meu-plugin/      repositório próprio
 }
 ```
 
-- O campo `codearena` é o manifesto: `pluginId`, faixa do SDK, entradas `server`/`ui`/`sandbox` (opcionais) e packs de exemplo.
+- O campo `codearena` é o manifesto: `pluginId`, `displayName`, faixa do SDK (`sdk`), entradas `server`/`ui`/`sandbox`
+  (opcionais, subcaminhos de `exports`) e packs de exemplo (`packs`, lido a partir da etapa 3 da migração).
+- Cada entrada tem um `export default`:
+  - `.` e `server`: o plugin (`QuizPlugin`) ou uma função sem argumentos que o cria (tipo `PluginEntry`).
+  - `ui`: o `ClientQuizPlugin` ou uma função que recebe `{ sandboxUrl }` e o cria (tipo `ClientPluginEntry`).
+  - `sandbox`: a função que monta o preview dentro do iframe isolado (tipo `SandboxEntry`).
+- Sem `server`, o servidor usa `.`; sem `ui`, o navegador usa `.` sem painéis.
 - Dependências pesadas (simuladores, parsers, bibliotecas de desenho) ficam **no plugin**. Quem não instala o plugin não as baixa.
 - SDK, schemas e React são `peerDependencies`, para existir uma única cópia na instalação.
 - Nomes: `@codearena/plugin-<id>` para os oficiais; `codearena-plugin-<id>` para os da comunidade.
 
 ### Hoje (durante a migração)
 
-Até a etapa 4 da migração, desenvolva o plugin em `plugins/<id>/` neste repositório, com o mesmo layout e
-`"@codearena/plugin-sdk": "workspace:*"` no lugar das versões publicadas. Mantenha o plugin autocontido (nada de
-importar de `apps/` nem de outro plugin) para que ele possa sair para um repositório próprio sem mudanças.
+Até a etapa 4 da migração, desenvolva o plugin em `plugins/<id>/` neste repositório, com o mesmo manifesto e
+`"@codearena/plugin-sdk": "workspace:*"` no lugar das versões publicadas. Enquanto o SDK está em `0.x`, declare
+`"sdk": "^0.1.0"`. Mantenha o plugin autocontido (nada de importar de `apps/` nem de outro plugin) para que ele possa
+sair para um repositório próprio sem mudanças. Os plugins `react-native` e `backend-http` já seguem esse formato.
 
 ## Contrato (`QuizPlugin`)
 
@@ -157,7 +166,7 @@ export const pythonPlugin = definePlugin<QuizPlugin>({
 import type { ClientQuizPlugin } from '@codearena/plugin-sdk/ui';
 import { pythonPlugin } from '../index';
 
-export const pythonClientPlugin: ClientQuizPlugin = {
+const pythonClientPlugin: ClientQuizPlugin = {
   ...pythonPlugin,
   sidePanelTitle: 'Referência',
   renderSidePanel: ({ question }) => (
@@ -168,45 +177,41 @@ export const pythonClientPlugin: ClientQuizPlugin = {
     </div>
   ),
 };
+
+export default pythonClientPlugin;
 ```
+
+E no fim de `src/index.ts`: `export default pythonPlugin;`.
 
 ## Ativação
 
-**Modelo alvo:** nenhuma linha do núcleo muda. A instalação adiciona o pacote e o lista na configuração:
+Nenhuma linha do núcleo muda. A instalação adiciona o pacote **na raiz** e o lista em `codearena.config.json`:
 
 ```bash
-pnpm add codearena-plugin-python-basico
+pnpm add -w codearena-plugin-python-basico
 ```
 
 ```json
 { "plugins": ["@codearena/plugin-react-native", "@codearena/plugin-backend-http", "codearena-plugin-python-basico"] }
 ```
 
-Depois, `pnpm build`. O servidor lê o manifesto, confere a faixa do SDK e registra o plugin; o navegador só baixa a
-interface dele ao abrir uma questão `python-basico`. Durante o desenvolvimento, a lista aceita um caminho local
-(`"../codearena-plugin-python-basico"`).
+Depois, `pnpm build` (em `pnpm dev`, o Vite reinicia sozinho quando a configuração muda). O servidor lê o manifesto,
+confere a faixa do SDK e registra o plugin; o navegador só baixa a interface dele ao abrir uma questão `python-basico`.
+A lista também aceita um caminho local, relativo ao arquivo de configuração (`"../codearena-plugin-python-basico"`),
+para desenvolver sem publicar.
 
-**Hoje (durante a migração):** o registro ainda é manual, em dois arquivos.
+**Hoje (durante a migração),** com o plugin em `plugins/python-basico/`:
 
-`apps/server/src/plugins.ts` (validação oficial):
-
-```ts
-import { pythonPlugin } from '@codearena/plugin-python-basico';
-return new PluginRegistry([reactNativePlugin, createBackendHttpServerPlugin(), pythonPlugin]);
+```bash
+pnpm add -w @codearena/plugin-python-basico@workspace:*
 ```
 
-`apps/web/src/plugins/registry.tsx` (interface):
+e acrescente `"@codearena/plugin-python-basico"` em `codearena.config.json`. O runtime de preview (entrada `sandbox`) e
+as classes Tailwind dos painéis são incluídos automaticamente a partir do manifesto.
 
-```ts
-import { pythonClientPlugin } from '@codearena/plugin-python-basico/ui';
-export const clientPlugins = new PluginRegistry([..., pythonClientPlugin]);
-```
-
-Adicione `"@codearena/plugin-python-basico": "workspace:*"` às dependências de `apps/server` e `apps/web` e rode `pnpm install`.
-Se o plugin usa um iframe isolado de preview, registre o runtime em `apps/web/src/plugins/sandboxes.ts`
-(veja o plugin `react-native`). Se o painel usa classes Tailwind, elas já são incluídas (`plugins/*/src/**`).
-
-Packs que apontam para um plugin não registrado mostram o erro "Plugin não instalado" na biblioteca, na importação e na sala.
+Problemas ao carregar (pacote não instalado, manifesto inválido, SDK incompatível, id diferente do manifesto) aparecem
+no log do servidor e no terminal do Vite; os outros plugins continuam funcionando. Packs que apontam para um plugin
+não carregado mostram "Plugin não instalado" na biblioteca, na importação e na sala.
 
 ## Packs do plugin
 
@@ -233,7 +238,7 @@ const result = await evaluateChecklist('def somar(a, b):\n    return a + b\n', {
 expect(result.allRequiredDone).toBe(true);
 ```
 
-Rode também `pnpm validate:packs` com um pack de exemplo do seu plugin depois de registrá-lo no servidor.
+Rode também `pnpm validate:packs` com um pack de exemplo do seu plugin depois de ativá-lo em `codearena.config.json`.
 
 ## Validadores dinâmicos (que executam código)
 
@@ -247,6 +252,7 @@ Rode também `pnpm validate:packs` com um pack de exemplo do seu plugin depois d
 ## Checklist de publicação
 
 - [ ] `definePlugin` passa (id em kebab-case, validadores com `mode`).
+- [ ] Cada entrada do manifesto tem `export default`, e o `id` do plugin é igual a `codearena.pluginId`.
 - [ ] Validadores com `params` em Zod e mensagens curtas em português.
 - [ ] Mesmo resultado no navegador e no servidor para o mesmo código.
 - [ ] Testes no próprio pacote (`test/`).

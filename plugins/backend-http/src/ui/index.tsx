@@ -1,4 +1,4 @@
-import type { ClientQuizPlugin } from '@codearena/plugin-sdk/ui';
+import type { ClientPluginEntry, ClientQuizPlugin } from '@codearena/plugin-sdk/ui';
 import { createBackendHttpPlugin, type BackendSessionState } from '../index';
 import { HttpClientPanel } from './HttpClientPanel';
 import { createWorkerExecutor, type WorkerExecutorOptions } from './workerExecutor';
@@ -16,3 +16,7 @@ export function createBackendHttpClientPlugin(options: WorkerExecutorOptions = {
     renderSidePanel: (context) => <HttpClientPanel context={context} executor={executor} />,
   };
 }
+
+/** Entrada "ui" do manifesto. */
+const entry: ClientPluginEntry<BackendSessionState> = () => createBackendHttpClientPlugin();
+export default entry;

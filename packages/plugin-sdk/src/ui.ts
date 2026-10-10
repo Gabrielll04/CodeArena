@@ -23,3 +23,17 @@ export interface ClientQuizPlugin<S = unknown> extends QuizPlugin<S> {
   /** Painel de ferramentas (ex.: cliente HTTP). */
   renderSidePanel?(context: PluginUIContext): ReactNode;
 }
+
+/** Opções que o app entrega à entrada "ui" de um plugin. */
+export interface ClientPluginOptions {
+  /** URL da página isolada de preview já apontando para este plugin (só para plugins com entrada "sandbox"). */
+  sandboxUrl: string;
+}
+
+/** Export default da entrada "ui": o plugin ou uma função que o cria a partir das opções do app. */
+export type ClientPluginEntry<S = any> =
+  | ClientQuizPlugin<S>
+  | ((options: ClientPluginOptions) => ClientQuizPlugin<S> | Promise<ClientQuizPlugin<S>>);
+
+/** Export default da entrada "sandbox": monta o runtime de preview dentro do iframe isolado. */
+export type SandboxEntry = (root: HTMLElement) => void | Promise<void>;

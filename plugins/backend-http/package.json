@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Plugin CodeArena para questões de backend HTTP (Express/Fastify) com cliente HTTP e validação por requisições.",
+  "description": "Plugin CodeArena para questões de backend HTTP (Express) com cliente HTTP e validação por requisições.",
   "exports": {
     ".": "./src/index.ts",
     "./ui": "./src/ui/index.tsx",
@@ -27,5 +27,12 @@
     "@codearena/core": "workspace:*",
     "@types/react": "^18.3.12",
     "react": "18.3.1"
+  },
+  "codearena": {
+    "pluginId": "backend-http",
+    "displayName": "Backend HTTP",
+    "sdk": "^0.1.0",
+    "server": "./server",
+    "ui": "./ui"
   }
 }

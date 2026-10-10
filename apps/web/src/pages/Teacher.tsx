@@ -7,7 +7,7 @@ import { TopBar } from '../components/TopBar';
 import { Badge, Button, Dialog, EmptyState, Icon, Panel, Spinner, Textarea, Toggle } from '../components/ui';
 import { api, ApiError, type PackSummary, type StoredPack } from '../lib/api';
 import { downloadFile, plural } from '../lib/format';
-import { clientPlugins } from '../plugins/registry';
+import { isPluginInstalled, pluginInfo } from '../plugins/registry';
 import { useHost } from '../stores/host';
 
 export function TeacherPage() {
@@ -86,14 +86,14 @@ export function TeacherPage() {
         ) : (
           <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="pack-list">
             {packs.map((pack, i) => {
-              const missing = pack.pluginIds.filter((id) => !clientPlugins.has(id));
+              const missing = pack.pluginIds.filter((id) => !isPluginInstalled(id));
               return (
                 <motion.li key={pack.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
                   <Panel className="flex h-full flex-col p-5" data-testid={`pack-${pack.id}`}>
                     <div className="mb-2 flex flex-wrap items-center gap-1.5">
                       {pack.pluginIds.map((id) => (
                         <Badge key={id} tone={id === 'react-native' ? 'cyan' : id === 'backend-http' ? 'amber' : 'violet'}>
-                          {clientPlugins.get(id)?.displayName ?? id}
+                          {pluginInfo(id)?.displayName ?? id}
                         </Badge>
                       ))}
                       {pack.source === 'builtin' && <Badge>Exemplo</Badge>}
@@ -177,7 +177,7 @@ function ImportDialog({ open, onClose, onImported }: { open: boolean; onClose: (
       setValid(null);
       return;
     }
-    const missing = [...new Set(resolveQuestions(result.value).map((q) => q.pluginId))].filter((id) => !clientPlugins.has(id));
+    const missing = [...new Set(resolveQuestions(result.value).map((q) => q.pluginId))].filter((id) => !isPluginInstalled(id));
     setIssues(missing.map((id) => ({ path: 'pack.pluginId', message: `plugin "${id}" não está instalado neste app` })));
     setValid(missing.length ? null : result.value);
   };

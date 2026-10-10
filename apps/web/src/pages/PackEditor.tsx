@@ -24,7 +24,7 @@ import { useDebounced } from '../hooks/useDebounced';
 import { api, ApiError } from '../lib/api';
 import { downloadFile, slugify } from '../lib/format';
 import { GENERIC_REGEX_HELPERS } from '../lib/regexHelpers';
-import { clientPlugins } from '../plugins/registry';
+import { loadClientPlugin, pluginCatalog, pluginInfo, useClientPlugin } from '../plugins/registry';
 
 const RULE_LABELS: Record<ChecklistRule['type'], string> = {
   contains: 'Contém texto',
@@ -67,10 +67,9 @@ function newQuestion(plugin: ClientQuizPlugin<any> | undefined, index: number): 
   };
 }
 
-function newPack(): QuestionPack {
-  const plugin = clientPlugins.list()[0];
+function newPack(plugin: ClientQuizPlugin<any> | undefined): QuestionPack {
   return {
-    pack: { title: '', description: '', pluginId: plugin?.id ?? 'react-native', version: '1.0.0', tags: [] },
+    pack: { title: '', description: '', pluginId: plugin?.id ?? pluginCatalog[0]?.id ?? 'react-native', version: '1.0.0', tags: [] },
     questions: [newQuestion(plugin, 1)],
   };
 }
@@ -86,7 +85,7 @@ export function PackEditorPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const fromId = params.get('from');
-  const [draft, setDraft] = useState<QuestionPack | null>(id || fromId ? null : newPack());
+  const [draft, setDraft] = useState<QuestionPack | null>(null);
   const [selected, setSelected] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -96,7 +95,15 @@ export function PackEditorPage() {
 
   useEffect(() => {
     const source = id ?? fromId;
-    if (!source) return;
+    if (!source) {
+      // Pack novo: carrega o primeiro plugin para preencher o código inicial padrão.
+      const first = pluginCatalog[0]?.id;
+      (first ? loadClientPlugin(first) : Promise.resolve(undefined)).then(
+        (plugin) => setDraft(newPack(plugin)),
+        () => setDraft(newPack(undefined)),
+      );
+      return;
+    }
     api
       .getPack(source)
       .then((stored) => {
@@ -113,6 +120,8 @@ export function PackEditorPage() {
     const result = QuestionPackSchema.safeParse(draft);
     return result.success ? { ok: true as const, issues: [] } : { ok: false as const, issues: formatZodError(result.error) };
   }, [draft]);
+  const pluginState = useClientPlugin(draft?.pack.pluginId);
+  const plugin = pluginState.plugin;
 
   useEffect(() => {
     if (!dirty) return;
@@ -139,7 +148,6 @@ export function PackEditorPage() {
     );
   }
 
-  const plugin = clientPlugins.get(draft.pack.pluginId);
   const update = (next: QuestionPack) => {
     setDraft(next);
     setDirty(true);
@@ -196,9 +204,9 @@ export function PackEditorPage() {
                 onChange={(e) => update({ ...draft, pack: { ...draft.pack, description: e.target.value } })}
               />
             </Field>
-            <Field label="Plugin" htmlFor="pack-plugin" hint={plugin?.description}>
+            <Field label="Plugin" htmlFor="pack-plugin" hint={pluginInfo(draft.pack.pluginId)?.description ?? plugin?.description}>
               <Select id="pack-plugin" value={draft.pack.pluginId} onChange={(e) => update({ ...draft, pack: { ...draft.pack, pluginId: e.target.value } })}>
-                {clientPlugins.list().map((p) => (
+                {pluginCatalog.map((p) => (
                   <option key={p.id} value={p.id} className="bg-ink-850">
                     {p.displayName}
                   </option>
@@ -315,6 +323,12 @@ export function PackEditorPage() {
               plugin={plugin}
               onChange={(q) => updateQuestion(selected, q)}
             />
+          ) : pluginState.status === 'loading' ? (
+            <div className="flex items-center gap-2 p-6 text-white/50">
+              <Spinner className="h-4 w-4" /> Carregando o plugin
+            </div>
+          ) : pluginState.status === 'error' ? (
+            <p className="p-6 text-coral">Não foi possível carregar o plugin "{draft.pack.pluginId}": {pluginState.error}</p>
           ) : (
             <p className="p-6 text-coral">Plugin "{draft.pack.pluginId}" não está instalado.</p>
           )}
