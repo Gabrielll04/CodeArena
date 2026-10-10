@@ -159,6 +159,9 @@ codearena.config.json
 
 ### Packs
 
+Passo a passo para professores (instalar um plugin, criar e compartilhar packs):
+[Plugins e packs: como funciona](./guia/plugins-e-packs.md).
+
 - **Origem:** packs de exemplo distribuídos pelos plugins (somente leitura, podem ser duplicados) e packs criados ou
   importados pelos professores (`data/packs/`). No futuro, um catálogo comunitário de packs em repositório próprio,
   também só com JSON.

@@ -37,7 +37,10 @@ export default defineConfig({
       },
       {
         text: 'Para professores',
-        items: [{ text: 'Guia de autoria e aula', link: '/content/authoring-guide' }],
+        items: [
+          { text: 'Guia de autoria e aula', link: '/content/authoring-guide' },
+          { text: 'Plugins e packs: como funciona', link: '/guia/plugins-e-packs' },
+        ],
       },
       {
         text: 'Para agentes de IA',

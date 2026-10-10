@@ -39,5 +39,6 @@ Alunos na mesma rede entram pelo endereço exibido no log do servidor (ex.: `htt
 
 - Crie ou importe suas questões: [Guia de autoria e aula](../content/authoring-guide.md).
 - Gere packs com IA: [Prompts prontos](../agents/prompt-templates.md).
+- Use um plugin novo ou compartilhe packs: [Plugins e packs: como funciona](./plugins-e-packs.md).
 - Crie um plugin para a sua disciplina: [Criando um plugin](../plugins/creating-a-plugin.md).
 - Entenda o sistema: [Arquitetura](../architecture.md).

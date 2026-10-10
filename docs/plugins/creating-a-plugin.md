@@ -9,6 +9,9 @@ Plugins adicionam disciplinas ou ambientes de execução ao CodeArena sem altera
 - verificação extra no servidor antes de aceitar uma resposta;
 - ajudas de regex e código inicial para o editor manual de questões.
 
+Para o lado de quem usa o plugin (instalar e criar packs com ele), veja
+[Plugins e packs: como funciona](../guia/plugins-e-packs.md).
+
 O contrato está em `packages/plugin-sdk` (`@codearena/plugin-sdk` e `@codearena/plugin-sdk/ui`).
 
 ::: info Plugin é um pacote separado

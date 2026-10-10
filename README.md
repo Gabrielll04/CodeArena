@@ -178,7 +178,9 @@ Use os prompts de [`docs/agents/prompt-templates.md`](docs/agents/prompt-templat
 - **Núcleo** (este repositório): sala em tempo real, checklist, XP, interface e o SDK de plugins.
 - **Plugins**: pacotes npm separados, um por disciplina, ativados em `codearena.config.json`. Quem não usa um plugin não
   carrega as dependências dele. Oficiais: `react-native` e `backend-http` (Express).
-- **Packs**: questões em JSON. Nunca contêm código; só apontam para um `pluginId`.
+- **Packs**: questões em JSON. Nunca contêm código; só apontam para um `pluginId`. Para usar um pack, o plugin dele
+  precisa estar instalado no servidor. Passo a passo em
+  [`docs/guia/plugins-e-packs.md`](docs/guia/plugins-e-packs.md).
 
 Para ativar ou desativar um plugin, edite `codearena.config.json` e rode `pnpm build`. Cada interface de plugin só é
 baixada quando uma questão dele é aberta. A migração continua: hoje os dois plugins ainda ficam em `plugins/`. Decisão, modelo alvo e

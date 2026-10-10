@@ -10,6 +10,10 @@
 Packs de exemplo (marcados "Exemplo") são somente leitura: use "Duplicar" para adaptar.
 Qualquer pack pode ser exportado como JSON (ícone de download) para versionar, compartilhar ou reimportar.
 
+Todo pack depende de um plugin (`react-native`, `backend-http` ou outro), que precisa estar instalado no servidor
+do CodeArena que você usa. Para usar um plugin novo ou compartilhar packs com outros professores, veja
+[Plugins e packs: como funciona](../guia/plugins-e-packs.md).
+
 ## Editor manual
 
 Para cada questão:
