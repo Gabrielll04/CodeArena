@@ -33,6 +33,10 @@
     "displayName": "Backend HTTP",
     "sdk": "^0.1.0",
     "server": "./server",
-    "ui": "./ui"
+    "ui": "./ui",
+    "packs": [
+      "./packs/backend-http-basico.json",
+      "./packs/depuracao-backend-http.json"
+    ]
   }
 }

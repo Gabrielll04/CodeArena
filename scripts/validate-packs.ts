@@ -1,26 +1,24 @@
 /**
  * Valida question packs (schema Zod + qualidade da checklist) usando os mesmos plugins do servidor.
- * Uso: pnpm validate:packs [arquivo.json ...]   (padrão: content/packs/*.json)
+ * Uso: pnpm validate:packs [arquivo.json ...]   (padrão: os packs de exemplo dos plugins em codearena.config.json)
  * Sai com código 1 se algum pack tiver erro.
  */
-import { readdir, readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { lintQuestion } from '@codearena/core';
 import { parseQuestionPackJson, resolveQuestions } from '@codearena/schemas';
 import { loadServerPlugins } from '../apps/server/src/plugins';
 
 const root = resolve(import.meta.dirname, '..');
 const args = process.argv.slice(2);
-const files = args.length
-  ? args.map((f) => resolve(f))
-  : (await readdir(join(root, 'content/packs'))).filter((f) => f.endsWith('.json')).map((f) => join(root, 'content/packs', f));
 
-const { registry: plugins } = await loadServerPlugins({
+const { registry: plugins, samplePacks, problems } = await loadServerPlugins({
   rootDir: root,
   configPath: process.env.CODEARENA_CONFIG,
-  log: (message) => console.log(`  ERRO   ${message}`),
+  log: (message) => console.log(`ERRO   ${message}`),
 });
-let failed = false;
+let failed = problems.length > 0;
+const files = args.length ? args.map((f) => resolve(f)) : samplePacks.map((s) => s.file);
 
 for (const file of files) {
   const parsed = parseQuestionPackJson(await readFile(file, 'utf8'));

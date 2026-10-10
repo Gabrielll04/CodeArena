@@ -6,8 +6,16 @@ import { pathToFileURL } from 'node:url';
 import { PluginRegistry, type PluginEntry, type QuizPlugin } from '@codearena/plugin-sdk';
 import { installedSdkVersion, resolveHostPlugins, type PluginProblem } from '@codearena/plugin-host';
 
+/** Pack de exemplo distribuído por um plugin (campo `codearena.packs` do manifesto). */
+export interface SamplePackFile {
+  pluginId: string;
+  file: string;
+}
+
 export interface LoadedServerPlugins {
   registry: PluginRegistry<QuizPlugin<any>>;
+  /** Packs de exemplo dos plugins carregados com sucesso. */
+  samplePacks: SamplePackFile[];
   problems: PluginProblem[];
 }
 
@@ -22,6 +30,7 @@ export async function loadServerPlugins(options: {
     sdkVersion: installedSdkVersion(import.meta.dirname),
   });
   const registry = new PluginRegistry<QuizPlugin<any>>();
+  const samplePacks: SamplePackFile[] = [];
 
   for (const resolved of plugins) {
     try {
@@ -32,11 +41,12 @@ export async function loadServerPlugins(options: {
         throw new Error(`o manifesto declara "${resolved.manifest.pluginId}", mas o plugin tem id "${plugin.id}".`);
       }
       registry.register(plugin);
+      samplePacks.push(...resolved.packs.map((file) => ({ pluginId: plugin.id, file })));
     } catch (err) {
       problems.push({ specifier: resolved.specifier, message: `Plugin "${resolved.specifier}": ${(err as Error).message}` });
     }
   }
 
   problems.forEach((problem) => options.log?.(problem.message));
-  return { registry, problems };
+  return { registry, samplePacks, problems };
 }

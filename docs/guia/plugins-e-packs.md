@@ -99,8 +99,9 @@ andamento ([etapas](../architecture.md#etapas-da-migracao)):
 | Funciona hoje | Ainda não |
 | --- | --- |
 | Ativar e desativar plugins em `codearena.config.json` | Plugins de terceiros publicados no npm: o SDK (`@codearena/plugin-sdk`) ainda não foi publicado (etapa 2) |
-| Plugins oficiais `react-native` e `backend-http` (Express) | Packs de exemplo vindos de dentro do plugin (etapa 3); hoje ficam em `content/packs/` |
+| Plugins oficiais `react-native` e `backend-http` (Express) | |
 | Plugins novos dentro deste repositório, em `plugins/` | Comando único para instalar (`pnpm codearena plugins add`) |
+| Packs de exemplo distribuídos dentro de cada plugin | |
 | Aviso de "Plugin não instalado" na Biblioteca, na importação e na sala | Catálogo de plugins e packs da comunidade |
 | | O pack declarar a versão mínima do plugin (`pack.requires`); por enquanto, informe a versão junto do arquivo |
 

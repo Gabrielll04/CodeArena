@@ -19,7 +19,7 @@ beforeAll(async () => {
     rootDir: resolve(__dirname, '../../..'),
     pluginConfigPath: resolve(__dirname, '../../../codearena.config.json'),
     dataDir,
-    contentDir: resolve(__dirname, '../../../content/packs'),
+    contentDir: null,
     webDist: null,
     logger: false,
   });

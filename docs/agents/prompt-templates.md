@@ -134,6 +134,6 @@ Siga docs/plugins/creating-a-plugin.md:
 - validadores com schema Zod de params, modo "static" ou "dynamic" e mensagens curtas em português;
 - testes em plugins/<id>/test usando evaluateChecklist de @codearena/core;
 - ativação com pnpm add -w e uma linha em codearena.config.json (nenhum arquivo de apps/ muda);
-- documentação para agentes em docs/agents/plugin-<id>.md e um pack de exemplo em content/packs/.
+- documentação para agentes em plugins/<id>/docs/agents.md e um pack de exemplo em plugins/<id>/packs/, listado em codearena.packs.
 Não altere packages/core, packages/schemas nem apps/.
 ```

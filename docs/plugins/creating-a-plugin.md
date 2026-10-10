@@ -224,7 +224,9 @@ declarados em `codearena.packs`. O servidor os carrega como somente leitura; o p
 - Packs de exemplo seguem as mesmas regras de qualquer pack: JSON válido para `QuestionPackSchema`, sem código executável
   além de `starterCode` e `solution`.
 - Packs de professores não dependem do repositório do plugin: são importados pela interface ou pela API e vivem nos dados da instalação.
-- Hoje os packs oficiais ainda estão em `content/packs/`; eles passam para os pacotes dos plugins na etapa 3 da migração.
+- O id de um pack de exemplo é `exemplo-<nome do arquivo>`: use nomes de arquivo que não colidam com os de outros plugins
+  (ex.: prefixe com o id do plugin).
+- O teste `test/packs.test.ts` dos plugins oficiais valida cada pack do manifesto com `lintQuestion`; copie-o para o seu plugin.
 
 ## Testes
 
@@ -261,5 +263,5 @@ Rode também `pnpm validate:packs` com um pack de exemplo do seu plugin depois d
 - [ ] Testes no próprio pacote (`test/`).
 - [ ] Manifesto `codearena` com `pluginId`, faixa do SDK e packs de exemplo.
 - [ ] `docs/agents.md` no pacote com validadores, parâmetros, limites e exemplos de questões.
-- [ ] Packs de exemplo em `packs/` aprovados por `pnpm validate:packs`.
+- [ ] Packs de exemplo em `packs/`, listados em `codearena.packs` e aprovados por `pnpm validate:packs`.
 - [ ] Nenhuma dependência nova no núcleo.

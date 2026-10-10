@@ -91,7 +91,8 @@ pnpm start
 ```
 
 Variáveis opcionais: `PORT`, `HOST`, `CODEARENA_DATA_DIR` (packs criados; padrão `./data`),
-`CODEARENA_CONTENT_DIR` (packs de exemplo; padrão `./content/packs`), `CODEARENA_LOG=silent`.
+`CODEARENA_CONFIG` (lista de plugins; padrão `./codearena.config.json`), `CODEARENA_CONTENT_DIR` (pasta extra de packs
+de exemplo da instalação, opcional), `CODEARENA_LOG=silent`.
 
 ## Usando
 
@@ -100,7 +101,7 @@ acompanhe o progresso. Ao final, exporte o relatório (CSV/JSON).
 
 **Aluno:** `/join` - código da sala, nome e avatar. Responda no editor; a checklist marca sozinha e a resposta é enviada ao completar.
 
-Packs de exemplo: `react-native-fundamentos.json` (5 questões), `backend-http-basico.json` (4) e, de depuração, `depuracao-react-native.json` e `depuracao-backend-http.json` (3 cada), todos em `content/packs/`.
+Packs de exemplo: `react-native-fundamentos.json` (5 questões), `backend-http-basico.json` (4) e, de depuração, `depuracao-react-native.json` e `depuracao-backend-http.json` (3 cada), distribuídos dentro dos plugins (`plugins/<id>/packs/`, listados no campo `codearena.packs` do `package.json`).
 
 ## Estrutura
 
@@ -117,7 +118,7 @@ codearena.config.json  Plugins ativos nesta instalação
 plugins/           (temporário: sairão para repositórios próprios, ver decisão 0001)
   react-native/    Validadores AST + preview isolado (react-native-web)
   backend-http/    Runtime Express + Worker + processo Node restrito + cliente HTTP
-content/packs/     Packs de exemplo (seed)
+  */packs/         Packs de exemplo de cada plugin
 docs/
   agents/          Instruções para agentes de IA gerarem conteúdo
   plugins/         Como criar plugins
@@ -136,7 +137,7 @@ Detalhes em [`docs/architecture.md`](docs/architecture.md).
 pnpm typecheck          # TypeScript estrito em todos os pacotes
 pnpm test               # Vitest: schema, checklist, XP, ciclo da sala, plugins, servidor Socket.IO
 pnpm test:e2e           # Playwright: build de produção + sala com 2 alunos, backend, importação
-pnpm validate:packs     # valida content/packs (ou arquivos passados) contra schema e solução
+pnpm validate:packs     # valida os packs de exemplo dos plugins (ou arquivos passados) contra schema e solução
 ```
 
 Para o Playwright usar um Chromium já instalado: `PLAYWRIGHT_CHROMIUM_PATH=/caminho/chromium pnpm test:e2e`.

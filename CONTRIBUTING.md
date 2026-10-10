@@ -7,7 +7,7 @@ outras turmas. Este guia mostra como começar em poucos minutos.
 
 | Contribuição | Dificuldade | Onde começar |
 | --- | --- | --- |
-| **Pack de questões** (JSON) | baixa | [`docs/agents/question-pack-schema.md`](docs/agents/question-pack-schema.md) e `content/packs/` |
+| **Pack de questões** (JSON) | baixa | [`docs/agents/question-pack-schema.md`](docs/agents/question-pack-schema.md) e `plugins/*/packs/` |
 | **Plugin** de uma disciplina ou linguagem | média | [`docs/plugins/creating-a-plugin.md`](docs/plugins/creating-a-plugin.md) |
 | **Documentação** e traduções | baixa | `docs/` e `README.md` |
 | **Bug** ou melhoria na interface | média | issues com a label `ajuda desejada` |
@@ -32,7 +32,7 @@ Antes de abrir um pull request, rode:
 ```bash
 pnpm typecheck        # TypeScript estrito em todos os pacotes
 pnpm test             # Vitest: schema, checklist, XP, sala, plugins e servidor
-pnpm validate:packs   # packs de content/packs contra o schema e a própria solução
+pnpm validate:packs   # packs de exemplo dos plugins contra o schema e a própria solução
 pnpm test:e2e         # Playwright: fluxos de sala (precisa de um build; roda sozinho)
 pnpm docs:build       # site de documentação (acusa links quebrados)
 ```
@@ -48,10 +48,9 @@ Leia [`docs/architecture.md`](docs/architecture.md) (pacotes, estados da sala, e
 packages/schemas      contratos Zod (packs e eventos)
 packages/plugin-sdk   contrato dos plugins
 packages/core         checklist, XP, ranking, sala, lint de autoria
-plugins/*             react-native e backend-http (sairão para repositórios próprios)
+plugins/*             react-native e backend-http, com os packs de exemplo em packs/ (sairão para repositórios próprios)
 apps/server           Fastify + Socket.IO
 apps/web              React + Vite + Tailwind
-content/packs         packs de exemplo
 docs/                 documentação (também publicada como site, VitePress)
 ```
 
@@ -80,8 +79,9 @@ docs/                 documentação (também publicada como site, VitePress)
 ### Contribuindo com um pack
 
 1. Gere ou escreva o JSON seguindo `docs/agents/question-pack-schema.md` (os prompts de `docs/agents/prompt-templates.md` ajudam).
-2. Salve em `content/packs/<disciplina>-<tema>.json` e preencha `pack.author`.
-3. Rode `pnpm validate:packs content/packs/seu-pack.json`. Não pode haver `ERRO`.
+2. Salve na pasta `packs/` do plugin que o pack usa (ex.: `plugins/backend-http/packs/<tema>.json`), acrescente o
+   caminho em `codearena.packs` no `package.json` do plugin e preencha `pack.author`.
+3. Rode `pnpm validate:packs plugins/<id>/packs/seu-pack.json` e `pnpm test`. Não pode haver `ERRO`.
 4. Inclua `solution` em toda questão e use `kind: "debug"` quando for questão de depuração.
 
 ### Contribuindo com um plugin

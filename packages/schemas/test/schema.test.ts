@@ -1,10 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseQuestionPack, parseQuestionPackJson, resolveQuestions, toPublicQuestion } from '../src';
-
-const root = resolve(__dirname, '../../..');
-const load = (file: string) => JSON.parse(readFileSync(resolve(root, file), 'utf8'));
 
 const minimalPack = () => ({
   pack: { title: 'Teste', pluginId: 'react-native', version: '1.0.0' },
@@ -21,18 +16,6 @@ const minimalPack = () => ({
 });
 
 describe('QuestionPackSchema', () => {
-  it('aceita os packs de exemplo do repositório', () => {
-    for (const file of [
-      'content/packs/react-native-fundamentos.json',
-      'content/packs/backend-http-basico.json',
-      'content/packs/depuracao-react-native.json',
-      'content/packs/depuracao-backend-http.json',
-    ]) {
-      const result = parseQuestionPack(load(file));
-      expect(result.ok, file).toBe(true);
-    }
-  });
-
   it('aplica valores padrão', () => {
     const result = parseQuestionPack(minimalPack());
     expect(result.ok).toBe(true);

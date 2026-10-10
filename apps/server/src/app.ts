@@ -16,12 +16,17 @@ const ROOM_IDLE_LIMIT_MS = 6 * 60 * 60 * 1000;
 
 export async function buildServer(config: Omit<ServerConfig, 'port' | 'host'>) {
   const app = Fastify({ logger: config.logger ? { level: 'info' } : false, bodyLimit: 2 * 1024 * 1024 });
-  const { registry: plugins } = await loadServerPlugins({
+  const { registry: plugins, samplePacks } = await loadServerPlugins({
     rootDir: config.rootDir,
     configPath: config.pluginConfigPath,
     log: (m) => app.log.error(m),
   });
-  const packs = new PackStore({ dataDir: config.dataDir, contentDir: config.contentDir, log: (m) => app.log.warn(m) });
+  const packs = new PackStore({
+    dataDir: config.dataDir,
+    samplePacks: samplePacks.map((s) => s.file),
+    contentDir: config.contentDir,
+    log: (m) => app.log.warn(m),
+  });
   await packs.init();
   const rooms = new RoomManager();
   const validator = createSubmissionValidator(plugins);

@@ -28,9 +28,15 @@ async function localPlugin(name: string, pluginId: string, source: string) {
 
 describe('loadServerPlugins', () => {
   it('carrega os plugins de codearena.config.json, com a versão de servidor quando existe', async () => {
-    const { registry, problems } = await loadServerPlugins({ rootDir: repoRoot });
+    const { registry, samplePacks, problems } = await loadServerPlugins({ rootDir: repoRoot });
     expect(problems).toEqual([]);
     expect(registry.list().map((p) => p.id).sort()).toEqual(['backend-http', 'react-native']);
+    expect(samplePacks.map((s) => `${s.pluginId}:${s.file.split(/[\\/]/).pop()}`).sort()).toEqual([
+      'backend-http:backend-http-basico.json',
+      'backend-http:depuracao-backend-http.json',
+      'react-native:depuracao-react-native.json',
+      'react-native:react-native-fundamentos.json',
+    ]);
   });
 
   it('registra os plugins válidos e informa os que falharam', async () => {

@@ -103,7 +103,7 @@ Concluído quando a rota foi registrada (o caminho é comparado como foi declara
 
 ## Exemplos de questões
 
-Implementadas em `content/packs/backend-http-basico.json`:
+Implementadas em `plugins/backend-http/packs/backend-http-basico.json`:
 
 1. **Health check** - GET /health retorna 200 e `{ "status": "ok" }`.
 2. **Eco de JSON** - POST /echo devolve o body com 201 (exige `express.json()`).

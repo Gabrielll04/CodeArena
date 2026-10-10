@@ -85,6 +85,34 @@ describe('resolveHostPlugins', () => {
     expect(plugins[0]!.entries.ui).toMatch(/dist[\\/]ui\.js$/);
   });
 
+  it('resolve os packs de exemplo do manifesto e recusa arquivo inexistente', async () => {
+    const modules = join(dir, 'node_modules');
+    await fakePlugin(modules, 'com-packs', {
+      name: 'com-packs',
+      exports: { '.': './index.js' },
+      codearena: manifest('com-packs', { packs: ['./packs/basico.json'] }),
+    }, ['index.js', 'packs/basico.json']);
+    await fakePlugin(modules, 'pack-faltando', {
+      name: 'pack-faltando',
+      exports: { '.': './index.js' },
+      codearena: manifest('pack-faltando', { packs: ['./packs/nao-existe.json'] }),
+    });
+    await fakePlugin(modules, 'pack-fora', {
+      name: 'pack-fora',
+      exports: { '.': './index.js' },
+      codearena: manifest('pack-fora', { packs: ['../com-packs/packs/basico.json'] }),
+    });
+    await writeJson(join(dir, 'codearena.config.json'), { plugins: ['com-packs', 'pack-faltando', 'pack-fora'] });
+
+    const { plugins, problems } = resolveHostPlugins({ rootDir: dir });
+    expect(plugins).toHaveLength(1);
+    expect(plugins[0]!.packs).toEqual([join(plugins[0]!.packageDir, 'packs', 'basico.json')]);
+    expect(problems.map((p) => p.message)).toEqual([
+      expect.stringMatching(/"\.\/packs\/nao-existe\.json" não existe/),
+      expect.stringMatching(/codearena\.packs/),
+    ]);
+  });
+
   it('aceita caminho local relativo ao arquivo de configuração', async () => {
     await fakePlugin(dir, 'meus-plugins/eletrica', { name: 'codearena-plugin-eletrica', exports: { '.': './index.js' }, codearena: manifest('eletrica') });
     await writeJson(join(dir, 'config', 'codearena.config.json'), { plugins: ['../meus-plugins/eletrica'] });

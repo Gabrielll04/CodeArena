@@ -16,7 +16,7 @@ export interface PluginManifest {
   ui?: string;
   /** Subcaminho de `exports` com o runtime do iframe isolado de preview. */
   sandbox?: string;
-  /** Packs de exemplo distribuídos com o plugin (lidos a partir da etapa 3 da migração). */
+  /** Packs de exemplo distribuídos com o plugin (caminhos relativos ao pacote, como "./packs/exemplo.json"). */
   packs?: string[];
 }
 
@@ -38,6 +38,8 @@ export interface ResolvedPlugin {
   manifest: PluginManifest;
   /** Arquivos absolutos de cada entrada. */
   entries: { main: string; server?: string; ui?: string; sandbox?: string };
+  /** Arquivos absolutos dos packs de exemplo. */
+  packs: string[];
 }
 
 export interface PluginProblem {

@@ -45,7 +45,7 @@ Decisão registrada em [0001: Plugins como pacotes separados](./decisoes/0001-pl
 | Onde ficam os plugins | `plugins/` neste repositório | um repositório e um pacote npm por plugin |
 | Como são ativados | listados em `codearena.config.json` (feito) | igual |
 | Carregamento no navegador | sob demanda; plugins não listados nem entram no build (feito) | igual |
-| Packs de exemplo | `content/packs/` no núcleo | dentro do pacote do plugin (`packs/`), declarados no manifesto |
+| Packs de exemplo | dentro do pacote do plugin (`packs/`), declarados no manifesto (feito) | igual |
 | SDK | pacote do workspace (`workspace:*`) | `@codearena/plugin-sdk`, `@codearena/schemas` e `@codearena/core` publicados com versão semântica |
 | Compatibilidade | plugin declara a faixa do SDK (`^0.1.0`); incompatível é recusado ao iniciar (feito) | igual, com SDK `1.x` |
 
@@ -111,7 +111,7 @@ O `package.json` declara o manifesto no campo `codearena`:
 - `sandbox` só existe para plugins com preview em iframe isolado.
 - Cada entrada tem `export default`: o plugin ou uma função que o cria (`PluginEntry`, `ClientPluginEntry` e
   `SandboxEntry` em `@codearena/plugin-sdk`). O `id` do plugin precisa ser igual a `codearena.pluginId`.
-- `packs` passa a ser lido na etapa 3; até lá, os packs de exemplo continuam em `content/packs/`.
+- `packs` lista os packs de exemplo, arquivos JSON dentro do pacote. O servidor os carrega como somente leitura.
 - As dependências pesadas (react-native-web, simuladores, parsers) são dependências **do plugin**, nunca do núcleo.
 - O SDK e o React são `peerDependencies`, para existir uma única cópia na instalação.
 
@@ -141,7 +141,7 @@ codearena.config.json
    +--> para cada plugin: lê o manifesto -> confere pluginId e faixa do SDK -> import(server ou .)
    |                       -> confere o id -> registra na PluginRegistry
    |                       (falha em um plugin: erro no log, servidor continua, packs dele ficam "não instalado")
-   |                       (etapa 3: carrega também os packs de exemplo do manifesto, somente leitura)
+   |                       -> carrega os packs de exemplo do manifesto (somente leitura)
    |
    +--> build do navegador (codearenaPlugins, de @codearena/plugin-host/vite)
           gera o módulo virtual "virtual:codearena/plugins":
@@ -193,7 +193,7 @@ Cada etapa mantém o app funcionando e os testes passando.
 | --- | --- | --- |
 | 1 | `codearena.config.json` e carregamento sob demanda, ainda com os plugins em `plugins/` (**concluída**) | Bundle sem plugins não usados; o app não importa nenhum plugin diretamente |
 | 2 | Build (`dist` + tipos) e publicação de `schemas`, `plugin-sdk` e `core` | Plugins podem depender das versões publicadas |
-| 3 | Packs de exemplo para dentro dos plugins, com `codearena.packs` no manifesto | `content/packs/` sai do núcleo |
+| 3 | Packs de exemplo para dentro dos plugins, com `codearena.packs` no manifesto (**concluída**) | `content/packs/` sai do núcleo |
 | 4 | `react-native` e `backend-http` para repositórios próprios | O núcleo os instala como dependências; E2E usa as versões publicadas |
 | 5 | Modelo `create-codearena-plugin` e `pnpm codearena plugins add` | Criar e instalar plugin sem tocar no núcleo |
 | 6 | Modo iframe para plugins de terceiros (futuro) | Plugins não revisados sem acesso ao app |
@@ -271,8 +271,9 @@ Canais Socket.IO: `room:<code>` (todos), `host:<code>`, `player:<code>:<playerId
 ## Persistência
 
 `PackStore` grava um arquivo JSON por pack em `data/packs/` (configurável com `CODEARENA_DATA_DIR`), com escrita
-atômica (arquivo temporário + rename). Hoje os packs de `content/packs/` são carregados como exemplos somente leitura;
-no modelo alvo, os exemplos vêm do manifesto de cada plugin instalado (etapa 3 da migração).
+atômica (arquivo temporário + rename). Os packs de exemplo vêm do manifesto (`codearena.packs`) de cada plugin
+carregado, somente leitura, com id `exemplo-<nome do arquivo>`. `CODEARENA_CONTENT_DIR` acrescenta uma pasta de exemplos
+própria da instalação.
 A interface de armazenamento é pequena (`list/get/create/update/delete`) para permitir trocar por SQLite depois.
 
 ## Segurança

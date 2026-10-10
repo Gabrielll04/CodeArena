@@ -52,7 +52,7 @@ duplas, template strings e `{'texto'}`. Se o código tiver erro de sintaxe, o it
 4. **Estado** - contador com `useState` e `Button` "Somar" com `onPress` (`reactNativeUsesHook`, `reactNativeHasComponentProp`, regex do setter).
 5. **Estilo** - `StyleSheet.create` com `backgroundColor` e `padding` aplicados via `style` (`reactNativeHasStyle`).
 
-Veja todas implementadas em `content/packs/react-native-fundamentos.json`.
+Veja todas implementadas em `plugins/react-native/packs/react-native-fundamentos.json`.
 
 ```json
 {

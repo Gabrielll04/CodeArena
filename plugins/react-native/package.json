@@ -37,6 +37,10 @@
     "displayName": "React Native",
     "sdk": "^0.1.0",
     "ui": "./ui",
-    "sandbox": "./sandbox"
+    "sandbox": "./sandbox",
+    "packs": [
+      "./packs/react-native-fundamentos.json",
+      "./packs/depuracao-react-native.json"
+    ]
   }
 }

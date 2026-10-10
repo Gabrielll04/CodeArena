@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { parseQuestionPack, resolveQuestions, type QuestionPack, type ValidationIssue } from '@codearena/schemas';
 
 export interface StoredPack {
@@ -53,50 +53,66 @@ function slugify(text: string): string {
 
 const ID_PATTERN = /^[a-z0-9-]{1,80}$/;
 
+async function jsonFiles(dir: string): Promise<string[]> {
+  try {
+    return (await readdir(dir)).filter((f) => f.endsWith('.json')).sort();
+  } catch {
+    return [];
+  }
+}
+
 /** Armazena packs em arquivos JSON locais (um arquivo por pack). */
 export class PackStore {
   private packs = new Map<string, StoredPack>();
   private readonly userDir: string;
 
   constructor(
-    private readonly options: { dataDir: string; contentDir: string; log?: (message: string) => void },
+    private readonly options: {
+      dataDir: string;
+      /** Packs de exemplo distribuídos pelos plugins instalados (somente leitura). */
+      samplePacks?: string[];
+      /** Pasta extra de packs de exemplo da instalação (opcional, somente leitura). */
+      contentDir?: string | null;
+      log?: (message: string) => void;
+    },
   ) {
     this.userDir = join(options.dataDir, 'packs');
   }
 
   async init(): Promise<void> {
     await mkdir(this.userDir, { recursive: true });
-    await this.loadDir(this.options.contentDir, 'builtin');
-    await this.loadDir(this.userDir, 'user');
+    const extra = this.options.contentDir ? (await jsonFiles(this.options.contentDir)).map((f) => join(this.options.contentDir!, f)) : [];
+    for (const file of [...(this.options.samplePacks ?? []), ...extra]) await this.loadSample(file);
+    for (const file of await jsonFiles(this.userDir)) await this.loadUserPack(join(this.userDir, file));
   }
 
-  private async loadDir(dir: string, source: StoredPack['source']): Promise<void> {
-    let files: string[] = [];
+  private async loadSample(file: string): Promise<void> {
     try {
-      files = (await readdir(dir)).filter((f) => f.endsWith('.json')).sort();
-    } catch {
-      return;
-    }
-    for (const file of files) {
-      try {
-        const raw = JSON.parse(await readFile(join(dir, file), 'utf8'));
-        if (source === 'builtin') {
-          const parsed = parseQuestionPack(raw);
-          if (!parsed.ok) {
-            this.options.log?.(`Pack de exemplo inválido ignorado (${file}): ${parsed.issues.map((i) => `${i.path}: ${i.message}`).join('; ')}`);
-            continue;
-          }
-          const id = `exemplo-${file.replace(/\.json$/, '')}`;
-          const now = new Date(0).toISOString();
-          this.packs.set(id, { id, source, createdAt: now, updatedAt: now, pack: parsed.value });
-        } else {
-          const parsed = parseQuestionPack(raw.pack);
-          if (!parsed.ok || typeof raw.id !== 'string') continue;
-          this.packs.set(raw.id, { ...raw, source: 'user', pack: parsed.value });
-        }
-      } catch (err) {
-        this.options.log?.(`Falha ao ler ${file}: ${(err as Error).message}`);
+      const parsed = parseQuestionPack(JSON.parse(await readFile(file, 'utf8')));
+      if (!parsed.ok) {
+        this.options.log?.(`Pack de exemplo inválido ignorado (${file}): ${parsed.issues.map((i) => `${i.path}: ${i.message}`).join('; ')}`);
+        return;
       }
+      const id = `exemplo-${basename(file).replace(/\.json$/, '')}`;
+      if (this.packs.has(id)) {
+        this.options.log?.(`Pack de exemplo ignorado (${file}): já existe outro com id "${id}".`);
+        return;
+      }
+      const now = new Date(0).toISOString();
+      this.packs.set(id, { id, source: 'builtin', createdAt: now, updatedAt: now, pack: parsed.value });
+    } catch (err) {
+      this.options.log?.(`Falha ao ler ${file}: ${(err as Error).message}`);
+    }
+  }
+
+  private async loadUserPack(file: string): Promise<void> {
+    try {
+      const raw = JSON.parse(await readFile(file, 'utf8'));
+      const parsed = parseQuestionPack(raw.pack);
+      if (!parsed.ok || typeof raw.id !== 'string') return;
+      this.packs.set(raw.id, { ...raw, source: 'user', pack: parsed.value });
+    } catch (err) {
+      this.options.log?.(`Falha ao ler ${file}: ${(err as Error).message}`);
     }
   }
 

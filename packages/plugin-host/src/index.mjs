@@ -27,8 +27,8 @@ export const PluginManifestSchema = z
     server: z.string().regex(SUBPATH, 'use um subcaminho de exports, como "./server"').optional(),
     ui: z.string().regex(SUBPATH, 'use um subcaminho de exports, como "./ui"').optional(),
     sandbox: z.string().regex(SUBPATH, 'use um subcaminho de exports, como "./sandbox"').optional(),
-    /** Packs de exemplo distribuídos com o plugin (lidos a partir da etapa 3 da migração). */
-    packs: z.array(z.string().min(1)).optional(),
+    /** Packs de exemplo distribuídos com o plugin (arquivos JSON dentro do pacote). */
+    packs: z.array(z.string().regex(/^\.\/[\w./-]+\.json$/, 'use um caminho como "./packs/exemplo.json"')).optional(),
   })
   .strict();
 
@@ -139,6 +139,14 @@ export function resolvePlugin(specifier, { rootDir, baseDir = rootDir, sdkVersio
   const main = entry('.', 'main');
   if (!main) throw new PluginLoadError(specifier, 'o pacote não exporta ".".');
 
+  const packs = (manifest.packs ?? []).map((file) => {
+    const absolute = resolve(packageDir, file);
+    if (!absolute.startsWith(packageDir) || !existsSync(absolute)) {
+      throw new PluginLoadError(specifier, `codearena.packs: "${file}" não existe no pacote.`);
+    }
+    return absolute;
+  });
+
   return {
     specifier,
     packageName: pkg.name ?? specifier,
@@ -152,6 +160,7 @@ export function resolvePlugin(specifier, { rootDir, baseDir = rootDir, sdkVersio
       ui: entry(manifest.ui, 'ui'),
       sandbox: entry(manifest.sandbox, 'sandbox'),
     },
+    packs,
   };
 }
 

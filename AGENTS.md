@@ -23,7 +23,7 @@ o servidor valida de novo e concede XP (base + bônus por velocidade).
 | `plugins/react-native/src/index.ts` | Validadores do plugin `react-native` |
 | `plugins/backend-http/src/index.ts` | Validadores do plugin `backend-http` |
 | `docs/agents/debug-questions.md` | Como criar questões de depuração (`kind: "debug"`) |
-| `content/packs/*.json` | Packs de exemplo válidos (inclui `depuracao-*.json`) |
+| `plugins/*/packs/*.json` | Packs de exemplo válidos de cada plugin (inclui `depuracao-*.json`) |
 | `docs/agents/` | Instruções detalhadas para gerar conteúdo |
 | `scripts/validate-packs.ts` | Validador de packs (schema + checklist contra a solução) |
 
