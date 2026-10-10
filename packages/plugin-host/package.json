@@ -24,6 +24,10 @@
     "./vite": {
       "types": "./src/vite.d.mts",
       "default": "./src/vite.mjs"
+    },
+    "./cli": {
+      "types": "./src/cli.d.mts",
+      "default": "./src/cli.mjs"
     }
   },
   "files": [
@@ -51,5 +55,8 @@
   "publishConfig": {
     "access": "public",
     "provenance": true
+  },
+  "bin": {
+    "codearena": "./src/cli.mjs"
   }
 }

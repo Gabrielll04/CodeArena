@@ -1,0 +1,34 @@
+{
+  "pack": {
+    "title": "{{name}}: primeiros passos",
+    "description": "Pack de exemplo do plugin {{name}}.",
+    "pluginId": "{{id}}",
+    "version": "1.0.0",
+    "author": "{{author}}",
+    "tags": ["exemplo"]
+  },
+  "questions": [
+    {
+      "id": "primeiro-resultado",
+      "title": "Primeiro resultado",
+      "prompt": "Calcule 6 x 7 e escreva o resultado numa linha começando com \"R = \".",
+      "timeLimitSeconds": 90,
+      "baseXP": 500,
+      "speedBonusMax": 500,
+      "starterCode": "6 x 7\n",
+      "solution": "6 x 7\nR = 42\n",
+      "checklist": [
+        {
+          "id": "linha-resultado",
+          "label": "Escrever a linha do resultado",
+          "rule": { "type": "pluginRule", "validator": "hasLineStartingWith", "params": { "prefix": "R = " } }
+        },
+        {
+          "id": "valor-correto",
+          "label": "Chegar em 42",
+          "rule": { "type": "regex", "pattern": "^R\\s*=\\s*42\\s*$", "flags": "m" }
+        }
+      ]
+    }
+  ]
+}

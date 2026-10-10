@@ -2,7 +2,7 @@
  * Carrega a lista de plugins da instalação (codearena.config.json) e resolve os pacotes declarados.
  * Escrito em JavaScript puro para rodar tanto no servidor (tsx) quanto na configuração do Vite.
  */
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import semver from 'semver';
 import { z } from 'zod';
@@ -67,7 +67,20 @@ export function readHostConfig(rootDir, configPath = join(rootDir, CONFIG_FILE))
   return { path: configPath, exists: true, plugins: [...new Set(parsed.data.plugins)] };
 }
 
-function isPathSpecifier(specifier) {
+/** Grava a lista de plugins, preservando os outros campos do arquivo. */
+export function writeHostConfig(configPath, plugins) {
+  let current = {};
+  if (existsSync(configPath)) current = JSON.parse(readFileSync(configPath, 'utf8'));
+  writeFileSync(configPath, `${JSON.stringify({ ...current, plugins }, null, 2)}\n`);
+}
+
+/**
+ * Versão deste pacote. Os pacotes do núcleo são versionados juntos, então ela é também a versão do SDK
+ * que esta instalação oferece.
+ */
+export const HOST_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+
+export function isPathSpecifier(specifier) {
   return specifier.startsWith('.') || isAbsolute(specifier);
 }
 

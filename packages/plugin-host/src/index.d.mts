@@ -57,6 +57,15 @@ export declare function installedSdkVersion(fromDir: string): string | undefined
 
 export declare function readHostConfig(rootDir: string, configPath?: string): HostConfig;
 
+/** Grava a lista de plugins, preservando os outros campos do arquivo. */
+export declare function writeHostConfig(configPath: string, plugins: string[]): void;
+
+/** Versão deste pacote; os pacotes do núcleo são versionados juntos, então é também a versão do SDK. */
+export declare const HOST_VERSION: string;
+
+/** Caminho local ("./x", "../x" ou absoluto) em vez de nome de pacote. */
+export declare function isPathSpecifier(specifier: string): boolean;
+
 /** Nomes de pacote são procurados nos node_modules a partir de rootDir; caminhos locais são relativos a baseDir. */
 export declare function resolvePlugin(
   specifier: string,

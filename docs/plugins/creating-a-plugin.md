@@ -22,6 +22,28 @@ para repositórios próprios ainda está em andamento (ver [Arquitetura](../arch
 Enquanto isso, siga as seções "Hoje (durante a migração)".
 :::
 
+## Começando
+
+O gerador cria um repositório de plugin completo: validador de exemplo, painel React, pack de exemplo, testes, guia
+para agentes de IA, build e CI.
+
+```bash
+npm create codearena-plugin@latest codearena-plugin-eletrica -- --id eletrica --name "Circuitos elétricos"
+cd codearena-plugin-eletrica
+npm install
+npm test
+npm run dev        # build contínuo em dist/
+```
+
+Para ver o plugin numa sala, na pasta de uma instalação do CodeArena:
+
+```bash
+pnpm codearena plugins add ../codearena-plugin-eletrica
+pnpm dev
+```
+
+Dentro deste repositório, sem npm: `node packages/create-codearena-plugin/index.mjs <pasta> --id <id> --name "<nome>"`.
+
 ## Anatomia (modelo alvo)
 
 ```text
@@ -188,20 +210,25 @@ E no fim de `src/index.ts`: `export default pythonPlugin;`.
 
 ## Ativação
 
-Nenhuma linha do núcleo muda. A instalação adiciona o pacote **na raiz** e o lista em `codearena.config.json`:
+Nenhuma linha do núcleo muda. Na pasta da instalação:
 
 ```bash
-pnpm add -w codearena-plugin-python-basico
+pnpm codearena plugins add codearena-plugin-python-basico      # pacote do npm (aceita @versão)
+pnpm codearena plugins add ../codearena-plugin-python-basico   # pasta local, sem publicar
+pnpm codearena plugins list
+pnpm codearena plugins remove python-basico                     # pelo id, nome do pacote ou caminho
 ```
 
-```json
-{ "plugins": ["@codearena/plugin-react-native", "@codearena/plugin-backend-http", "codearena-plugin-python-basico"] }
-```
+O `add` instala o pacote na raiz (`pnpm add -w`), confere o manifesto, a faixa do SDK e se o `pluginId` já existe,
+acrescenta em `codearena.config.json` e roda `pnpm build`. Se algo falhar, ele desfaz a instalação e não mexe na
+configuração. `--no-build` pula o build e `--no-install` usa um pacote já instalado.
 
-Depois, `pnpm build` (em `pnpm dev`, o Vite reinicia sozinho quando a configuração muda). O servidor lê o manifesto,
+Sem o comando, o equivalente manual é `pnpm add -w <pacote>`, uma linha em `codearena.config.json` e `pnpm build`
+(em `pnpm dev`, o Vite reinicia sozinho quando a configuração muda). O servidor lê o manifesto,
 confere a faixa do SDK e registra o plugin; o navegador só baixa a interface dele ao abrir uma questão `python-basico`.
 A lista também aceita um caminho local, relativo ao arquivo de configuração (`"../codearena-plugin-python-basico"`),
-para desenvolver sem publicar.
+para desenvolver sem publicar. Nesse caso, rode `npm run dev` no plugin para manter `dist/` atualizado; o app usa uma
+única cópia de React e do SDK mesmo que o plugin tenha as dele.
 
 **Hoje (durante a migração),** com o plugin em `plugins/python-basico/`:
 

@@ -1,0 +1,46 @@
+{
+  "name": "{{package}}",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Plugin {{name}} para o CodeArena.",
+  "keywords": ["codearena", "codearena-plugin"],
+  "license": "MIT",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./ui": { "types": "./dist/ui.d.ts", "import": "./dist/ui.js" }
+  },
+  "files": ["dist", "packs", "docs"],
+  "scripts": {
+    "build": "tsup src/index.ts src/ui.tsx --format esm --dts --clean --sourcemap --target es2022",
+    "dev": "tsup src/index.ts src/ui.tsx --format esm --dts --sourcemap --target es2022 --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "peerDependencies": {
+    "@codearena/plugin-sdk": "{{sdkRange}}",
+    "@codearena/schemas": "{{sdkRange}}",
+    "react": "^18.3.0"
+  },
+  "devDependencies": {
+    "@codearena/core": "{{sdkRange}}",
+    "@codearena/plugin-sdk": "{{sdkRange}}",
+    "@codearena/schemas": "{{sdkRange}}",
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "react": "^18.3.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "codearena": {
+    "pluginId": "{{id}}",
+    "displayName": "{{name}}",
+    "sdk": "{{sdkRange}}",
+    "ui": "./ui",
+    "packs": ["./packs/{{id}}-exemplo.json"]
+  }
+}

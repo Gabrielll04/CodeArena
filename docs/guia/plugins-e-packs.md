@@ -36,29 +36,19 @@ Instalar um plugin no computador de um professor não o instala no servidor da e
 Para ativar um plugin, na pasta do CodeArena:
 
 ```bash
-pnpm add -w codearena-plugin-eletrica
-```
-
-Acrescente o nome do pacote em `codearena.config.json`:
-
-```json
-{
-  "plugins": ["@codearena/plugin-react-native", "@codearena/plugin-backend-http", "codearena-plugin-eletrica"]
-}
-```
-
-Depois, gere o app de novo e reinicie o servidor:
-
-```bash
-pnpm build
+pnpm codearena plugins add codearena-plugin-eletrica
 pnpm start
 ```
+
+O comando instala o pacote, confere se ele é compatível com este CodeArena, acrescenta o nome em
+`codearena.config.json` e gera o app de novo. Se o plugin não for compatível, nada muda e a mensagem explica o motivo.
+Para ver o que está ativo: `pnpm codearena plugins list`.
 
 Para conferir, abra **Biblioteca > Novo pack**: o plugin aparece na lista "Plugin". Se algo der errado (pacote não
 encontrado, versão incompatível com este CodeArena), a mensagem aparece no terminal do servidor e os outros plugins
 continuam funcionando.
 
-Para **desativar**, tire o nome da lista e rode `pnpm build` de novo. Os packs desse plugin continuam salvos; só ficam
+Para **desativar**: `pnpm codearena plugins remove eletrica` (ou tire o nome da lista e rode `pnpm build`). Os packs desse plugin continuam salvos; só ficam
 marcados como "Plugin não instalado" até ele voltar.
 
 ::: warning Instale só plugins em que você confia

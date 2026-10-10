@@ -52,7 +52,12 @@ export function codearenaPlugins(options) {
       state = resolveHostPlugins({ rootDir: options.rootDir, configPath, sdkVersion: installedSdkVersion(root) });
       const entries = state.plugins.flatMap((p) => [p.entries.ui ?? p.entries.main, p.entries.sandbox]).filter(Boolean);
       // O pré-empacotamento do Vite percorre também as entradas dos plugins (dependências como react-native-web).
-      return { optimizeDeps: { entries: [...(options.htmlEntries ?? ['index.html']), ...entries] } };
+      return {
+        optimizeDeps: { entries: [...(options.htmlEntries ?? ['index.html']), ...entries] },
+        // Um plugin fora do repositório (caminho local) traz as próprias cópias destas dependências;
+        // o app precisa de uma só (React com duas cópias quebra os hooks).
+        resolve: { dedupe: ['react', 'react-dom', '@codearena/plugin-sdk', '@codearena/schemas', '@codearena/core'] },
+      };
     },
     configResolved(config) {
       for (const problem of state.problems) config.logger.warn(`[codearena] ${problem.message}`);

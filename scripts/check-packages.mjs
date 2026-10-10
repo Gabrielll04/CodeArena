@@ -1,15 +1,16 @@
 /**
  * Confere se os pacotes publicáveis funcionam fora do monorepo:
  * build, `pnpm pack`, instalação num projeto vazio, typecheck (NodeNext, sem skipLibCheck) e execução de um plugin de teste.
+ * Também gera um plugin com create-codearena-plugin e roda typecheck, testes e build dele contra os mesmos pacotes.
  * Uso: pnpm check:packages
  */
 import { execFileSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
-const packages = ['schemas', 'plugin-sdk', 'core', 'plugin-host'];
+const packages = ['schemas', 'plugin-sdk', 'core', 'plugin-host', 'create-codearena-plugin'];
 const work = mkdtempSync(join(tmpdir(), 'codearena-packages-'));
 const run = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: 'inherit' });
 
@@ -31,12 +32,37 @@ try {
       "console.log('plugin-host ok');",
     ].join('\n'),
   );
-  const files = readdirSync(tarballs).map((f) => join(tarballs, f));
+  const tarball = (name) => join(tarballs, readdirSync(tarballs).find((f) => f.startsWith(name.replace('@', '').replace('/', '-') + '-')));
+  const files = ['@codearena/schemas', '@codearena/plugin-sdk', '@codearena/core', '@codearena/plugin-host'].map(tarball);
   run('npm', ['install', '--no-audit', '--no-fund', ...files, 'zod@3', 'react@18', '@types/react@18', 'typescript@5'], consumer);
   const tsc = ['tsc', '--strict', '--target', 'es2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext', '--lib', 'es2022,dom', '--types', 'react'];
   run('npx', [...tsc, '--outDir', 'out', 'src/plugin.ts'], consumer);
   run('node', ['out/plugin.js'], consumer);
   run('node', ['host.mjs'], consumer);
+
+  // Plugin gerado pelo create-codearena-plugin, instalado contra os pacotes empacotados.
+  const generated = join(work, 'codearena-plugin-demo');
+  run('npm', ['exec', '--yes', `--package=${tarball('create-codearena-plugin')}`, '--', 'create-codearena-plugin', generated, '--id', 'demo', '--name', 'Demo', '--yes'], work);
+  const manifestPath = join(generated, 'package.json');
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  for (const name of Object.keys(manifest.devDependencies)) {
+    if (name.startsWith('@codearena/')) manifest.devDependencies[name] = `file:${tarball(name)}`;
+  }
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  run('npm', ['install', '--no-audit', '--no-fund'], generated);
+  for (const script of ['typecheck', 'test', 'build']) run('npm', ['run', script], generated);
+  writeFileSync(
+    join(consumer, 'generated.mjs'),
+    [
+      "import { resolvePlugin, HOST_VERSION } from '@codearena/plugin-host';",
+      `const p = resolvePlugin(${JSON.stringify(generated)}, { rootDir: process.cwd(), sdkVersion: HOST_VERSION });`,
+      "if (!p.entries.ui || p.packs.length !== 1) throw new Error('manifesto do plugin gerado incompleto');",
+      "const mod = await import(p.entries.main);",
+      "if (mod.default.id !== 'demo') throw new Error('export default do plugin gerado inválido');",
+      "console.log('plugin gerado ok');",
+    ].join('\n'),
+  );
+  run('node', ['generated.mjs'], consumer);
   console.log('\nPacotes prontos para publicar.');
 } finally {
   rmSync(work, { recursive: true, force: true });

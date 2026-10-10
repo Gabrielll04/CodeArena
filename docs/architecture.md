@@ -130,8 +130,9 @@ Cada instalação lista os plugins em `codearena.config.json`, na raiz:
 - `CODEARENA_CONFIG=/caminho/config.json` troca o arquivo, no servidor, no build e em `pnpm validate:packs`.
 - Sem o arquivo, a instalação não tem plugins (e o terminal avisa).
 
-Ativar um plugin: `pnpm add -w <pacote>`, a linha na configuração e um novo `pnpm build` (em `pnpm dev`, o Vite reinicia
-sozinho quando a configuração muda). Um comando (`pnpm codearena plugins add <pacote>`) vai fazer os três passos.
+Ativar um plugin: `pnpm codearena plugins add <pacote ou caminho>` instala, valida o manifesto e a faixa do SDK,
+grava a configuração e roda o build (desfaz tudo se o plugin for incompatível). Também há `plugins list` e
+`plugins remove`. Em `pnpm dev`, o Vite reinicia sozinho quando a configuração muda.
 
 ### Carregamento
 
@@ -203,7 +204,7 @@ Cada etapa mantém o app funcionando e os testes passando.
 | 2 | Build (`dist` + tipos) e publicação de `schemas`, `plugin-sdk`, `core` e `plugin-host` (**pronta**; falta criar a organização `@codearena` no npm e o segredo `NPM_TOKEN`) | Plugins podem depender das versões publicadas |
 | 3 | Packs de exemplo para dentro dos plugins, com `codearena.packs` no manifesto (**concluída**) | `content/packs/` sai do núcleo |
 | 4 | `react-native` e `backend-http` para repositórios próprios | O núcleo os instala como dependências; E2E usa as versões publicadas |
-| 5 | Modelo `create-codearena-plugin` e `pnpm codearena plugins add` | Criar e instalar plugin sem tocar no núcleo |
+| 5 | Modelo `create-codearena-plugin` e `pnpm codearena plugins add` (**concluída**) | Criar e instalar plugin sem tocar no núcleo |
 | 6 | Modo iframe para plugins de terceiros (futuro) | Plugins não revisados sem acesso ao app |
 
 Enquanto a migração não termina, um plugin novo segue o caminho atual descrito em
