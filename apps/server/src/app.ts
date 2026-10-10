@@ -16,7 +16,7 @@ const ROOM_IDLE_LIMIT_MS = 6 * 60 * 60 * 1000;
 
 export async function buildServer(config: Omit<ServerConfig, 'port' | 'host'>) {
   const app = Fastify({ logger: config.logger ? { level: 'info' } : false, bodyLimit: 2 * 1024 * 1024 });
-  const { registry: plugins, samplePacks } = await loadServerPlugins({
+  const { registry: plugins, samplePacks, dispose: disposePlugins } = await loadServerPlugins({
     rootDir: config.rootDir,
     configPath: config.pluginConfigPath,
     log: (m) => app.log.error(m),
@@ -62,6 +62,7 @@ export async function buildServer(config: Omit<ServerConfig, 'port' | 'host'>) {
 
   app.addHook('onClose', async () => {
     clearInterval(sweeper);
+    disposePlugins();
     rooms.list().forEach((room) => rooms.delete(room.code));
     io.close();
   });

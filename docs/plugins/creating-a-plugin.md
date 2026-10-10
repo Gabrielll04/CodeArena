@@ -281,6 +281,20 @@ Rode também `pnpm validate:packs` com um pack de exemplo do seu plugin depois d
 - Use o plugin `backend-http` como referência: `BackendExecutor` com implementação em Worker (`src/ui/workerExecutor.ts`)
   e em processo Node com permissões restritas (`src/server/childProcessExecutor.ts`), executando apps Express.
 
+## Modo isolado
+
+Quem instala um plugin de terceiro pode ativá-lo no modo isolado (`--isolated`): o servidor roda o plugin num processo
+Node restrito e o navegador, num iframe sem origem (detalhes em
+[Arquitetura > Segurança dos plugins](../architecture.md#seguranca-dos-plugins)). Para o seu plugin funcionar assim:
+
+- publique o pacote compilado (`dist/*.js`), como o gerador já faz;
+- não dependa de `getStarterCode` diferente de `question.starterCode` nem de ajudas de regex (não são usadas no modo isolado);
+- não crie processos, workers nem arquivos no servidor;
+- painéis recebem o contexto (`question`, `code`, `evaluation`, `mode`) por mensagem e rodam sem acesso ao app:
+  não use `window.parent`, cookies nem `localStorage` do app.
+
+O teste E2E "plugin no modo isolado" (`e2e/fixtures/plugin-isolado`) é um exemplo mínimo que funciona isolado.
+
 ## Checklist de publicação
 
 - [ ] `definePlugin` passa (id em kebab-case, validadores com `mode`).
@@ -292,3 +306,4 @@ Rode também `pnpm validate:packs` com um pack de exemplo do seu plugin depois d
 - [ ] `docs/agents.md` no pacote com validadores, parâmetros, limites e exemplos de questões.
 - [ ] Packs de exemplo em `packs/`, listados em `codearena.packs` e aprovados por `pnpm validate:packs`.
 - [ ] Nenhuma dependência nova no núcleo.
+- [ ] Funciona no modo isolado (`pnpm codearena plugins add <pasta> --isolated`), ou o README explica por que não.

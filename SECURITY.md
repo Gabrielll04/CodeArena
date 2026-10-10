@@ -29,6 +29,13 @@ Respondemos em até 7 dias e mantemos você informado até a correção. Pedimos
 
 O projeto está em desenvolvimento ativo; correções de segurança entram na branch principal.
 
+## Plugins de terceiros
+
+Plugins rodam como código confiável, a menos que a instalação os ative no **modo isolado**
+(`"isolated": true` em `codearena.config.json`, ou `pnpm codearena plugins add <pacote> --isolated`). No modo isolado,
+o plugin roda num processo Node restrito no servidor e num iframe sem origem no navegador. Detalhes e limitações em
+`docs/architecture.md` (seção "Segurança dos plugins"). Falhas nesse isolamento são vulnerabilidades: reporte como abaixo.
+
 ## Escrevendo plugins que executam código
 
 Se o seu plugin executa código de alunos: use Web Worker no navegador e processo/contêiner isolado no servidor, com limites

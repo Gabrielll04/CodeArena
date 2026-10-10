@@ -15,7 +15,15 @@ const SUBPATH = /^\.(\/[\w.-]+)*$/;
 export const HostConfigSchema = z
   .object({
     $schema: z.string().optional(),
-    plugins: z.array(z.string().min(1)).default([]),
+    plugins: z
+      .array(
+        z.union([
+          z.string().min(1),
+          // Forma longa: { "package": "codearena-plugin-x", "isolated": true } roda o plugin no modo isolado.
+          z.object({ package: z.string().min(1), isolated: z.boolean().default(false) }).strict(),
+        ]),
+      )
+      .default([]),
   })
   .strict();
 
@@ -52,7 +60,7 @@ export function installedSdkVersion(fromDir) {
 
 /** Lê codearena.config.json. Sem arquivo, a instalação não tem plugins. */
 export function readHostConfig(rootDir, configPath = join(rootDir, CONFIG_FILE)) {
-  if (!existsSync(configPath)) return { path: configPath, exists: false, plugins: [] };
+  if (!existsSync(configPath)) return { path: configPath, exists: false, plugins: [], isolated: [] };
   let raw;
   try {
     raw = JSON.parse(readFileSync(configPath, 'utf8'));
@@ -64,14 +72,21 @@ export function readHostConfig(rootDir, configPath = join(rootDir, CONFIG_FILE))
     const issues = parsed.error.issues.map((i) => `${i.path.join('.') || '(raiz)'}: ${i.message}`).join('; ');
     throw new Error(`${configPath}: ${issues}`);
   }
-  return { path: configPath, exists: true, plugins: [...new Set(parsed.data.plugins)] };
+  const entries = parsed.data.plugins.map((p) => (typeof p === 'string' ? { package: p, isolated: false } : p));
+  return {
+    path: configPath,
+    exists: true,
+    plugins: [...new Set(entries.map((e) => e.package))],
+    isolated: [...new Set(entries.filter((e) => e.isolated).map((e) => e.package))],
+  };
 }
 
-/** Grava a lista de plugins, preservando os outros campos do arquivo. */
-export function writeHostConfig(configPath, plugins) {
+/** Grava a lista de plugins (os de `isolated` na forma longa), preservando os outros campos do arquivo. */
+export function writeHostConfig(configPath, plugins, isolated = []) {
   let current = {};
   if (existsSync(configPath)) current = JSON.parse(readFileSync(configPath, 'utf8'));
-  writeFileSync(configPath, `${JSON.stringify({ ...current, plugins }, null, 2)}\n`);
+  const entries = plugins.map((p) => (isolated.includes(p) ? { package: p, isolated: true } : p));
+  writeFileSync(configPath, `${JSON.stringify({ ...current, plugins: entries }, null, 2)}\n`);
 }
 
 /**
@@ -174,6 +189,7 @@ export function resolvePlugin(specifier, { rootDir, baseDir = rootDir, sdkVersio
       sandbox: entry(manifest.sandbox, 'sandbox'),
     },
     packs,
+    isolated: false,
   };
 }
 
@@ -187,7 +203,7 @@ export function resolveHostPlugins({ rootDir, configPath, sdkVersion }) {
   const problems = [];
   for (const specifier of config.plugins) {
     try {
-      const plugin = resolvePlugin(specifier, { rootDir, baseDir: dirname(config.path), sdkVersion });
+      const plugin = { ...resolvePlugin(specifier, { rootDir, baseDir: dirname(config.path), sdkVersion }), isolated: config.isolated.includes(specifier) };
       const duplicate = plugins.find((p) => p.manifest.pluginId === plugin.manifest.pluginId);
       if (duplicate) {
         throw new PluginLoadError(specifier, `pluginId "${plugin.manifest.pluginId}" já usado por "${duplicate.specifier}".`);

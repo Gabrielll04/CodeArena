@@ -187,12 +187,38 @@ Passo a passo para professores (instalar um plugin, criar e compartilhar packs):
 
 ### Segurança dos plugins
 
-Plugin é **código confiável**, como qualquer dependência npm: roda no processo do servidor e na página do app. Por isso:
+Por padrão, plugin é **código confiável**, como qualquer dependência npm: roda no processo do servidor e na página do
+app. Para um plugin de terceiro que você não revisou, use o **modo isolado**:
 
-- Instale só plugins em que você confia; os oficiais são revisados neste projeto.
-- Plugins que executam código de alunos precisam do isolamento descrito em [`SECURITY.md`](https://github.com/Gabrielll04/CodeArena/blob/HEAD/SECURITY.md).
-- **Futuro:** para plugins de terceiros não revisados, um modo em que toda a interface do plugin roda num iframe isolado,
-  conversando com o app por `postMessage`, como o preview do `react-native` já faz.
+```json
+{ "plugins": ["@codearena/plugin-react-native", { "package": "codearena-plugin-eletrica", "isolated": true }] }
+```
+
+ou `pnpm codearena plugins add codearena-plugin-eletrica --isolated`.
+
+| Onde | Modo normal | Modo isolado |
+| --- | --- | --- |
+| Servidor | importado no processo do servidor | processo Node filho com `--permission`: lê só a pasta do plugin e `node_modules`, não escreve em disco, não cria processos nem workers, ambiente vazio, 128 MB, 5 s por chamada (travou: o processo é encerrado e reiniciado) |
+| Navegador | módulo carregado na página do app | iframe `sandbox="allow-scripts"` (origem opaca) servido por `plugin-frame.html`: sem acesso ao DOM, cookies, armazenamento ou sessão do app |
+| Comunicação | chamadas diretas | mensagens (IPC no servidor, `postMessage` no navegador) com dados simples: questão pública, código, item, parâmetros |
+
+O app nunca importa um plugin isolado: o módulo `virtual:codearena/plugins` não tem loader para ele, e só
+`plugin-frame.html` importa `virtual:codearena/isolated-plugins`. O app usa um proxy (`createPluginProxy`, em
+`@codearena/plugin-host/isolation`) que encaminha cada chamada; os painéis do plugin aparecem como iframes.
+
+Limitações do modo isolado:
+
+- O plugin precisa estar compilado (entradas `.js`).
+- `getStarterCode` não é chamado: o código inicial é o `starterCode` da questão. As ajudas de regex do plugin não
+  aparecem no editor manual (há chamadas síncronas que não atravessam o isolamento).
+- O plugin não pode criar processos no servidor (um executor como o do `backend-http` não funciona isolado).
+- O Node 22 não bloqueia a rede no modelo de permissões; para impedir acesso à rede, rode o servidor num contêiner
+  ou com firewall.
+- No navegador, um laço infinito num validador é cortado em 5 s (o iframe é recarregado), mas pode travar a aba nesse
+  intervalo se o navegador rodar o iframe na mesma thread da página.
+
+Plugins que executam código de alunos precisam, além disso, do isolamento descrito em
+[`SECURITY.md`](https://github.com/Gabrielll04/CodeArena/blob/HEAD/SECURITY.md).
 
 ### Etapas da migração
 
@@ -205,7 +231,7 @@ Cada etapa mantém o app funcionando e os testes passando.
 | 3 | Packs de exemplo para dentro dos plugins, com `codearena.packs` no manifesto (**concluída**) | `content/packs/` sai do núcleo |
 | 4 | `react-native` e `backend-http` para repositórios próprios | O núcleo os instala como dependências; E2E usa as versões publicadas |
 | 5 | Modelo `create-codearena-plugin` e `pnpm codearena plugins add` (**concluída**) | Criar e instalar plugin sem tocar no núcleo |
-| 6 | Modo iframe para plugins de terceiros (futuro) | Plugins não revisados sem acesso ao app |
+| 6 | Modo isolado para plugins de terceiros (**concluída**) | Plugins não revisados sem acesso ao app nem ao servidor |
 
 Enquanto a migração não termina, um plugin novo segue o caminho atual descrito em
 [Criando um plugin](./plugins/creating-a-plugin.md).

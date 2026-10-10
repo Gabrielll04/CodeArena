@@ -51,9 +51,16 @@ continuam funcionando.
 Para **desativar**: `pnpm codearena plugins remove eletrica` (ou tire o nome da lista e rode `pnpm build`). Os packs desse plugin continuam salvos; só ficam
 marcados como "Plugin não instalado" até ele voltar.
 
-::: warning Instale só plugins em que você confia
-Um plugin é código que roda no servidor e na página do app, como qualquer pacote npm. Prefira os oficiais e os que
-você consegue revisar.
+::: warning Plugins de quem você não conhece: use o modo isolado
+Um plugin é código que roda no servidor e na página do app, como qualquer pacote npm. Para um plugin que ninguém da
+sua equipe revisou, ative no **modo isolado**:
+
+```bash
+pnpm codearena plugins add codearena-plugin-eletrica --isolated
+```
+
+Assim ele roda separado do app: no servidor, num processo sem acesso aos seus arquivos, e no navegador, num quadro
+sem acesso à página. Detalhes em [Arquitetura > Segurança dos plugins](../architecture.md#seguranca-dos-plugins).
 :::
 
 ## 2. Criar o pack

@@ -4,7 +4,7 @@
  *
  * add:    instala o pacote na raiz, confere o manifesto e a versão do SDK, acrescenta em codearena.config.json e roda o build.
  * remove: tira da configuração, desinstala o pacote e roda o build.
- * Opções: --no-install, --no-build, --config <arquivo>, --root <pasta>.
+ * Opções: --isolated (add), --no-install, --no-build, --config <arquivo>, --root <pasta>.
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
@@ -22,10 +22,11 @@ import {
 
 const USAGE = `Uso:
   codearena plugins list
-  codearena plugins add <pacote[@versão] | caminho> [--no-install] [--no-build]
+  codearena plugins add <pacote[@versão] | caminho> [--isolated] [--no-install] [--no-build]
   codearena plugins remove <pacote | caminho | id> [--no-install] [--no-build]
 
 Opções:
+  --isolated          roda o plugin no modo isolado (para plugins de terceiros não revisados)
   --config <arquivo>  outro arquivo de configuração (padrão: ${CONFIG_FILE} na raiz)
   --root <pasta>      raiz da instalação (padrão: pasta atual)`;
 
@@ -72,6 +73,7 @@ export async function main(argv, io = {}) {
     const [, value] = args.splice(i, 2);
     return value;
   };
+  const isolated = flag('--isolated');
   const noInstall = flag('--no-install');
   const noBuild = flag('--no-build');
   const rootDir = resolve(io.cwd ?? process.cwd(), option('--root') ?? '.');
@@ -98,7 +100,8 @@ export async function main(argv, io = {}) {
     if (!config.plugins.length) log(`Nenhum plugin em ${configPath}.`);
     for (const p of plugins) {
       const extras = [p.entries.server && 'servidor', p.entries.ui && 'interface', p.entries.sandbox && 'preview isolado'].filter(Boolean);
-      log(`ok    ${p.manifest.pluginId.padEnd(18)} ${p.packageName}@${p.version}  (${extras.join(', ') || 'só validadores'}; packs de exemplo: ${p.packs.length})`);
+      const mode = p.isolated ? ', isolado' : '';
+      log(`ok    ${p.manifest.pluginId.padEnd(18)} ${p.packageName}@${p.version}  (${extras.join(', ') || 'só validadores'}; packs de exemplo: ${p.packs.length}${mode})`);
     }
     for (const problem of problems) log(`ERRO  ${problem.message}`);
     return problems.length ? 1 : 0;
@@ -119,8 +122,11 @@ export async function main(argv, io = {}) {
       const plugin = resolvePlugin(entry, { rootDir, baseDir: dirname(configPath), sdkVersion: HOST_VERSION });
       const clash = resolveHostPlugins({ rootDir, configPath }).plugins.find((p) => p.manifest.pluginId === plugin.manifest.pluginId);
       if (clash) throw new Error(`o pluginId "${plugin.manifest.pluginId}" já é usado por "${clash.specifier}".`);
-      writeHostConfig(configPath, [...config.plugins, entry]);
-      log(`Plugin "${plugin.manifest.displayName}" (${plugin.manifest.pluginId}) ativado em ${configPath}.`);
+      if (isolated && !/\.(m?js|cjs)$/.test(plugin.entries.server ?? plugin.entries.main)) {
+        throw new Error('o modo isolado precisa do pacote compilado (entrada .js); rode o build do plugin.');
+      }
+      writeHostConfig(configPath, [...config.plugins, entry], isolated ? [...config.isolated, entry] : config.isolated);
+      log(`Plugin "${plugin.manifest.displayName}" (${plugin.manifest.pluginId}) ativado${isolated ? ' no modo isolado' : ''} em ${configPath}.`);
     } catch (err) {
       log(`ERRO  ${err.message}`);
       if (installed) exec(manager, installArgs(manager, 'remove', entry), rootDir);
@@ -139,7 +145,7 @@ export async function main(argv, io = {}) {
     log(`"${target}" não está em ${configPath}.`);
     return 1;
   }
-  writeHostConfig(configPath, config.plugins.filter((p) => p !== entry));
+  writeHostConfig(configPath, config.plugins.filter((p) => p !== entry), config.isolated.filter((p) => p !== entry));
   log(`"${entry}" removido de ${configPath}. Os packs desse plugin ficam marcados como "Plugin não instalado".`);
   if (!isPathSpecifier(entry) && !noInstall) exec(manager, installArgs(manager, 'remove', entry), rootDir);
   build();

@@ -15,9 +15,16 @@ declare module 'virtual:codearena/plugins' {
     description: string;
     version: string;
     hasSandbox: boolean;
+    /** Roda no modo isolado: a interface fica num iframe sem origem. */
+    isolated: boolean;
   }
   export const installedPlugins: InstalledPluginInfo[];
   export const pluginProblems: { specifier: string; message: string }[];
   export const uiLoaders: Record<string, () => Promise<{ default?: unknown }>>;
   export const sandboxLoaders: Record<string, () => Promise<{ default?: unknown }>>;
+}
+
+/** Só importado pela página isolada (plugin-frame.html). */
+declare module 'virtual:codearena/isolated-plugins' {
+  export const isolatedLoaders: Record<string, () => Promise<{ default?: unknown }>>;
 }

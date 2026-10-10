@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { definePlugin } from '@codearena/plugin-sdk';
 import type { ClientPluginEntry, ClientQuizPlugin } from '@codearena/plugin-sdk/ui';
 import { installedPlugins, pluginProblems, uiLoaders, type InstalledPluginInfo } from 'virtual:codearena/plugins';
+import { loadIsolatedPlugin } from './isolated';
 
 export type { InstalledPluginInfo };
 
@@ -15,7 +16,7 @@ export const pluginCatalog: readonly InstalledPluginInfo[] = installedPlugins;
 if (pluginProblems.length) console.warn('[codearena] Plugins com problema:', pluginProblems);
 
 export function isPluginInstalled(id: string): boolean {
-  return id in uiLoaders;
+  return installedPlugins.some((p) => p.id === id);
 }
 
 export function pluginInfo(id: string): InstalledPluginInfo | undefined {
@@ -31,10 +32,22 @@ const pending = new Map<string, Promise<ClientQuizPlugin<any> | undefined>>();
 export function loadClientPlugin(id: string): Promise<ClientQuizPlugin<any> | undefined> {
   const ready = loaded.get(id);
   if (ready) return Promise.resolve(ready);
+  const info = pluginInfo(id);
   const loader = uiLoaders[id];
-  if (!loader) return Promise.resolve(undefined);
+  if (!info) return Promise.resolve(undefined);
   let promise = pending.get(id);
-  if (!promise) {
+  if (!promise && info.isolated) {
+    // Plugin de terceiro: roda em iframe sem origem; o app só recebe um proxy.
+    promise = loadIsolatedPlugin(id)
+      .then((plugin) => {
+        const defined = definePlugin(plugin);
+        loaded.set(id, defined);
+        return defined;
+      })
+      .finally(() => pending.delete(id));
+    pending.set(id, promise);
+  }
+  if (!promise && loader) {
     promise = loader()
       .then(async (mod) => {
         const entry = mod.default as ClientPluginEntry | undefined;
@@ -47,7 +60,7 @@ export function loadClientPlugin(id: string): Promise<ClientQuizPlugin<any> | un
       .finally(() => pending.delete(id));
     pending.set(id, promise);
   }
-  return promise;
+  return promise ?? Promise.resolve(undefined);
 }
 
 export type PluginState =

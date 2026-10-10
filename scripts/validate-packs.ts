@@ -12,7 +12,7 @@ import { loadServerPlugins } from '../apps/server/src/plugins';
 const root = resolve(import.meta.dirname, '..');
 const args = process.argv.slice(2);
 
-const { registry: plugins, samplePacks, problems } = await loadServerPlugins({
+const { registry: plugins, samplePacks, problems, dispose } = await loadServerPlugins({
   rootDir: root,
   configPath: process.env.CODEARENA_CONFIG,
   log: (message) => console.log(`ERRO   ${message}`),
@@ -45,4 +45,5 @@ for (const file of files) {
   }
 }
 
+dispose();
 process.exit(failed ? 1 : 0);

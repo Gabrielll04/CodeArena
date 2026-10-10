@@ -2,7 +2,7 @@ import type { z } from 'zod';
 
 export declare const CONFIG_FILE: 'codearena.config.json';
 
-export declare const HostConfigSchema: z.ZodType<{ $schema?: string; plugins: string[] }>;
+export declare const HostConfigSchema: z.ZodType<{ $schema?: string; plugins: (string | { package: string; isolated: boolean })[] }>;
 
 export interface PluginManifest {
   /** Igual ao `id` do plugin e ao `pluginId` dos packs. */
@@ -25,7 +25,10 @@ export declare const PluginManifestSchema: z.ZodType<PluginManifest>;
 export interface HostConfig {
   path: string;
   exists: boolean;
+  /** Itens da lista (nome de pacote ou caminho), sem repetição. */
   plugins: string[];
+  /** Itens marcados com "isolated": true. */
+  isolated: string[];
 }
 
 export interface ResolvedPlugin {
@@ -40,6 +43,8 @@ export interface ResolvedPlugin {
   entries: { main: string; server?: string; ui?: string; sandbox?: string };
   /** Arquivos absolutos dos packs de exemplo. */
   packs: string[];
+  /** Roda no modo isolado (processo restrito no servidor, iframe sem origem no navegador). */
+  isolated: boolean;
 }
 
 export interface PluginProblem {
@@ -58,7 +63,7 @@ export declare function installedSdkVersion(fromDir: string): string | undefined
 export declare function readHostConfig(rootDir: string, configPath?: string): HostConfig;
 
 /** Grava a lista de plugins, preservando os outros campos do arquivo. */
-export declare function writeHostConfig(configPath: string, plugins: string[]): void;
+export declare function writeHostConfig(configPath: string, plugins: string[], isolated?: string[]): void;
 
 /** Versão deste pacote; os pacotes do núcleo são versionados juntos, então é também a versão do SDK. */
 export declare const HOST_VERSION: string;

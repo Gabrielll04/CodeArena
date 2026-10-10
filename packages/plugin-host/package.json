@@ -28,6 +28,14 @@
     "./cli": {
       "types": "./src/cli.d.mts",
       "default": "./src/cli.mjs"
+    },
+    "./isolation": {
+      "types": "./src/isolation.d.mts",
+      "default": "./src/isolation.mjs"
+    },
+    "./isolated-node": {
+      "types": "./src/isolated-node.d.mts",
+      "default": "./src/isolated-node.mjs"
     }
   },
   "files": [
@@ -49,6 +57,9 @@
     }
   },
   "devDependencies": {
+    "@codearena/core": "workspace:^",
+    "@codearena/plugin-sdk": "workspace:^",
+    "@codearena/schemas": "workspace:^",
     "@types/semver": "^7.7.0",
     "vite": "^6.4.1"
   },

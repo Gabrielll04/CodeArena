@@ -243,3 +243,29 @@ test('preview React Native volta a renderizar quando o iframe recarrega sozinho'
   // Sem digitar nada, o app reenvia o código quando o iframe avisa que está pronto.
   await expect(preview.getByText('OIII TESTE')).toBeVisible();
 });
+
+test('plugin no modo isolado: painel em iframe sem acesso ao app e validação oficial em processo restrito', async ({ page: host, browser }) => {
+  const code = await createRoom(host, 'pack-exemplo-isolado-teste');
+  const ana = await joinRoom(browser, code, 'Ana');
+  // Uma segunda aluna mantém a rodada aberta depois que Ana responde.
+  await joinRoom(browser, code, 'Bia', 'cube');
+  await host.getByTestId('start-question').click();
+  await expect(ana.getByTestId('question-prompt')).toContainText('resistência');
+
+  // O painel do plugin roda num iframe sandbox: não alcança o DOM nem o armazenamento do app.
+  const panel = ana.frameLocator('[data-testid="isolated-panel-side"]');
+  await expect(panel.getByTestId('isolado-acesso-app')).toHaveText('Acesso ao app: bloqueado');
+  await expect(panel.getByTestId('isolado-acesso-storage')).toHaveText('Armazenamento: bloqueado');
+  await expect(ana.locator('[data-testid="isolated-panel-side"]')).toHaveAttribute('sandbox', 'allow-scripts');
+
+  // Os validadores rodam no iframe de lógica do plugin; o painel recebe o código atualizado.
+  await setEditorCode(ana, 'A unidade é o volt.');
+  await expect(ana.getByTestId('checklist-item-unidade')).toHaveAttribute('data-status', 'pending');
+  await expect(panel.getByTestId('isolado-caracteres')).toHaveText('Caracteres: 19');
+
+  // Resposta completa: o servidor valida de novo, com o plugin num processo Node restrito.
+  await setEditorCode(ana, 'A unidade é o ohm.');
+  await expect(ana.getByTestId('checklist-item-unidade')).toHaveAttribute('data-status', 'done');
+  await expect(ana.getByTestId('answer-accepted')).toBeVisible();
+  await expect(host.getByTestId('host-answered')).toHaveText('1');
+});

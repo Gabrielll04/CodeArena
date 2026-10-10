@@ -6,7 +6,10 @@ import { join, resolve } from 'node:path';
 import { CONFIG_FILE, installedSdkVersion, resolveHostPlugins } from './index.mjs';
 
 export const VIRTUAL_ID = 'virtual:codearena/plugins';
+/** Só a página isolada (plugin-frame.html) importa este módulo: o app nunca carrega plugins isolados. */
+export const ISOLATED_VIRTUAL_ID = 'virtual:codearena/isolated-plugins';
 const RESOLVED_ID = `\0${VIRTUAL_ID}`;
+const RESOLVED_ISOLATED_ID = `\0${ISOLATED_VIRTUAL_ID}`;
 
 /** Pastas de código dos plugins configurados, para o `content` do Tailwind. */
 export function pluginContentGlobs({ rootDir, configPath }) {
@@ -22,9 +25,11 @@ function renderModule(plugins, problems) {
     description: p.description,
     version: p.version,
     hasSandbox: Boolean(p.entries.sandbox),
+    isolated: p.isolated,
   }));
-  const loaders = (pick) =>
-    plugins
+  const trusted = plugins.filter((p) => !p.isolated);
+  const loaders = (pick, list = trusted) =>
+    list
       .filter((p) => pick(p))
       .map((p) => `  ${JSON.stringify(p.manifest.pluginId)}: () => import(${JSON.stringify(pick(p))}),`)
       .join('\n');
@@ -32,8 +37,14 @@ function renderModule(plugins, problems) {
     `export const installedPlugins = ${JSON.stringify(info)};`,
     `export const pluginProblems = ${JSON.stringify(problems)};`,
     `export const uiLoaders = {\n${loaders((p) => p.entries.ui ?? p.entries.main)}\n};`,
-    `export const sandboxLoaders = {\n${loaders((p) => p.entries.sandbox)}\n};`,
+    `export const sandboxLoaders = {\n${loaders((p) => p.entries.sandbox, plugins)}\n};`,
   ].join('\n');
+}
+
+function renderIsolatedModule(plugins) {
+  const isolated = plugins.filter((p) => p.isolated);
+  const lines = isolated.map((p) => `  ${JSON.stringify(p.manifest.pluginId)}: () => import(${JSON.stringify(p.entries.ui ?? p.entries.main)}),`);
+  return `export const isolatedLoaders = {\n${lines.join('\n')}\n};`;
 }
 
 /**
@@ -74,10 +85,14 @@ export function codearenaPlugins(options) {
       });
     },
     resolveId(id) {
-      return id === VIRTUAL_ID ? RESOLVED_ID : undefined;
+      if (id === VIRTUAL_ID) return RESOLVED_ID;
+      if (id === ISOLATED_VIRTUAL_ID) return RESOLVED_ISOLATED_ID;
+      return undefined;
     },
     load(id) {
-      return id === RESOLVED_ID ? renderModule(state.plugins, state.problems) : undefined;
+      if (id === RESOLVED_ID) return renderModule(state.plugins, state.problems);
+      if (id === RESOLVED_ISOLATED_ID) return renderIsolatedModule(state.plugins);
+      return undefined;
     },
   };
 }

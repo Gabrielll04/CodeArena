@@ -45,3 +45,8 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Painéis de plugins isolados: o fundo é o do painel do app, atrás do iframe. */
+body.plugin-frame {
+  background: transparent;
+}

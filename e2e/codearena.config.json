@@ -1,0 +1,7 @@
+{
+  "plugins": [
+    "@codearena/plugin-react-native",
+    "@codearena/plugin-backend-http",
+    { "package": "./fixtures/plugin-isolado", "isolated": true }
+  ]
+}

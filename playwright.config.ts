@@ -1,6 +1,8 @@
+import { resolve } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
 const PORT = Number(process.env.E2E_PORT ?? 3100);
+const CONFIG = process.env.CODEARENA_CONFIG ?? resolve('e2e/codearena.config.json');
 
 export default defineConfig({
   testDir: 'e2e',
@@ -25,7 +27,8 @@ export default defineConfig({
   ],
   webServer: {
     // Build de produção + servidor único (API, Socket.IO e frontend), com dados em pasta temporária.
-    command: `pnpm build && rm -rf .e2e-data && CODEARENA_DATA_DIR=.e2e-data CODEARENA_LOG=silent PORT=${PORT} pnpm start`,
+    // e2e/codearena.config.json = plugins oficiais + um plugin de teste no modo isolado.
+    command: `export CODEARENA_CONFIG=${CONFIG}; pnpm build && rm -rf .e2e-data && CODEARENA_DATA_DIR=.e2e-data CODEARENA_LOG=silent PORT=${PORT} pnpm start`,
     url: `http://localhost:${PORT}/api/health`,
     timeout: 240_000,
     reuseExistingServer: !process.env.CI,
