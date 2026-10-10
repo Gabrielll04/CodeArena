@@ -1,18 +1,35 @@
 {
   "name": "@codearena/plugin-sdk",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Contratos e utilitários para criar plugins do CodeArena.",
+  "keywords": [
+    "codearena",
+    "plugin",
+    "sdk"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gabrielll04/CodeArena.git",
+    "directory": "packages/plugin-sdk"
+  },
+  "homepage": "https://github.com/Gabrielll04/CodeArena#readme",
+  "bugs": "https://github.com/Gabrielll04/CodeArena/issues",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
     "./ui": "./src/ui.ts"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "tsup src/index.ts src/ui.ts --format esm --dts --clean --sourcemap --target es2022"
   },
   "dependencies": {
-    "@codearena/schemas": "workspace:*",
+    "@codearena/schemas": "workspace:^",
     "zod": "^3.25.76"
   },
   "peerDependencies": {
@@ -25,5 +42,19 @@
   },
   "devDependencies": {
     "@types/react": "^18.3.12"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./ui": {
+        "types": "./dist/ui.d.ts",
+        "import": "./dist/ui.js"
+      }
+    }
   }
 }

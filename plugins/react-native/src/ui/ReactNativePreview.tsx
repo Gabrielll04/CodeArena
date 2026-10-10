@@ -8,6 +8,10 @@ const ERROR_TITLE: Record<PreviewError['kind'], string> = {
   module: 'Módulo indisponível',
 };
 
+/** Tempo para o iframe confirmar uma renderização antes de reenviarmos o código. */
+const ACK_TIMEOUT_MS = 2500;
+const MAX_ATTEMPTS = 3;
+
 export interface ReactNativePreviewProps {
   code: string;
   sandboxUrl: string;
@@ -17,36 +21,77 @@ export interface ReactNativePreviewProps {
 export function ReactNativePreview({ code, sandboxUrl, debounceMs = 350 }: ReactNativePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
+  /** Aumenta a cada "ready" do iframe: ele pode recarregar sozinho (ex.: reotimização do Vite) e perder o código. */
+  const [epoch, setEpoch] = useState(0);
+  const [frameKey, setFrameKey] = useState(0);
   const [error, setError] = useState<PreviewError | null>(null);
   const [pending, setPending] = useState(false);
+  const [stalled, setStalled] = useState(false);
   const lastId = useRef(0);
+  const ackedId = useRef(0);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent<FromSandboxMessage>) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
       const data = event.data;
       if (!data || data.channel !== PREVIEW_CHANNEL) return;
-      if (data.type === 'ready') setReady(true);
-      else if (data.type === 'result' && data.id === lastId.current) {
-        setPending(false);
-        setError(data.ok ? null : data.error);
+      if (data.type === 'ready') {
+        setReady(true);
+        setStalled(false);
+        setEpoch((e) => e + 1);
+      } else if (data.type === 'result') {
+        ackedId.current = Math.max(ackedId.current, data.id);
+        if (data.id === lastId.current) {
+          setPending(false);
+          setStalled(false);
+          setError(data.ok ? null : data.error);
+        }
       } else if (data.type === 'runtime-error') setError(data.error);
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, []);
 
+  // Envia o código quando ele muda, quando o iframe (re)inicia e, se não houver resposta, tenta de novo.
   useEffect(() => {
     if (!ready) return;
     setPending(true);
-    const timer = setTimeout(() => {
+    let cancelled = false;
+    let attempts = 0;
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
+
+    const send = () => {
+      if (cancelled) return;
       const id = ++lastId.current;
       const message: ToSandboxMessage = { channel: PREVIEW_CHANNEL, type: 'render', id, code };
       // Origem opaca (sandbox sem allow-same-origin): o alvo precisa ser "*". A resposta é filtrada por event.source.
       iframeRef.current?.contentWindow?.postMessage(message, '*');
-    }, debounceMs);
-    return () => clearTimeout(timer);
-  }, [code, ready, debounceMs]);
+      watchdog = setTimeout(() => {
+        if (cancelled || ackedId.current >= id) return;
+        if (++attempts >= MAX_ATTEMPTS) {
+          setPending(false);
+          setStalled(true);
+          return;
+        }
+        send();
+      }, ACK_TIMEOUT_MS);
+    };
+
+    const timer = setTimeout(send, debounceMs);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      if (watchdog) clearTimeout(watchdog);
+    };
+  }, [code, ready, epoch, debounceMs]);
+
+  const reload = () => {
+    setReady(false);
+    setStalled(false);
+    setError(null);
+    setPending(false);
+    setFrameKey((k) => k + 1);
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 p-4" data-testid="rn-preview">
@@ -60,6 +105,7 @@ export function ReactNativePreview({ code, sandboxUrl, debounceMs = 350 }: React
             </span>
           </div>
           <iframe
+            key={frameKey}
             ref={iframeRef}
             title="Preview React Native"
             src={sandboxUrl}
@@ -82,8 +128,23 @@ export function ReactNativePreview({ code, sandboxUrl, debounceMs = 350 }: React
           )}
         </div>
       </div>
-      <div className="h-4 text-xs text-white/50" aria-live="polite">
-        {!ready ? 'Carregando preview' : pending ? 'Atualizando' : error ? 'Corrija o erro para atualizar' : 'Preview atualizado'}
+      <div className="flex h-5 items-center gap-2 text-xs text-white/50" aria-live="polite">
+        {stalled ? (
+          <>
+            <span className="text-amber">O preview não respondeu.</span>
+            <button type="button" onClick={reload} className="font-semibold text-white underline underline-offset-2 hover:text-lime" data-testid="rn-preview-reload">
+              Recarregar preview
+            </button>
+          </>
+        ) : !ready ? (
+          'Carregando preview'
+        ) : pending ? (
+          'Atualizando'
+        ) : error ? (
+          'Corrija o erro para atualizar'
+        ) : (
+          'Preview atualizado'
+        )}
       </div>
     </div>
   );

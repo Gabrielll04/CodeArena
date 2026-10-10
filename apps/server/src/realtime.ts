@@ -233,7 +233,7 @@ export function attachRealtime({ io, rooms, packs, plugins, validator }: Realtim
       const current = currentPlayer(socket);
       const parsed = parse(ProgressPayloadSchema, payload);
       if (!current || !parsed.ok) return;
-      current.room.reportProgress(current.playerId, parsed.data.done, parsed.data.total);
+      current.room.reportProgress(current.playerId, parsed.data.done, parsed.data.total, parsed.data.doneIds);
     });
 
     socket.on('question:submit', async (payload, rawAck) => {

@@ -140,6 +140,7 @@ describe('Room: ciclo de uma questão', () => {
     const wrong = await room.submit(ana.playerId, 'errado');
     expect(wrong.status).toBe('rejected');
     expect(wrong.xp).toBe(0);
+    await expect(room.submit(ana.playerId, 'ok')).rejects.toThrow(/Aguarde/);
     await clock.advance(1000);
     const right = await room.submit(ana.playerId, 'ok');
     expect(right.status).toBe('accepted');
@@ -232,7 +233,7 @@ describe('Room: placar e relatório', () => {
   });
 
   it('modo discreto mostra ao aluno só o top 3 e a própria posição', async () => {
-    const { room, clock } = setup({ countdownSeconds: 0 });
+    const { room, clock, events } = setup({ countdownSeconds: 0 });
     const players = ['Ana', 'Bia', 'Caio', 'Duda', 'Edu'].map((name) => room.join({ name, avatar: 'bolt' }));
     room.updateSettings({ discreetMode: true });
     room.startNextQuestion();
@@ -241,6 +242,8 @@ describe('Room: placar e relatório', () => {
       await clock.advance(1000);
     }
     await clock.advance(100_000);
+    const finished = events.find((e) => e.event === 'question:finished')!.payload as { leaderboard: unknown[] };
+    expect(finished.leaderboard).toHaveLength(3);
     const view = room.snapshotForPlayer(players[4]!.playerId);
     expect(view.leaderboard.map((e) => e.name)).toEqual(['Ana', 'Bia', 'Caio', 'Edu']);
     expect(room.snapshotForHost().leaderboard).toHaveLength(5);
@@ -256,6 +259,79 @@ describe('Room: placar e relatório', () => {
     await clock.advance(100_001);
     room.startNextQuestion();
     expect((await room.submit(ana.playerId, 'ok')).xp).toBe(1050);
+  });
+});
+
+describe('Room: revisão da turma por item', () => {
+  const twoItems: ResolvedQuestion = {
+    ...QuestionSchema.parse({
+      id: 'dois-itens',
+      title: 'Dois itens',
+      prompt: 'Escreva ok e go',
+      timeLimitSeconds: 100,
+      baseXP: 500,
+      speedBonusMax: 500,
+      solution: 'ok go',
+      checklist: [
+        { id: 'a', label: 'Escrever ok', rule: { type: 'contains', value: 'ok' } },
+        { id: 'b', label: 'Escrever go', rule: { type: 'contains', value: 'go' } },
+      ],
+    }),
+    pluginId: 'test',
+  };
+  const perItem: SubmissionValidator = async (code) => {
+    const items = [
+      { id: 'a', passed: code.includes('ok') },
+      { id: 'b', passed: code.includes('go') },
+    ];
+    return { passed: items.every((i) => i.passed), items };
+  };
+
+  it('conta quem concluiu cada item, calcula a mediana do tempo e ignora ids desconhecidos', async () => {
+    const { room, clock, events } = setup({ countdownSeconds: 0, questions: [twoItems], validator: perItem });
+    const ana = room.join({ name: 'Ana', avatar: 'bolt' });
+    const bia = room.join({ name: 'Bia', avatar: 'prism' });
+    const caio = room.join({ name: 'Caio', avatar: 'cube' });
+    room.startNextQuestion();
+
+    await clock.advance(10_000);
+    room.reportProgress(ana.playerId, 1, 2, ['a', 'nao-existe']);
+    await clock.advance(10_000);
+    room.reportProgress(bia.playerId, 1, 2, ['a']);
+    room.reportProgress(caio.playerId, 1, 2, ['b']);
+    room.reportProgress(caio.playerId, 0, 2, []); // desfez: não conta mais
+    await clock.advance(10_000);
+    await room.submit(ana.playerId, 'ok go');
+    expect((await room.submit(bia.playerId, 'ok')).status).toBe('rejected');
+
+    const progress = events.filter((e) => e.event === 'question:progress').map((e) => e.payload as { doneIds: string[] });
+    expect(progress[0]!.doneIds).toEqual(['a']);
+    const host = room.snapshotForHost().progress!;
+    expect(host.find((p) => p.playerId === ana.playerId)!.doneIds).toEqual(['a', 'b']);
+    expect(host.find((p) => p.playerId === bia.playerId)!.doneIds).toEqual(['a']);
+    expect(host.find((p) => p.playerId === caio.playerId)!.doneIds).toEqual([]);
+
+    await room.finishQuestion();
+    const results = room.snapshotForHost().lastResults!;
+    expect(results.title).toBe('Dois itens');
+    expect(results.items).toEqual([
+      { id: 'a', label: 'Escrever ok', optional: false, completedCount: 2, playerCount: 3, medianTimeMs: 15_000 },
+      { id: 'b', label: 'Escrever go', optional: false, completedCount: 1, playerCount: 3, medianTimeMs: 30_000 },
+    ]);
+    const report = await room.endSession();
+    expect(report.questions[0]!.items).toHaveLength(2);
+  });
+
+  it('o veredito do servidor marca os itens confirmados mesmo sem relatório do cliente', async () => {
+    const { room, clock } = setup({ countdownSeconds: 0, questions: [twoItems], validator: perItem });
+    const ana = room.join({ name: 'Ana', avatar: 'bolt' });
+    room.join({ name: 'Bia', avatar: 'prism' });
+    room.startNextQuestion();
+    await clock.advance(5000);
+    await room.submit(ana.playerId, 'go');
+    await room.finishQuestion();
+    const items = room.snapshotForHost().lastResults!.items;
+    expect(items.map((i) => i.completedCount)).toEqual([0, 1]);
   });
 });
 

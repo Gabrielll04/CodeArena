@@ -1,0 +1,18 @@
+{
+  "name": "codearena-plugin-isolado-teste",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Plugin de teste que roda no modo isolado (E2E).",
+  "exports": {
+    ".": "./index.mjs",
+    "./ui": "./ui.mjs"
+  },
+  "codearena": {
+    "pluginId": "isolado-teste",
+    "displayName": "Plugin isolado (teste)",
+    "sdk": "^0.1.0",
+    "ui": "./ui",
+    "packs": ["./packs/isolado-teste.json"]
+  }
+}

@@ -24,7 +24,7 @@ import { useDebounced } from '../hooks/useDebounced';
 import { api, ApiError } from '../lib/api';
 import { downloadFile, slugify } from '../lib/format';
 import { GENERIC_REGEX_HELPERS } from '../lib/regexHelpers';
-import { clientPlugins } from '../plugins/registry';
+import { loadClientPlugin, pluginCatalog, pluginInfo, useClientPlugin } from '../plugins/registry';
 
 const RULE_LABELS: Record<ChecklistRule['type'], string> = {
   contains: 'Contém texto',
@@ -54,6 +54,7 @@ function newItem(index: number): ChecklistItem {
 function newQuestion(plugin: ClientQuizPlugin<any> | undefined, index: number): Question {
   return {
     id: `questao-${index}`,
+    kind: 'build',
     prompt: '',
     timeLimitSeconds: 180,
     baseXP: 500,
@@ -66,10 +67,9 @@ function newQuestion(plugin: ClientQuizPlugin<any> | undefined, index: number): 
   };
 }
 
-function newPack(): QuestionPack {
-  const plugin = clientPlugins.list()[0];
+function newPack(plugin: ClientQuizPlugin<any> | undefined): QuestionPack {
   return {
-    pack: { title: '', description: '', pluginId: plugin?.id ?? 'react-native', version: '1.0.0', tags: [] },
+    pack: { title: '', description: '', pluginId: plugin?.id ?? pluginCatalog[0]?.id ?? 'react-native', version: '1.0.0', tags: [] },
     questions: [newQuestion(plugin, 1)],
   };
 }
@@ -85,7 +85,7 @@ export function PackEditorPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const fromId = params.get('from');
-  const [draft, setDraft] = useState<QuestionPack | null>(id || fromId ? null : newPack());
+  const [draft, setDraft] = useState<QuestionPack | null>(null);
   const [selected, setSelected] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -95,7 +95,15 @@ export function PackEditorPage() {
 
   useEffect(() => {
     const source = id ?? fromId;
-    if (!source) return;
+    if (!source) {
+      // Pack novo: carrega o primeiro plugin para preencher o código inicial padrão.
+      const first = pluginCatalog[0]?.id;
+      (first ? loadClientPlugin(first) : Promise.resolve(undefined)).then(
+        (plugin) => setDraft(newPack(plugin)),
+        () => setDraft(newPack(undefined)),
+      );
+      return;
+    }
     api
       .getPack(source)
       .then((stored) => {
@@ -112,6 +120,8 @@ export function PackEditorPage() {
     const result = QuestionPackSchema.safeParse(draft);
     return result.success ? { ok: true as const, issues: [] } : { ok: false as const, issues: formatZodError(result.error) };
   }, [draft]);
+  const pluginState = useClientPlugin(draft?.pack.pluginId);
+  const plugin = pluginState.plugin;
 
   useEffect(() => {
     if (!dirty) return;
@@ -138,7 +148,6 @@ export function PackEditorPage() {
     );
   }
 
-  const plugin = clientPlugins.get(draft.pack.pluginId);
   const update = (next: QuestionPack) => {
     setDraft(next);
     setDirty(true);
@@ -195,9 +204,9 @@ export function PackEditorPage() {
                 onChange={(e) => update({ ...draft, pack: { ...draft.pack, description: e.target.value } })}
               />
             </Field>
-            <Field label="Plugin" htmlFor="pack-plugin" hint={plugin?.description}>
+            <Field label="Plugin" htmlFor="pack-plugin" hint={pluginInfo(draft.pack.pluginId)?.description ?? plugin?.description}>
               <Select id="pack-plugin" value={draft.pack.pluginId} onChange={(e) => update({ ...draft, pack: { ...draft.pack, pluginId: e.target.value } })}>
-                {clientPlugins.list().map((p) => (
+                {pluginCatalog.map((p) => (
                   <option key={p.id} value={p.id} className="bg-ink-850">
                     {p.displayName}
                   </option>
@@ -314,6 +323,12 @@ export function PackEditorPage() {
               plugin={plugin}
               onChange={(q) => updateQuestion(selected, q)}
             />
+          ) : pluginState.status === 'loading' ? (
+            <div className="flex items-center gap-2 p-6 text-white/50">
+              <Spinner className="h-4 w-4" /> Carregando o plugin
+            </div>
+          ) : pluginState.status === 'error' ? (
+            <p className="p-6 text-coral">Não foi possível carregar o plugin "{draft.pack.pluginId}": {pluginState.error}</p>
           ) : (
             <p className="p-6 text-coral">Plugin "{draft.pack.pluginId}" não está instalado.</p>
           )}
@@ -382,6 +397,38 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
             <Input id="q-id" value={question.id} className="font-mono" onChange={(e) => set('id', slugify(e.target.value, ''))} />
           </Field>
         </div>
+        <div className="space-y-1.5">
+          <span className="block text-xs font-semibold uppercase tracking-wider text-white/55">Tipo da questão</span>
+          <div role="radiogroup" aria-label="Tipo da questão" className="inline-flex rounded-xl bg-ink-950/60 p-1 ring-1 ring-white/10">
+            {(
+              [
+                ['build', 'Construir', 'O aluno escreve a solução.'],
+                ['debug', 'Depurar', 'O aluno corrige um código com bug.'],
+              ] as const
+            ).map(([value, label, hint]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={question.kind === value}
+                title={hint}
+                data-testid={`kind-${value}`}
+                onClick={() => set('kind', value)}
+                className={cx(
+                  'rounded-lg px-4 py-1.5 text-sm font-semibold transition',
+                  question.kind === value ? (value === 'debug' ? 'bg-coral/20 text-coral' : 'bg-white/10 text-white') : 'text-white/50 hover:text-white',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-white/40">
+            {question.kind === 'debug'
+              ? 'O código inicial é o código com bug. Descreva o sintoma no enunciado e verifique o comportamento corrigido na checklist.'
+              : 'O código inicial é o ponto de partida (pode ficar vazio).'}
+          </p>
+        </div>
         <Field label="Enunciado" htmlFor="q-prompt" hint="Curto e objetivo. Use `crases` para destacar código.">
           <Textarea id="q-prompt" value={question.prompt} onChange={(e) => set('prompt', e.target.value)} placeholder='Ex.: Faça um app com um botão escrito "Clique aqui" em React Native.' />
         </Field>
@@ -404,7 +451,9 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel className="overflow-hidden">
-          <p className="border-b border-white/[0.07] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white/50">Código inicial</p>
+          <p className="border-b border-white/[0.07] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white/50">
+            {question.kind === 'debug' ? 'Código com bug (ponto de partida)' : 'Código inicial'}
+          </p>
           <div className="h-56">
             <CodeEditor value={question.starterCode} onChange={(v) => set('starterCode', v)} language={plugin.editorLanguage} path={`file:///authoring/${question.id}/starter-${plugin.editorFileName ?? 'code'}`} fontSize={13} />
           </div>
@@ -463,7 +512,7 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
               Usar solução
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setTestCode(question.starterCode)}>
-              Usar código inicial
+              {question.kind === 'debug' ? 'Usar código com bug' : 'Usar código inicial'}
             </Button>
             <Button size="sm" loading={serverBusy} onClick={() => void testOnServer()} data-testid="test-on-server">
               Validar no servidor
@@ -701,6 +750,7 @@ function StudentPreview({ open, onClose, question, plugin }: { open: boolean; on
           live={live}
           mode="preview"
           modelPath={`file:///preview/${question.id}/${plugin.editorFileName ?? 'code'}`}
+          onRestore={() => setCode(question.starterCode)}
         />
       </div>
     </Dialog>

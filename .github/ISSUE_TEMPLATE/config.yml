@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Vulnerabilidade de segurança
+    url: https://github.com/Gabrielll04/CodeArena/security/advisories/new
+    about: Relate de forma privada. Não abra uma issue pública.
+  - name: Como criar um plugin
+    url: https://github.com/Gabrielll04/CodeArena/blob/HEAD/docs/plugins/creating-a-plugin.md
+    about: Guia completo com um exemplo funcional.

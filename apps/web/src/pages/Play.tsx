@@ -1,8 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import type { ClientQuizPlugin } from '@codearena/plugin-sdk/ui';
 import type { PlayerAnswer, PublicQuestion, RoomSnapshot } from '@codearena/schemas';
 import { Avatar } from '../components/Avatar';
+import { SolutionView } from '../components/CodeDiff';
 import { Countdown } from '../components/Countdown';
 import { CountUp } from '../components/CountUp';
 import { Leaderboard, Podium } from '../components/Leaderboard';
@@ -14,7 +16,7 @@ import { useChecklist } from '../hooks/useChecklist';
 import { formatDuration, formatXP } from '../lib/format';
 import { playCue } from '../lib/sound';
 import { session as sessionStore } from '../lib/storage';
-import { clientPlugins } from '../plugins/registry';
+import { loadClientPlugin, useClientPlugin } from '../plugins/registry';
 import { usePlayer } from '../stores/player';
 
 export function PlayPage() {
@@ -78,11 +80,16 @@ export function PlayPage() {
 
 function PhaseView({ snapshot }: { snapshot: RoomSnapshot }) {
   const { phase, question } = snapshot;
+  const pluginId = question?.question.pluginId;
+  // Baixa a interface do plugin já na contagem regressiva, para a questão abrir sem espera.
+  useEffect(() => {
+    if (pluginId) loadClientPlugin(pluginId).catch(() => undefined);
+  }, [pluginId]);
   if (phase === 'lobby') return <Lobby snapshot={snapshot} />;
   if (phase === 'countdown' && question) {
     return <Countdown startsAt={question.startsAt} index={question.index} total={question.total} title={question.question.title} />;
   }
-  if (phase === 'question' && question) return <ActiveQuestion key={question.question.id} snapshot={snapshot} />;
+  if (phase === 'question' && question) return <QuestionGate key={question.question.id} snapshot={snapshot} />;
   if (phase === 'review') return <Review snapshot={snapshot} />;
   return <Ended snapshot={snapshot} />;
 }
@@ -128,11 +135,34 @@ function Lobby({ snapshot }: { snapshot: RoomSnapshot }) {
 
 const draftKey = (room: string, questionId: string) => `codearena:draft:${room}:${questionId}`;
 
-function ActiveQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
+function QuestionGate({ snapshot }: { snapshot: RoomSnapshot }) {
+  const state = useClientPlugin(snapshot.question!.question.pluginId);
+  if (state.status === 'loading') {
+    return (
+      <div className="flex h-full items-center justify-center gap-2 text-white/50" data-testid="plugin-loading">
+        <Spinner className="h-5 w-5" /> Carregando a questão
+      </div>
+    );
+  }
+  if (state.status === 'error') {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+        <p className="text-coral">Não foi possível carregar o plugin desta questão.</p>
+        <p className="max-w-md text-sm text-white/50">{state.error}</p>
+        <Button variant="ghost" onClick={() => window.location.reload()}>
+          Recarregar
+        </Button>
+      </div>
+    );
+  }
+  return <ActiveQuestion snapshot={snapshot} plugin={state.plugin} />;
+}
+
+function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: ClientQuizPlugin<any> | undefined }) {
   const active = snapshot.question!;
-  const question: PublicQuestion = active.question;
+  // Cada room:update traz um objeto novo; a questão não muda durante a rodada, então fixamos pela id.
+  const question: PublicQuestion = useMemo(() => active.question, [active.question.id]);
   const answer = snapshot.me!.answer;
-  const plugin = clientPlugins.get(question.pluginId);
   const { submit, reportProgress } = usePlayer();
   const storageKey = draftKey(snapshot.code, question.id);
   const [code, setCode] = useState(
@@ -140,6 +170,7 @@ function ActiveQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
   );
   const [submitting, setSubmitting] = useState(false);
   const [lastResult, setLastResult] = useState<PlayerAnswer | { error: string } | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
   const lastSubmitted = useRef<string | null>(null);
   const accepted = answer?.status === 'accepted';
   const locked = accepted && question.lockOnComplete;
@@ -155,9 +186,10 @@ function ActiveQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
 
   // Progresso (contagem de itens, sem código) para o painel do professor.
   const { requiredDone, requiredTotal } = live.evaluation;
+  const doneKey = live.evaluation.items.filter((i) => i.status === 'done').map((i) => i.id).join(',');
   useEffect(() => {
-    if (!accepted) reportProgress(requiredDone, requiredTotal);
-  }, [requiredDone, requiredTotal, accepted, reportProgress]);
+    if (!accepted) reportProgress(requiredDone, requiredTotal, doneKey ? doneKey.split(',') : []);
+  }, [requiredDone, requiredTotal, doneKey, accepted, reportProgress]);
 
   // Envio automático quando a checklist completa (avaliação atualizada para o código atual).
   useEffect(() => {
@@ -169,8 +201,15 @@ function ActiveQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
       setSubmitting(false);
       setLastResult(result);
       if ('status' in result && result.status === 'accepted') playCue('success');
+      if ('error' in result) {
+        // Falha de rede ou limite de envio: tenta de novo com o mesmo código em instantes.
+        setTimeout(() => {
+          lastSubmitted.current = null;
+          setRetryTick((t) => t + 1);
+        }, 1500);
+      }
     });
-  }, [accepted, submitting, live, code, submit]);
+  }, [accepted, submitting, live, code, submit, retryTick]);
 
   const rejected = lastResult && 'status' in lastResult && lastResult.status === 'rejected' ? lastResult : null;
   const failure = lastResult && 'error' in lastResult ? lastResult.error : null;
@@ -251,6 +290,11 @@ function ActiveQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
           modelPath={`file:///${snapshot.code}/${question.id}/${plugin?.editorFileName ?? 'code.js'}`}
           status={status}
           editorOverlay={accepted ? <AcceptedOverlay xp={answer!.xp} /> : null}
+          onRestore={() => {
+            const original = plugin?.getStarterCode(question) ?? question.starterCode;
+            setCode(original);
+            lastSubmitted.current = null;
+          }}
         />
       </div>
     </div>
@@ -347,10 +391,15 @@ function Review({ snapshot }: { snapshot: RoomSnapshot }) {
       {solution && (
         <div>
           <Button variant="ghost" size="sm" onClick={() => setShowSolution((v) => !v)}>
-            <Icon name="eye" /> {showSolution ? 'Ocultar solução esperada' : 'Ver solução esperada'}
+            <Icon name="eye" /> {showSolution ? 'Ocultar solução esperada' : snapshot.question?.question.kind === 'debug' ? 'Ver a correção esperada' : 'Ver solução esperada'}
           </Button>
           {showSolution && (
-            <pre className="mt-2 overflow-auto rounded-xl bg-ink-950/70 p-4 font-mono text-xs leading-relaxed text-white/85">{solution}</pre>
+            <SolutionView
+              solution={solution}
+              starter={snapshot.question?.question.starterCode ?? ''}
+              debug={snapshot.question?.question.kind === 'debug'}
+              pluginId={snapshot.question?.question.pluginId ?? ''}
+            />
           )}
         </div>
       )}

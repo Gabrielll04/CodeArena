@@ -17,14 +17,35 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "typecheck": "pnpm -r --parallel typecheck",
-    "validate:packs": "tsx scripts/validate-packs.ts"
+    "validate:packs": "tsx scripts/validate-packs.ts",
+    "screenshots": "node scripts/screenshots.mjs",
+    "docs:dev": "pnpm docs:sync && vitepress dev docs",
+    "docs:build": "pnpm docs:sync && vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "docs:sync": "node scripts/sync-docs.mjs",
+    "demo:video": "node scripts/demo-video.mjs",
+    "build:packages": "pnpm --filter './packages/*' build",
+    "changeset": "changeset",
+    "release": "pnpm build:packages && changeset publish",
+    "check:packages": "node scripts/check-packages.mjs",
+    "codearena": "codearena"
+  },
+  "dependencies": {
+    "@codearena/plugin-backend-http": "workspace:*",
+    "@codearena/plugin-react-native": "workspace:*"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.1",
+    "@codearena/plugin-host": "workspace:*",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/space-grotesk": "^5.3.0",
     "@playwright/test": "1.56.1",
     "@types/node": "^22.10.0",
     "socket.io-client": "^4.8.1",
+    "tsup": "^8.5.1",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",
+    "vitepress": "^1.6.4",
     "vitest": "^3.2.4"
   },
   "pnpm": {

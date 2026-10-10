@@ -1,0 +1,13 @@
+[
+  { "name": "bug", "color": "FF5D7D", "description": "Algo não funciona como esperado" },
+  { "name": "melhoria", "color": "3DDCFF", "description": "Ideia ou melhoria" },
+  { "name": "plugin", "color": "8C61FF", "description": "Plugins de disciplinas e ambientes" },
+  { "name": "pack", "color": "B9FF3B", "description": "Packs de questões" },
+  { "name": "documentação", "color": "5A6194", "description": "Guias, README e traduções" },
+  { "name": "acessibilidade", "color": "FFC940", "description": "Teclado, leitores de tela, contraste, movimento" },
+  { "name": "pergunta", "color": "282E55", "description": "Dúvida de uso ou de contribuição" },
+  { "name": "ajuda desejada", "color": "3DDC84", "description": "Precisamos de contribuição" },
+  { "name": "good first issue", "color": "7057FF", "description": "Boa para a primeira contribuição" },
+  { "name": "bom primeiro plugin", "color": "8C61FF", "description": "Primeiro plugin: escopo pequeno, com guia e exemplo" },
+  { "name": "bom primeiro pack", "color": "B9FF3B", "description": "Primeiro pack: só JSON, sem código de aplicação" }
+]

@@ -5,6 +5,7 @@ import {
   type AvatarId,
   type ErrorCode,
   type ItemCheck,
+  type ItemInsight,
   type LeaderboardEntry,
   type PlayerAnswer,
   type PlayerPublic,
@@ -87,7 +88,10 @@ interface QuestionRecord {
   finishedAt: number | null;
   answers: Map<string, PlayerAnswer>;
   progress: Map<string, { done: number; total: number }>;
+  /** Por aluno e item: se está concluído agora e quando foi concluído pela primeira vez (relógio do servidor). */
+  itemState: Map<string, Map<string, { done: boolean; firstAt: number }>>;
   pending: Map<string, Promise<void>>;
+  lastSubmitAt: Map<string, number>;
   results: QuestionResults | null;
 }
 
@@ -104,6 +108,9 @@ export interface RoomOptions {
 }
 
 const randomId = () => globalThis.crypto.randomUUID();
+
+/** Intervalo mínimo entre envios do mesmo aluno (protege o runner de validação contra spam). */
+export const SUBMIT_INTERVAL_MS = 500;
 
 export class Room {
   readonly code: string;
@@ -255,6 +262,7 @@ export class Room {
     this.players.delete(playerId);
     this.current?.answers.delete(playerId);
     this.current?.progress.delete(playerId);
+    this.current?.itemState.delete(playerId);
     this.sink.emit({ kind: 'all' }, 'player:left', { playerId, name: player.name });
     this.sink.sync();
     this.maybeFinishWhenAllAnswered();
@@ -292,7 +300,9 @@ export class Room {
       finishedAt: null,
       answers: new Map(),
       progress: new Map(),
+      itemState: new Map(),
       pending: new Map(),
+      lastSubmitAt: new Map(),
       results: null,
     };
     this.current = record;
@@ -325,17 +335,48 @@ export class Room {
     return active;
   }
 
-  reportProgress(playerId: string, done: number, total: number): void {
+  /**
+   * Progresso informado pelo cliente (contagem e ids dos itens concluídos, nunca o código).
+   * É apenas informativo, para o painel do professor e a revisão da turma; a pontuação não depende dele.
+   */
+  reportProgress(playerId: string, done: number, total: number, doneIds?: string[]): void {
     const record = this.current;
     if (!record || record.finishedAt !== null || !this.players.has(playerId)) return;
-    const safeTotal = record.question.checklist.filter((i) => !i.optional).length;
-    const entry = { done: Math.min(done, safeTotal), total: safeTotal };
+    const required = record.question.checklist.filter((i) => !i.optional);
+    if (doneIds) {
+      const valid = new Set(record.question.checklist.map((i) => i.id));
+      this.markItems(record, playerId, new Set(doneIds.filter((id) => valid.has(id))), 'replace', this.clock.now());
+      done = required.filter((i) => record.itemState.get(playerId)?.get(i.id)?.done).length;
+    }
+    const entry = { done: Math.min(done, required.length), total: required.length };
     record.progress.set(playerId, entry);
     this.sink.emit({ kind: 'host' }, 'question:progress', {
       playerId,
       ...entry,
       answered: record.answers.get(playerId)?.status === 'accepted',
+      doneIds: this.doneIdsOf(record, playerId),
     });
+  }
+
+  /** Atualiza o estado por item. `replace` define o conjunto atual; `add` só acrescenta itens concluídos. */
+  private markItems(record: QuestionRecord, playerId: string, ids: Set<string>, mode: 'replace' | 'add', now: number): void {
+    let state = record.itemState.get(playerId);
+    if (!state) record.itemState.set(playerId, (state = new Map()));
+    for (const item of record.question.checklist) {
+      const entry = state.get(item.id);
+      if (ids.has(item.id)) {
+        if (!entry) state.set(item.id, { done: true, firstAt: now });
+        else entry.done = true;
+      } else if (mode === 'replace' && entry) {
+        entry.done = false;
+      }
+    }
+  }
+
+  private doneIdsOf(record: QuestionRecord, playerId: string): string[] {
+    if (record.answers.get(playerId)?.status === 'accepted') return record.question.checklist.map((i) => i.id);
+    const state = record.itemState.get(playerId);
+    return record.question.checklist.filter((i) => state?.get(i.id)?.done).map((i) => i.id);
   }
 
   /**
@@ -357,6 +398,11 @@ export class Room {
     if (this.phase === 'countdown' || receivedAt < record.startsAt) {
       throw new RoomError('invalid_state', 'A questão ainda não começou');
     }
+    const previous = record.lastSubmitAt.get(playerId);
+    if (previous !== undefined && receivedAt - previous < SUBMIT_INTERVAL_MS && record.finishedAt === null) {
+      throw new RoomError('invalid_state', 'Aguarde um instante antes de reenviar');
+    }
+    record.lastSubmitAt.set(playerId, receivedAt);
 
     const timeLimitMs = record.question.timeLimitSeconds * 1000;
     const remainingMs = Math.max(0, record.endsAt - receivedAt);
@@ -413,7 +459,14 @@ export class Room {
           message: verdict.message ?? 'O servidor não confirmou todos os itens da checklist',
         };
       }
-      if (this.players.has(playerId)) record.answers.set(playerId, answer);
+      if (this.players.has(playerId)) {
+        record.answers.set(playerId, answer);
+        // O servidor é a fonte confiável por item: aceita = tudo concluído; recusada = os itens que ele confirmou.
+        const confirmed = verdict.passed
+          ? new Set(record.question.checklist.map((i) => i.id))
+          : new Set(verdict.items.filter((i) => i.passed).map((i) => i.id));
+        this.markItems(record, playerId, confirmed, 'add', receivedAt);
+      }
       return answer;
     })();
 
@@ -473,12 +526,14 @@ export class Room {
       this.phase = 'review';
       this.touch();
       const leaderboard = this.leaderboard();
+      // No modo discreto, a transmissão geral leva só o top 3; cada aluno recebe a própria posição no snapshot.
+      const publicBoard = this.settings.discreetMode ? leaderboard.filter((e) => e.rank <= 3) : leaderboard;
       this.sink.emit({ kind: 'all' }, 'question:finished', {
         results: record.results,
-        leaderboard,
+        leaderboard: publicBoard,
         solution: record.question.solution,
       });
-      this.sink.emit({ kind: 'all' }, 'leaderboard:update', leaderboard);
+      this.sink.emit({ kind: 'all' }, 'leaderboard:update', publicBoard);
       this.sink.sync();
     })().finally(() => {
       this.finishing = null;
@@ -602,7 +657,13 @@ export class Room {
     return [...this.players.values()].map((player) => {
       const answered = record?.answers.get(player.id)?.status === 'accepted';
       const progress = record?.progress.get(player.id);
-      return { playerId: player.id, done: answered ? total : (progress?.done ?? 0), total, answered };
+      return {
+        playerId: player.id,
+        done: answered ? total : (progress?.done ?? 0),
+        total,
+        answered,
+        doneIds: record ? this.doneIdsOf(record, player.id) : [],
+      };
     });
   }
 
@@ -632,9 +693,26 @@ export class Room {
       (best, t) => (!best || t.timeMs < best.timeMs ? t : best),
       null,
     );
+    const items: ItemInsight[] = record.question.checklist.map((item) => {
+      const doneAt: number[] = [];
+      for (const player of this.players.values()) {
+        const state = record.itemState.get(player.id)?.get(item.id);
+        if (state?.done) doneAt.push(Math.max(0, state.firstAt - record.startsAt));
+      }
+      return {
+        id: item.id,
+        label: item.label,
+        optional: item.optional,
+        completedCount: doneAt.length,
+        playerCount: this.players.size,
+        medianTimeMs: median(doneAt),
+      };
+    });
     return {
       questionId: record.question.id,
+      title: record.question.title ?? record.question.prompt.slice(0, 60),
       index: record.index,
+      items,
       playerCount: this.players.size,
       correctCount: correct.length,
       averageTimeMs: times.length ? Math.round(times.reduce((s, t) => s + t.timeMs, 0) / times.length) : null,
@@ -693,6 +771,13 @@ export class Room {
   private touch(): void {
     this.lastActivityAt = this.clock.now();
   }
+}
+
+function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return Math.round(sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2);
 }
 
 /** Gera códigos de 6 dígitos sem zero inicial (fáceis de ditar e digitar). */

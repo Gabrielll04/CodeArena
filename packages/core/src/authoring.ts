@@ -3,7 +3,8 @@ import type { QuizPlugin } from '@codearena/plugin-sdk';
 import { evaluateChecklist } from './checklist';
 
 export interface AuthoringWarning {
-  level: 'error' | 'warning';
+  /** error bloqueia a entrega; warning é fragilidade; info é só um resumo útil. */
+  level: 'error' | 'warning' | 'info';
   /** Item da checklist relacionado, se houver. */
   itemId?: string;
   message: string;
@@ -79,9 +80,37 @@ export async function lintQuestion(
     });
   }
 
-  const starter = await evaluateChecklist(question.starterCode, publicQuestion, { plugin, modes: ['static'] });
+  const debug = question.kind === 'debug';
+  if (debug) {
+    if (!question.starterCode.trim()) {
+      warnings.push({ level: 'error', message: 'Questão de depuração precisa de código inicial: é nele que está o bug.' });
+    } else if (question.solution.trim() && question.starterCode.trim() === question.solution.trim()) {
+      warnings.push({ level: 'error', message: 'A solução é igual ao código com bug: não há nada para corrigir.' });
+    }
+  }
+
+  // Avalia o código inicial inteiro (inclusive regras que executam o código): é isso que o aluno recebe.
+  const starter = await evaluateChecklist(question.starterCode, publicQuestion, { plugin });
   if (starter.allRequiredDone) {
-    warnings.push({ level: 'error', message: 'O código inicial já completa a checklist: a resposta seria aceita sem esforço.' });
+    warnings.push({
+      level: 'error',
+      message: debug
+        ? 'O código com bug já cumpre todos os itens: a checklist não detecta o bug.'
+        : 'O código inicial já completa a checklist: a resposta seria aceita sem esforço.',
+    });
+  } else if (debug) {
+    const failing = starter.items.filter((item) => !item.optional && item.status !== 'done');
+    const labels = failing.map((item) => question.checklist.find((i) => i.id === item.id)?.label ?? item.id);
+    warnings.push({
+      level: 'info',
+      message: `O bug é detectado por ${failing.length} de ${starter.requiredTotal} itens obrigatórios: ${labels.join('; ')}.`,
+    });
+    if (!question.checklist.some((item) => item.rule.type === 'pluginRule')) {
+      warnings.push({
+        level: 'warning',
+        message: 'Questões de depuração ficam mais justas quando a checklist verifica comportamento (pluginRule), não só texto.',
+      });
+    }
   } else {
     starter.items.forEach((item) => {
       const original = question.checklist.find((i) => i.id === item.id);

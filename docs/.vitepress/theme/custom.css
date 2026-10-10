@@ -1,0 +1,187 @@
+/* Identidade visual do CodeArena: tokens iguais aos de apps/web/tailwind.config.js */
+:root {
+  --ca-ink-950: #06070d;
+  --ca-ink-900: #0b0d18;
+  --ca-ink-850: #10132a;
+  --ca-ink-800: #151933;
+  --ca-ink-700: #1d2242;
+  --ca-lime: #b9ff3b;
+  --ca-violet: #8c61ff;
+  --ca-coral: #ff5d7d;
+  --ca-cyan: #3ddcff;
+  --ca-amber: #ffc940;
+
+  --vp-font-family-base: 'Space Grotesk Variable', system-ui, sans-serif;
+  --vp-font-family-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+
+  --vp-c-bg: var(--ca-ink-900);
+  --vp-c-bg-alt: var(--ca-ink-950);
+  --vp-c-bg-elv: var(--ca-ink-850);
+  --vp-c-bg-soft: var(--ca-ink-850);
+  --vp-c-divider: rgba(255, 255, 255, 0.08);
+  --vp-c-gutter: rgba(255, 255, 255, 0.06);
+  --vp-c-text-1: rgba(255, 255, 255, 0.92);
+  --vp-c-text-2: rgba(255, 255, 255, 0.62);
+  --vp-c-text-3: rgba(255, 255, 255, 0.42);
+
+  --vp-c-brand-1: var(--ca-lime);
+  --vp-c-brand-2: #a2e82f;
+  --vp-c-brand-3: #8fd11f;
+  --vp-c-brand-soft: rgba(185, 255, 59, 0.14);
+  --vp-button-brand-bg: var(--ca-lime);
+  --vp-button-brand-hover-bg: #c9ff63;
+  --vp-button-brand-active-bg: #a2e82f;
+  --vp-button-brand-text: var(--ca-ink-950);
+  --vp-button-brand-hover-text: var(--ca-ink-950);
+  --vp-button-brand-active-text: var(--ca-ink-950);
+  --vp-button-alt-bg: rgba(255, 255, 255, 0.07);
+  --vp-button-alt-hover-bg: rgba(255, 255, 255, 0.12);
+  --vp-button-alt-text: #fff;
+  --vp-button-alt-hover-text: #fff;
+
+  --vp-c-tip-1: var(--ca-lime);
+  --vp-c-warning-1: var(--ca-amber);
+  --vp-c-danger-1: var(--ca-coral);
+  --vp-code-block-bg: var(--ca-ink-950);
+  --vp-code-bg: rgba(255, 255, 255, 0.08);
+  --vp-code-color: var(--ca-lime);
+  --vp-custom-block-info-bg: rgba(140, 97, 255, 0.1);
+  --vp-custom-block-tip-bg: rgba(185, 255, 59, 0.08);
+
+  --vp-sidebar-bg-color: rgba(11, 13, 24, 0.9);
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(110deg, var(--ca-lime) 20%, var(--ca-violet));
+  --vp-home-hero-image-background-image: radial-gradient(circle, rgba(140, 97, 255, 0.35), transparent 70%);
+  --vp-home-hero-image-filter: blur(48px);
+}
+
+body {
+  background-image:
+    radial-gradient(1200px 600px at 10% -10%, rgba(140, 97, 255, 0.16), transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, rgba(185, 255, 59, 0.08), transparent 60%),
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: auto, auto, 32px 32px, 32px 32px;
+  background-attachment: fixed;
+}
+
+.VPNav,
+.VPNavBar:not(.has-sidebar):not(.home.top),
+.VPNavBar.has-sidebar .content,
+.VPSidebar {
+  background-color: rgba(11, 13, 24, 0.85);
+  backdrop-filter: blur(10px);
+}
+
+h1,
+h2,
+h3,
+.VPHero .name,
+.VPHero .text {
+  font-family: var(--vp-font-family-base);
+  letter-spacing: -0.02em;
+}
+
+.VPHero .text {
+  font-size: clamp(28px, 3.6vw, 44px);
+  line-height: 1.15;
+  max-width: 640px;
+}
+
+.vp-doc h2 {
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+/* Imagens: cantos arredondados e borda como os painéis do app */
+.vp-doc img {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 40px -24px rgba(0, 0, 0, 0.8);
+}
+
+.vp-doc table {
+  display: table;
+  width: 100%;
+}
+
+.vp-doc th {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-2);
+}
+
+.VPFeature {
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  background: rgba(16, 19, 42, 0.8) !important;
+  border-radius: 16px !important;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.VPFeature:hover {
+  border-color: rgba(185, 255, 59, 0.45) !important;
+  transform: translateY(-2px);
+}
+
+.VPFeature .title {
+  font-family: var(--vp-font-family-base);
+}
+
+.VPButton.brand {
+  font-weight: 700;
+  box-shadow: 0 8px 24px -12px rgba(185, 255, 59, 0.7);
+}
+
+/* Seção de telas na página inicial */
+.ca-section {
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 24px 24px 8px;
+}
+
+.ca-section h2 {
+  margin: 0 0 6px;
+  border: 0;
+  font-size: 1.6rem;
+}
+
+.ca-section > p {
+  margin: 0 0 20px;
+  color: var(--vp-c-text-2);
+}
+
+.ca-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.ca-grid figure {
+  margin: 0;
+}
+
+.ca-grid img {
+  width: 100%;
+  display: block;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ca-grid figcaption {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--vp-c-text-2);
+}
+
+.ca-video {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 40px -24px rgba(0, 0, 0, 0.8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .VPFeature {
+    transition: none;
+  }
+}

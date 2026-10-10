@@ -1,0 +1,29 @@
+{
+  "pack": {
+    "title": "Pack do plugin isolado",
+    "description": "Usado pelos testes E2E do modo isolado.",
+    "pluginId": "isolado-teste",
+    "version": "1.0.0",
+    "author": "CodeArena",
+    "tags": ["teste"]
+  },
+  "questions": [
+    {
+      "id": "lei-de-ohm",
+      "title": "Lei de Ohm",
+      "prompt": "Escreva a unidade de resistência elétrica.",
+      "timeLimitSeconds": 120,
+      "baseXP": 500,
+      "speedBonusMax": 500,
+      "starterCode": "",
+      "solution": "A unidade é o ohm.",
+      "checklist": [
+        {
+          "id": "unidade",
+          "label": "Citar a unidade",
+          "rule": { "type": "pluginRule", "validator": "temPalavra", "params": { "palavra": "ohm" } }
+        }
+      ]
+    }
+  ]
+}

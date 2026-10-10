@@ -14,7 +14,6 @@ const SHADOWED = ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'import
 const evaluate = (code: string, scope: Record<string, unknown>) => {
   const names = [...Object.keys(scope), ...SHADOWED];
   const values = [...Object.values(scope), ...SHADOWED.map(() => undefined)];
-  // eslint-disable-next-line no-new-func
   new Function(...names, code)(...values);
 };
 

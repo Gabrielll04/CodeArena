@@ -167,7 +167,7 @@ export const reactNativePlugin = definePlugin<QuizPlugin<ReactNativeSession>>({
   validators,
   authoring: {
     defaultStarterCode: DEFAULT_STARTER,
-    docsPath: 'docs/agents/plugin-react-native.md',
+    docsPath: 'docs/agents.md',
     regexHelpers: [
       {
         id: 'export-default-component',

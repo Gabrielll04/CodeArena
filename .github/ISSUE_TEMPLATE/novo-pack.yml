@@ -1,0 +1,32 @@
+name: Proposta de pack de questões
+description: Um conjunto de questões para uma disciplina ou tema
+labels: ["pack"]
+body:
+  - type: input
+    id: tema
+    attributes:
+      label: Tema e plugin
+      placeholder: Express com validação de entrada (backend-http)
+    validations:
+      required: true
+  - type: textarea
+    id: objetivos
+    attributes:
+      label: Objetivos de aprendizagem
+    validations:
+      required: true
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: Tipo das questões
+      options:
+        - Construir (build)
+        - Depurar (debug)
+        - Misto
+    validations:
+      required: true
+  - type: textarea
+    id: rascunho
+    attributes:
+      label: Rascunho das questões
+      description: Enunciado curto e os itens da checklist de cada uma (comportamentos verificáveis).

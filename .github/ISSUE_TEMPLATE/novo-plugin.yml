@@ -1,0 +1,43 @@
+name: Proposta de plugin
+description: Uma nova disciplina ou ambiente de execução
+labels: ["plugin"]
+body:
+  - type: input
+    id: id
+    attributes:
+      label: Id do plugin
+      description: kebab-case, usado em pack.pluginId.
+      placeholder: python-basico
+    validations:
+      required: true
+  - type: textarea
+    id: publico
+    attributes:
+      label: Para quem e para quê
+      description: Disciplina, nível e exemplos de questões.
+    validations:
+      required: true
+  - type: textarea
+    id: validadores
+    attributes:
+      label: Validadores previstos
+      description: Para cada um, o nome, os parâmetros e se é estático (texto/AST) ou dinâmico (executa código).
+      placeholder: |
+        - pythonDefinesFunction { name, arity } - estático
+    validations:
+      required: true
+  - type: dropdown
+    id: execucao
+    attributes:
+      label: Executa código de alunos
+      options:
+        - Não (somente análise estática)
+        - Sim, no navegador (Worker)
+        - Sim, no servidor (processo isolado)
+    validations:
+      required: true
+  - type: textarea
+    id: seguranca
+    attributes:
+      label: Isolamento e limites
+      description: Obrigatório quando executa código. Tempo, memória, arquivos, rede.

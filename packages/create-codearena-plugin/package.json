@@ -1,0 +1,32 @@
+{
+  "name": "create-codearena-plugin",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Cria um plugin do CodeArena pronto para testar e publicar: npm create codearena-plugin@latest",
+  "keywords": ["codearena", "codearena-plugin", "create"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gabrielll04/CodeArena.git",
+    "directory": "packages/create-codearena-plugin"
+  },
+  "homepage": "https://github.com/Gabrielll04/CodeArena/blob/HEAD/docs/plugins/creating-a-plugin.md",
+  "bugs": "https://github.com/Gabrielll04/CodeArena/issues",
+  "bin": {
+    "create-codearena-plugin": "./index.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./index.d.mts",
+      "default": "./index.mjs"
+    }
+  },
+  "files": ["index.mjs", "index.d.mts", "template"],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

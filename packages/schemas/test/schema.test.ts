@@ -1,10 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseQuestionPack, parseQuestionPackJson, resolveQuestions, toPublicQuestion } from '../src';
-
-const root = resolve(__dirname, '../../..');
-const load = (file: string) => JSON.parse(readFileSync(resolve(root, file), 'utf8'));
 
 const minimalPack = () => ({
   pack: { title: 'Teste', pluginId: 'react-native', version: '1.0.0' },
@@ -21,13 +16,6 @@ const minimalPack = () => ({
 });
 
 describe('QuestionPackSchema', () => {
-  it('aceita os packs de exemplo do repositório', () => {
-    for (const file of ['content/packs/react-native-fundamentos.json', 'content/packs/backend-http-basico.json']) {
-      const result = parseQuestionPack(load(file));
-      expect(result.ok, file).toBe(true);
-    }
-  });
-
   it('aplica valores padrão', () => {
     const result = parseQuestionPack(minimalPack());
     expect(result.ok).toBe(true);
@@ -38,6 +26,17 @@ describe('QuestionPackSchema', () => {
     expect(q.checklist[0]!.optional).toBe(false);
     expect(q.checklist[0]!.rule).toMatchObject({ caseSensitive: true, ignoreComments: false });
     expect(result.value.pack.tags).toEqual([]);
+  });
+
+  it('aceita kind "debug", usa "build" por padrão e rejeita outros valores', () => {
+    const input = minimalPack() as any;
+    expect((parseQuestionPack(input) as any).value.questions[0].kind).toBe('build');
+    input.questions[0].kind = 'debug';
+    expect((parseQuestionPack(input) as any).value.questions[0].kind).toBe('debug');
+    input.questions[0].kind = 'quiz';
+    const result = parseQuestionPack(input);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.issues.some((i) => i.path === 'questions[0].kind')).toBe(true);
   });
 
   it('resolve o plugin da questão a partir do pack e remove a solução da versão pública', () => {

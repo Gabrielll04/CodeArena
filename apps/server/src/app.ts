@@ -8,7 +8,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from '@codearena/sche
 import type { ServerConfig } from './config';
 import { registerHttpRoutes } from './http';
 import { PackStore } from './packStore';
-import { createServerPluginRegistry } from './plugins';
+import { loadServerPlugins } from './plugins';
 import { attachRealtime } from './realtime';
 import { createSubmissionValidator } from './validation';
 
@@ -16,8 +16,17 @@ const ROOM_IDLE_LIMIT_MS = 6 * 60 * 60 * 1000;
 
 export async function buildServer(config: Omit<ServerConfig, 'port' | 'host'>) {
   const app = Fastify({ logger: config.logger ? { level: 'info' } : false, bodyLimit: 2 * 1024 * 1024 });
-  const plugins = createServerPluginRegistry();
-  const packs = new PackStore({ dataDir: config.dataDir, contentDir: config.contentDir, log: (m) => app.log.warn(m) });
+  const { registry: plugins, samplePacks, dispose: disposePlugins } = await loadServerPlugins({
+    rootDir: config.rootDir,
+    configPath: config.pluginConfigPath,
+    log: (m) => app.log.error(m),
+  });
+  const packs = new PackStore({
+    dataDir: config.dataDir,
+    samplePacks: samplePacks.map((s) => s.file),
+    contentDir: config.contentDir,
+    log: (m) => app.log.warn(m),
+  });
   await packs.init();
   const rooms = new RoomManager();
   const validator = createSubmissionValidator(plugins);
@@ -53,6 +62,7 @@ export async function buildServer(config: Omit<ServerConfig, 'port' | 'host'>) {
 
   app.addHook('onClose', async () => {
     clearInterval(sweeper);
+    disposePlugins();
     rooms.list().forEach((room) => rooms.delete(room.code));
     io.close();
   });

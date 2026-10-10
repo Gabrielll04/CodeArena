@@ -1,31 +1,89 @@
 {
   "name": "@codearena/plugin-backend-http",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
-  "description": "Plugin CodeArena para questões de backend HTTP (Express/Fastify) com cliente HTTP e validação por requisições.",
+  "description": "Plugin CodeArena para questões de backend HTTP (Express) com cliente HTTP e validação por requisições.",
+  "keywords": [
+    "codearena",
+    "codearena-plugin",
+    "backend-http"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gabrielll04/CodeArena.git",
+    "directory": "plugins/backend-http"
+  },
+  "homepage": "https://github.com/Gabrielll04/CodeArena/tree/HEAD/plugins/backend-http#readme",
+  "bugs": "https://github.com/Gabrielll04/CodeArena/issues",
   "exports": {
     ".": "./src/index.ts",
     "./ui": "./src/ui/index.tsx",
     "./server": "./src/server/index.ts",
     "./runtime": "./src/runtime/sandbox-runtime.mjs"
   },
+  "files": [
+    "dist",
+    "packs",
+    "docs"
+  ],
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json"
+    "build": "tsup && node -e \"require('node:fs').cpSync('src/runtime','dist/runtime',{recursive:true})\"",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
   },
   "dependencies": {
     "@babel/parser": "^7.29.0",
-    "@codearena/plugin-sdk": "workspace:*",
-    "@codearena/schemas": "workspace:*",
     "sucrase": "^3.35.0",
     "zod": "^3.25.76"
   },
   "peerDependencies": {
+    "@codearena/plugin-sdk": "^0.1.0",
+    "@codearena/schemas": "^0.1.0",
     "react": "^18.3.1"
   },
   "devDependencies": {
-    "@codearena/core": "workspace:*",
+    "@codearena/core": "workspace:^",
+    "@codearena/plugin-sdk": "workspace:^",
+    "@codearena/schemas": "workspace:^",
+    "@types/node": "^22.10.0",
     "@types/react": "^18.3.12",
-    "react": "18.3.1"
+    "react": "18.3.1",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./ui": {
+        "types": "./dist/ui.d.ts",
+        "import": "./dist/ui.js"
+      },
+      "./server": {
+        "types": "./dist/server.d.ts",
+        "import": "./dist/server.js"
+      },
+      "./runtime": {
+        "types": "./dist/runtime/sandbox-runtime.d.mts",
+        "import": "./dist/runtime/sandbox-runtime.mjs"
+      }
+    }
+  },
+  "codearena": {
+    "pluginId": "backend-http",
+    "displayName": "Backend HTTP",
+    "sdk": "^0.1.0",
+    "server": "./server",
+    "ui": "./ui",
+    "packs": [
+      "./packs/backend-http-basico.json",
+      "./packs/depuracao-backend-http.json"
+    ]
   }
 }

@@ -8,8 +8,12 @@ export interface ServerConfig {
   host: string;
   /** Packs criados/importados pelos professores. */
   dataDir: string;
-  /** Packs de exemplo (somente leitura). */
-  contentDir: string;
+  /** Raiz da instalação: onde ficam codearena.config.json e os pacotes de plugin instalados. */
+  rootDir: string;
+  /** Lista de plugins ativos (padrão: <rootDir>/codearena.config.json). */
+  pluginConfigPath: string;
+  /** Pasta extra de packs de exemplo da instalação (opcional). Os exemplos padrão vêm dos plugins. */
+  contentDir: string | null;
   /** Build do frontend servido em produção (opcional). */
   webDist: string | null;
   logger: boolean;
@@ -20,8 +24,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   return {
     port: Number(env.PORT ?? (production ? 3000 : 3001)),
     host: env.HOST ?? '0.0.0.0',
+    rootDir: repoRoot,
+    pluginConfigPath: resolve(env.CODEARENA_CONFIG ?? resolve(repoRoot, 'codearena.config.json')),
     dataDir: resolve(env.CODEARENA_DATA_DIR ?? resolve(repoRoot, 'data')),
-    contentDir: resolve(env.CODEARENA_CONTENT_DIR ?? resolve(repoRoot, 'content/packs')),
+    contentDir: env.CODEARENA_CONTENT_DIR ? resolve(env.CODEARENA_CONTENT_DIR) : null,
     webDist: production ? resolve(env.CODEARENA_WEB_DIST ?? resolve(repoRoot, 'apps/web/dist')) : null,
     logger: env.CODEARENA_LOG !== 'silent',
   };
