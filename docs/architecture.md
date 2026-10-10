@@ -230,7 +230,7 @@ Cada etapa mantém o app funcionando e os testes passando.
 | 2 | Build (`dist` + tipos) e publicação de `schemas`, `plugin-sdk`, `core` e `plugin-host` (**pronta**; falta criar a organização `@codearena` no npm e o segredo `NPM_TOKEN`) | Plugins podem depender das versões publicadas |
 | 3 | Packs de exemplo para dentro dos plugins, com `codearena.packs` no manifesto (**concluída**) | `content/packs/` sai do núcleo |
 | 4 | `react-native` e `backend-http` para repositórios próprios (**pronta**; falta criar os repositórios e publicar) | O núcleo os instala como dependências; E2E usa as versões publicadas |
-| 5 | Modelo `create-codearena-plugin` e `pnpm codearena plugins add` (**concluída**) | Criar e instalar plugin sem tocar no núcleo |
+| 5 | Gerador `@codearena/create-plugin` (`npm create @codearena/plugin`) e `pnpm codearena plugins add` (**concluída**) | Criar e instalar plugin sem tocar no núcleo |
 | 6 | Modo isolado para plugins de terceiros (**concluída**) | Plugins não revisados sem acesso ao app nem ao servidor |
 
 ### Concluindo as etapas 2 e 4

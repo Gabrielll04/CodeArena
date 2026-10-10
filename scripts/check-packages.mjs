@@ -1,7 +1,7 @@
 /**
  * Confere se os pacotes publicáveis funcionam fora do monorepo:
  * build, `pnpm pack`, instalação num projeto vazio, typecheck (NodeNext, sem skipLibCheck) e execução de um plugin de teste.
- * Também gera um plugin com create-codearena-plugin e roda typecheck, testes e build dele contra os mesmos pacotes,
+ * Também gera um plugin com @codearena/create-plugin e roda typecheck, testes e build dele contra os mesmos pacotes,
  * e confere que os pacotes dos plugins oficiais contêm tudo o que o manifesto e os exports apontam.
  * Uso: pnpm check:packages
  */
@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
-const packages = ['schemas', 'plugin-sdk', 'core', 'plugin-host', 'create-codearena-plugin'];
+const packages = ['schemas', 'plugin-sdk', 'core', 'plugin-host', 'create-codearena-plugin'];  // pastas em packages/
 const work = mkdtempSync(join(tmpdir(), 'codearena-packages-'));
 const run = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: 'inherit' });
 
@@ -41,9 +41,9 @@ try {
   run('node', ['out/plugin.js'], consumer);
   run('node', ['host.mjs'], consumer);
 
-  // Plugin gerado pelo create-codearena-plugin, instalado contra os pacotes empacotados.
+  // Plugin gerado pelo @codearena/create-plugin, instalado contra os pacotes empacotados.
   const generated = join(work, 'codearena-plugin-demo');
-  run('npm', ['exec', '--yes', `--package=${tarball('create-codearena-plugin')}`, '--', 'create-codearena-plugin', generated, '--id', 'demo', '--name', 'Demo', '--yes'], work);
+  run('npm', ['exec', '--yes', `--package=${tarball('@codearena/create-plugin')}`, '--', 'create-codearena-plugin', generated, '--id', 'demo', '--name', 'Demo', '--yes'], work);
   const manifestPath = join(generated, 'package.json');
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   for (const name of Object.keys(manifest.devDependencies)) {

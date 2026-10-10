@@ -98,7 +98,7 @@ andamento ([etapas](../architecture.md#etapas-da-migracao)):
 | `pnpm codearena plugins add/remove/list`, com conferência de compatibilidade | Instalar plugins de terceiros pelo npm: os pacotes do CodeArena ainda não foram publicados (falta a primeira publicação) |
 | Plugins oficiais `react-native` e `backend-http` (Express), com packs de exemplo | Catálogo de plugins e packs da comunidade |
 | Plugin de uma pasta local (`pnpm codearena plugins add ../codearena-plugin-x`) | O pack declarar a versão mínima do plugin (`pack.requires`); por enquanto, informe a versão junto do arquivo |
-| Criar um plugin com o gerador (`create-codearena-plugin`) | |
+| Criar um plugin com o gerador (`npm create @codearena/plugin`) | |
 | Modo isolado para plugins que ninguém revisou (`--isolated`) | |
 | Aviso de "Plugin não instalado" na Biblioteca, na importação e na sala | |
 

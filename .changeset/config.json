@@ -8,7 +8,7 @@
       "@codearena/plugin-sdk",
       "@codearena/core",
       "@codearena/plugin-host",
-      "create-codearena-plugin"
+      "@codearena/create-plugin"
     ]
   ],
   "linked": [],
