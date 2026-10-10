@@ -98,6 +98,16 @@ Os plugins oficiais são `react-native` e `backend-http` (Express).
 4. Se o plugin executa código, o isolamento é obrigatório e precisa estar descrito no PR (veja `SECURITY.md`).
 5. Precisa de algo novo no SDK? Abra uma issue aqui: mudanças no contrato seguem versionamento semântico.
 
+### Mudanças no SDK e nos pacotes publicados
+
+`packages/schemas`, `packages/plugin-sdk`, `packages/core` e `packages/plugin-host` são publicados no npm e usados por
+plugins de outros repositórios. Ao mudar um deles:
+
+1. Rode `pnpm changeset` e descreva a mudança em português. Quebra de contrato precisa de nota dizendo o que o autor
+   de plugin deve mudar (veja `.changeset/README.md`).
+2. Rode `pnpm check:packages`: ele empacota os pacotes, instala fora do monorepo e compila um plugin de teste.
+3. A publicação é automática: o merge do PR "Versionar pacotes" publica no npm.
+
 ## Revisão
 
 - Respondemos em alguns dias. PRs pequenos e focados são revisados mais rápido.

@@ -24,6 +24,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm validate:packs
+      - run: pnpm check:packages
       - run: pnpm docs:build
         env:
           DOCS_BASE: /CodeArena/

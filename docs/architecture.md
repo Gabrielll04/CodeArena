@@ -46,7 +46,7 @@ Decisão registrada em [0001: Plugins como pacotes separados](./decisoes/0001-pl
 | Como são ativados | listados em `codearena.config.json` (feito) | igual |
 | Carregamento no navegador | sob demanda; plugins não listados nem entram no build (feito) | igual |
 | Packs de exemplo | dentro do pacote do plugin (`packs/`), declarados no manifesto (feito) | igual |
-| SDK | pacote do workspace (`workspace:*`) | `@codearena/plugin-sdk`, `@codearena/schemas` e `@codearena/core` publicados com versão semântica |
+| SDK | `schemas`, `plugin-sdk`, `core` e `plugin-host` prontos para o npm (build com tipos, changesets, workflow de publicação); falta a primeira publicação | publicados com versão semântica |
 | Compatibilidade | plugin declara a faixa do SDK (`^0.1.0`); incompatível é recusado ao iniciar (feito) | igual, com SDK `1.x` |
 
 Plugins oficiais: **`react-native`** (componentes com preview em celular) e **`backend-http`** (servidores Express validados
@@ -171,6 +171,14 @@ Passo a passo para professores (instalar um plugin, criar e compartilhar packs):
 
 ### Versionamento e compatibilidade
 
+- Os quatro pacotes do núcleo (`schemas`, `plugin-sdk`, `core`, `plugin-host`) sobem de versão juntos, com
+  [changesets](https://github.com/changesets/changesets) (`pnpm changeset`). No workspace eles apontam para `src/`;
+  no npm, para `dist/` com tipos (campo `publishConfig.exports`).
+- `pnpm check:packages` (também no CI) empacota os quatro, instala num projeto vazio e compila um plugin de teste com
+  `moduleResolution: NodeNext`, para garantir que o que vai para o npm funciona fora do monorepo.
+- O workflow `.github/workflows/release.yml` abre o PR "Versionar pacotes" e, depois do merge, publica no npm com
+  proveniência.
+
 - `@codearena/plugin-sdk`, `@codearena/schemas` e `@codearena/core` seguem versionamento semântico. Quebra de contrato
   só em versão major, com nota de migração.
 - O plugin declara `codearena.sdk`; o servidor e o build recusam plugin com faixa incompatível, informando as duas versões.
@@ -192,7 +200,7 @@ Cada etapa mantém o app funcionando e os testes passando.
 | # | Etapa | Resultado |
 | --- | --- | --- |
 | 1 | `codearena.config.json` e carregamento sob demanda, ainda com os plugins em `plugins/` (**concluída**) | Bundle sem plugins não usados; o app não importa nenhum plugin diretamente |
-| 2 | Build (`dist` + tipos) e publicação de `schemas`, `plugin-sdk` e `core` | Plugins podem depender das versões publicadas |
+| 2 | Build (`dist` + tipos) e publicação de `schemas`, `plugin-sdk`, `core` e `plugin-host` (**pronta**; falta criar a organização `@codearena` no npm e o segredo `NPM_TOKEN`) | Plugins podem depender das versões publicadas |
 | 3 | Packs de exemplo para dentro dos plugins, com `codearena.packs` no manifesto (**concluída**) | `content/packs/` sai do núcleo |
 | 4 | `react-native` e `backend-http` para repositórios próprios | O núcleo os instala como dependências; E2E usa as versões publicadas |
 | 5 | Modelo `create-codearena-plugin` e `pnpm codearena plugins add` | Criar e instalar plugin sem tocar no núcleo |

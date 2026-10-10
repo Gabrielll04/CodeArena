@@ -1,16 +1,43 @@
 {
   "name": "@codearena/schemas",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Schemas Zod e contratos compartilhados do CodeArena (question packs, eventos multiplayer).",
+  "keywords": [
+    "codearena",
+    "question-pack",
+    "zod"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gabrielll04/CodeArena.git",
+    "directory": "packages/schemas"
+  },
+  "homepage": "https://github.com/Gabrielll04/CodeArena#readme",
+  "bugs": "https://github.com/Gabrielll04/CodeArena/issues",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "tsup src/index.ts --format esm --dts --clean --sourcemap --target es2022"
   },
   "dependencies": {
     "zod": "^3.25.76"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
   }
 }
