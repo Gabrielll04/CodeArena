@@ -2,7 +2,7 @@
  * Leva um plugin oficial de plugins/<id> para um repositório próprio (etapa 4 da migração).
  *
  *   node scripts/extract-plugin.mjs split <id> [--remote <url-do-repositório>]
- *     Cria o branch extract/<id> só com a pasta do plugin (com o histórico dela, via git subtree),
+ *     Cria o branch extract/<id> só com a pasta do plugin (com o histórico dela; só usa comandos básicos do git),
  *     ajusta o package.json para fora do monorepo e, com --remote, envia como "main" do repositório novo.
  *
  *   node scripts/extract-plugin.mjs adopt <id>
@@ -40,17 +40,53 @@ function coreVersions() {
   );
 }
 
+/**
+ * Recria o histórico da pasta como um repositório próprio (equivalente a `git subtree split`, que nem toda
+ * instalação do git tem): cada commit que mudou a pasta (em ordem topológica) vira um commit com a pasta na raiz,
+ * mesmo autor, data e mensagem.
+ */
+function splitHistory(folder) {
+  const source = git(['rev-list', '--reverse', '--topo-order', 'HEAD', '--', folder]).split('\n').filter(Boolean);
+  const created = [];
+  let previousTree = null;
+  for (const commit of source) {
+    let tree;
+    try {
+      tree = git(['rev-parse', `${commit}:${folder}`]);
+    } catch {
+      continue; // a pasta não existe neste commit (ex.: foi removida)
+    }
+    if (tree === previousTree) continue;
+    const [authorName, authorEmail, authorDate, committerName, committerEmail, committerDate] = git([
+      'show', '-s', '--format=%an%n%ae%n%aI%n%cn%n%ce%n%cI', commit,
+    ]).split('\n');
+    const message = git(['show', '-s', '--format=%B', commit]);
+    const parent = created.at(-1);
+    const newCommit = execFileSync('git', ['commit-tree', tree, ...(parent ? ['-p', parent] : [])], {
+      cwd: root,
+      input: `${message}\n`,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: authorName, GIT_AUTHOR_EMAIL: authorEmail, GIT_AUTHOR_DATE: authorDate,
+        GIT_COMMITTER_NAME: committerName, GIT_COMMITTER_EMAIL: committerEmail, GIT_COMMITTER_DATE: committerDate,
+      },
+    }).trim();
+    created.push(newCommit);
+    previousTree = tree;
+  }
+  if (!created.length) fail(`Nenhum commit encontrado para ${folder}.`);
+  return created;
+}
+
 if (command === 'split') {
   if (!existsSync(pluginDir)) fail(`${prefix} não existe.`);
   if (git(['status', '--porcelain', prefix])) fail(`Há alterações não commitadas em ${prefix}. Faça commit antes.`);
   const branch = `extract/${id}`;
-  try {
-    git(['branch', '-D', branch]);
-  } catch {
-    // branch ainda não existia
-  }
-  console.log(`Separando ${prefix} com o histórico (git subtree split)...`);
-  run('git', ['subtree', 'split', `--prefix=${prefix}`, '-b', branch]);
+  console.log(`Separando ${prefix} com o histórico...`);
+  const commits = splitHistory(prefix);
+  git(['branch', '-f', branch, commits.at(-1)]);
+  console.log(`${commits.length} commits com mudanças em ${prefix}.`);
 
   // Ajustes para o repositório próprio, num worktree temporário do branch novo.
   const worktree = mkdtempSync(join(tmpdir(), `codearena-extract-${id}-`));
