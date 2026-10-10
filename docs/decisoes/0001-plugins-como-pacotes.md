@@ -1,7 +1,7 @@
 # 0001: Plugins como pacotes separados; packs como conteúdo
 
-- **Status:** aceita. Etapas 1, 3, 5 e 6 da migração concluídas; etapas 2 e 4 prontas, aguardando a publicação no npm
-  e a criação dos repositórios dos plugins ([como concluir](../architecture.md#concluindo-as-etapas-2-e-4)).
+- **Status:** aceita e implementada. Os plugins oficiais estão em [codearena-plugin-react-native](https://github.com/Gabrielll04/codearena-plugin-react-native) e
+  [codearena-plugin-backend-http](https://github.com/Gabrielll04/codearena-plugin-backend-http), publicados no npm ([como foi a migração](../architecture.md#migracao-concluida)).
 - **Data:** 2026-10-10
 
 ## Contexto

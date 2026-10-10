@@ -90,15 +90,15 @@ a Biblioteca mostra "Plugin não instalado" no pack e o servidor não deixa abri
 
 ## Estado atual
 
-O modelo acima é o definido pela [decisão 0001](../decisoes/0001-plugins-como-pacotes.md). A migração está em
-andamento ([etapas](../architecture.md#etapas-da-migracao)):
+O modelo acima é o da [decisão 0001](../decisoes/0001-plugins-como-pacotes.md), já implementado
+([migração](../architecture.md#migracao-concluida)):
 
 | Funciona hoje | Ainda não |
 | --- | --- |
-| `pnpm codearena plugins add/remove/list`, com conferência de compatibilidade | Instalar plugins de terceiros pelo npm: os pacotes do CodeArena ainda não foram publicados (falta a primeira publicação) |
-| Plugins oficiais `react-native` e `backend-http` (Express), com packs de exemplo | Catálogo de plugins e packs da comunidade |
-| Plugin de uma pasta local (`pnpm codearena plugins add ../codearena-plugin-x`) | O pack declarar a versão mínima do plugin (`pack.requires`); por enquanto, informe a versão junto do arquivo |
-| Criar um plugin com o gerador (`npm create @codearena/plugin`) | |
+| Instalar plugins do npm com `pnpm codearena plugins add`, com conferência de compatibilidade | Catálogo de plugins e packs da comunidade |
+| Plugins oficiais `react-native` e `backend-http` (Express), com packs de exemplo | O pack declarar a versão mínima do plugin (`pack.requires`); por enquanto, informe a versão junto do arquivo |
+| Criar um plugin com o gerador (`npm create @codearena/plugin`) e publicar no npm | |
+| Plugin de uma pasta local (`pnpm codearena plugins add ../codearena-plugin-x`) | |
 | Modo isolado para plugins que ninguém revisou (`--isolated`) | |
 | Aviso de "Plugin não instalado" na Biblioteca, na importação e na sala | |
 

@@ -17,9 +17,9 @@ O contrato está em `packages/plugin-sdk` (`@codearena/plugin-sdk` e `@codearena
 ::: info Plugin é um pacote separado
 Pela decisão [0001: Plugins como pacotes separados](../decisoes/0001-plugins-como-pacotes.md), cada plugin é um pacote
 npm com repositório próprio, ativado por instalação em `codearena.config.json`. O núcleo não traz as dependências de
-nenhum plugin. A ativação por `codearena.config.json` e o carregamento sob demanda já funcionam; a saída dos plugins
-para repositórios próprios ainda está em andamento (ver [Arquitetura](../architecture.md#etapas-da-migracao)).
-Enquanto isso, siga as seções "Hoje (durante a migração)".
+nenhum plugin. Os plugins oficiais são bons exemplos completos: [react-native](https://github.com/Gabrielll04/codearena-plugin-react-native)
+(preview em iframe isolado) e [backend-http](https://github.com/Gabrielll04/codearena-plugin-backend-http) (execução em
+Worker e processo restrito).
 :::
 
 ## Começando
@@ -78,7 +78,7 @@ codearena-plugin-meu-plugin/      repositório próprio
 ```
 
 - O campo `codearena` é o manifesto: `pluginId`, `displayName`, faixa do SDK (`sdk`), entradas `server`/`ui`/`sandbox`
-  (opcionais, subcaminhos de `exports`) e packs de exemplo (`packs`, lido a partir da etapa 3 da migração).
+  (opcionais, subcaminhos de `exports`) e packs de exemplo (`packs`).
 - Cada entrada tem um `export default`:
   - `.` e `server`: o plugin (`QuizPlugin`) ou uma função sem argumentos que o cria (tipo `PluginEntry`).
   - `ui`: o `ClientQuizPlugin` ou uma função que recebe `{ sandboxUrl }` e o cria (tipo `ClientPluginEntry`).
@@ -88,13 +88,16 @@ codearena-plugin-meu-plugin/      repositório próprio
 - SDK, schemas e React são `peerDependencies`, para existir uma única cópia na instalação.
 - Nomes: `@codearena/plugin-<id>` para os oficiais; `codearena-plugin-<id>` para os da comunidade.
 
-### Hoje (durante a migração)
+### Publicando
 
-Os pacotes do CodeArena ainda não estão no npm, então um repositório criado pelo gerador ainda não instala
-`@codearena/*` sozinho. Até a primeira publicação, desenvolva o plugin em `plugins/<id>/` neste repositório (o gerador
-aceita essa pasta), com `"workspace:^"` nas dependências do SDK, e ative com `pnpm codearena plugins add ./plugins/<id>`.
-`react-native` e `backend-http` já estão nesse formato: cada um tem build, testes, `vitest.config.ts`, CI e
-`docs/agents.md` próprios e sai para um repositório com `scripts/extract-plugin.mjs` sem mudanças no código.
+```bash
+npm version patch     # ou minor/major
+npm run build
+npm publish --access public
+```
+
+Confira antes que `repository`, `homepage` e `bugs` no `package.json` apontam para o repositório do plugin: é o link que
+aparece na página do npm. Contas com verificação em duas etapas publicam com `npm publish --otp=<código>`.
 
 ## Contrato (`QuizPlugin`)
 
@@ -144,7 +147,7 @@ Plugins recebem apenas esses dados: não acessam stores, sockets, tokens nem o e
 
 Validação estática de funções Python (sem executar código).
 
-`plugins/python-basico/src/index.ts`:
+`codearena-plugin-python-basico/src/index.ts`:
 
 ```ts
 import { z } from 'zod';
@@ -186,7 +189,7 @@ export const pythonPlugin = definePlugin<QuizPlugin>({
 });
 ```
 
-`plugins/python-basico/src/ui/index.tsx`:
+`codearena-plugin-python-basico/src/ui.tsx`:
 
 ```tsx
 import type { ClientQuizPlugin } from '@codearena/plugin-sdk/ui';
@@ -230,16 +233,6 @@ confere a faixa do SDK e registra o plugin; o navegador só baixa a interface de
 A lista também aceita um caminho local, relativo ao arquivo de configuração (`"../codearena-plugin-python-basico"`),
 para desenvolver sem publicar. Nesse caso, rode `npm run dev` no plugin para manter `dist/` atualizado; o app usa uma
 única cópia de React e do SDK mesmo que o plugin tenha as dele.
-
-**Hoje (durante a migração),** com o plugin em `plugins/python-basico/` (pacote do workspace, instalado pelo
-`pnpm install`):
-
-```bash
-pnpm codearena plugins add ./plugins/python-basico
-```
-
-O runtime de preview (entrada `sandbox`) e as classes Tailwind dos painéis são incluídos automaticamente a partir do
-manifesto.
 
 Problemas ao carregar (pacote não instalado, manifesto inválido, SDK incompatível, id diferente do manifesto) aparecem
 no log do servidor e no terminal do Vite; os outros plugins continuam funcionando. Packs que apontam para um plugin

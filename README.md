@@ -101,7 +101,7 @@ acompanhe o progresso. Ao final, exporte o relatório (CSV/JSON).
 
 **Aluno:** `/join` - código da sala, nome e avatar. Responda no editor; a checklist marca sozinha e a resposta é enviada ao completar.
 
-Packs de exemplo: `react-native-fundamentos.json` (5 questões), `backend-http-basico.json` (4) e, de depuração, `depuracao-react-native.json` e `depuracao-backend-http.json` (3 cada), distribuídos dentro dos plugins (`plugins/<id>/packs/`, listados no campo `codearena.packs` do `package.json`).
+Packs de exemplo: `react-native-fundamentos.json` (5 questões), `backend-http-basico.json` (4) e, de depuração, `depuracao-react-native.json` e `depuracao-backend-http.json` (3 cada), distribuídos dentro dos pacotes dos plugins (pasta `packs/`, listados no campo `codearena.packs` do `package.json`).
 
 ## Estrutura
 
@@ -115,10 +115,6 @@ packages/
   core/            Checklist, XP, ranking, ciclo de vida da sala, lint de autoria
   plugin-host/     Lê codearena.config.json e carrega os plugins (servidor e build)
 codearena.config.json  Plugins ativos nesta instalação
-plugins/           Plugins oficiais, já autônomos (sairão para repositórios próprios: scripts/extract-plugin.mjs)
-  react-native/    Validadores AST + preview isolado (react-native-web)
-  backend-http/    Runtime Express + Worker + processo Node restrito + cliente HTTP
-  */packs/         Packs de exemplo de cada plugin
 docs/
   agents/          Instruções para agentes de IA gerarem conteúdo
   plugins/         Como criar plugins
@@ -184,7 +180,8 @@ Use os prompts de [`docs/agents/prompt-templates.md`](docs/agents/prompt-templat
   [`docs/guia/plugins-e-packs.md`](docs/guia/plugins-e-packs.md).
 
 Para ativar ou desativar um plugin, edite `codearena.config.json` e rode `pnpm build`. Cada interface de plugin só é
-baixada quando uma questão dele é aberta. A migração continua: hoje os dois plugins ainda ficam em `plugins/`. Decisão, modelo alvo e
+baixada quando uma questão dele é aberta. Os plugins oficiais ficam em repositórios próprios:
+[codearena-plugin-react-native](https://github.com/Gabrielll04/codearena-plugin-react-native) e [codearena-plugin-backend-http](https://github.com/Gabrielll04/codearena-plugin-backend-http). Decisão, modelo e
 etapas em [`docs/decisoes/0001-plugins-como-pacotes.md`](docs/decisoes/0001-plugins-como-pacotes.md) e
 [`docs/architecture.md`](docs/architecture.md#nucleo-plugins-e-packs). Para criar um plugin:
 [`docs/plugins/creating-a-plugin.md`](docs/plugins/creating-a-plugin.md).

@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@codearena/plugin-backend-http':
-        specifier: workspace:*
-        version: link:plugins/backend-http
+        specifier: ^0.1.2
+        version: 0.1.2(@codearena/plugin-sdk@0.1.0(react@18.3.1))(@codearena/schemas@0.1.0)(react@18.3.1)
       '@codearena/plugin-react-native':
-        specifier: workspace:*
-        version: link:plugins/react-native
+        specifier: ^0.1.3
+        version: 0.1.3(@codearena/plugin-sdk@0.1.0(react@18.3.1))(@codearena/schemas@0.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
     devDependencies:
       '@changesets/cli':
         specifier: ^2.31.1
@@ -220,98 +220,6 @@ importers:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
-
-  plugins/backend-http:
-    dependencies:
-      '@babel/parser':
-        specifier: ^7.29.0
-        version: 7.29.9
-      sucrase:
-        specifier: ^3.35.0
-        version: 3.35.1
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@codearena/core':
-        specifier: workspace:^
-        version: link:../../packages/core
-      '@codearena/plugin-sdk':
-        specifier: workspace:^
-        version: link:../../packages/plugin-sdk
-      '@codearena/schemas':
-        specifier: workspace:^
-        version: link:../../packages/schemas
-      '@types/node':
-        specifier: ^22.10.0
-        version: 22.20.5
-      '@types/react':
-        specifier: ^18.3.12
-        version: 18.3.31
-      react:
-        specifier: 18.3.1
-        version: 18.3.1
-      tsup:
-        specifier: ^8.5.1
-        version: 8.5.1(jiti@1.21.7)(postcss@8.5.29)(tsx@4.23.15)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.7(@types/node@22.20.5)(jiti@1.21.7)(tsx@4.23.15)
-
-  plugins/react-native:
-    dependencies:
-      '@babel/parser':
-        specifier: ^7.29.0
-        version: 7.29.9
-      '@babel/types':
-        specifier: ^7.29.0
-        version: 7.29.8
-      react-native-web:
-        specifier: 0.21.4
-        version: 0.21.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      sucrase:
-        specifier: ^3.35.0
-        version: 3.35.1
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@codearena/core':
-        specifier: workspace:^
-        version: link:../../packages/core
-      '@codearena/plugin-sdk':
-        specifier: workspace:^
-        version: link:../../packages/plugin-sdk
-      '@codearena/schemas':
-        specifier: workspace:^
-        version: link:../../packages/schemas
-      '@types/node':
-        specifier: ^22.10.0
-        version: 22.20.5
-      '@types/react':
-        specifier: ^18.3.12
-        version: 18.3.31
-      '@types/react-dom':
-        specifier: ^18.3.1
-        version: 18.3.7(@types/react@18.3.31)
-      react:
-        specifier: 18.3.1
-        version: 18.3.1
-      react-dom:
-        specifier: 18.3.1
-        version: 18.3.1(react@18.3.1)
-      tsup:
-        specifier: ^8.5.1
-        version: 8.5.1(jiti@1.21.7)(postcss@8.5.29)(tsx@4.23.15)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.7(@types/node@22.20.5)(jiti@1.21.7)(tsx@4.23.15)
 
   scripts:
     dependencies:
@@ -548,6 +456,32 @@ packages:
 
   '@changesets/write@0.4.0':
     resolution: {integrity: sha512-CdTLvIOPiCNuH71pyDu3rA+Q0n65cmAbXnwWH84rKGiFumFzkmHNT8KHTMEchcxN+Kl8I54xGUhJ7l3E7X396Q==}
+
+  '@codearena/plugin-backend-http@0.1.2':
+    resolution: {integrity: sha512-o7GcK22bwTAB8FymlSJPKSX2WmHgPsZkYdcN+gl5ZOPXwpmlzbJIFQOgtZ4OUWvaAqnJvM5+zNyJS6YCmxEKxw==}
+    peerDependencies:
+      '@codearena/plugin-sdk': ^0.1.0
+      '@codearena/schemas': ^0.1.0
+      react: ^18.3.1
+
+  '@codearena/plugin-react-native@0.1.3':
+    resolution: {integrity: sha512-49WNbQoIagUHUb5GY7hTiFwjgQAV+WiT8NxX+3i3AsddaUlCC1067T9sD2y17le+GJ5q+ZkM3MC6TuO320uX6Q==}
+    peerDependencies:
+      '@codearena/plugin-sdk': ^0.1.0
+      '@codearena/schemas': ^0.1.0
+      react: ^18.3.1
+      react-dom: ^18.3.1
+
+  '@codearena/plugin-sdk@0.1.0':
+    resolution: {integrity: sha512-sBRHah2lH95hehNh4qVCDV0DZ2XVhaDMBJe5JHFLA4sqdjJV08ZG07LfNLKy0emnIKVWMif7Gs0W7WghhwU1kg==}
+    peerDependencies:
+      react: ^18.3.1
+    peerDependenciesMeta:
+      react:
+        optional: true
+
+  '@codearena/schemas@0.1.0':
+    resolution: {integrity: sha512-N2/EvnM6KoE6vqTADAGHXuKDEb1fY9KqvmrCkrYtHgdephHLbvM9BFQvBaMg1I/BwVmq4cvYw7uIeSY0vzc0rw==}
 
   '@docsearch/css@3.8.2':
     resolution: {integrity: sha512-y05ayQFyUmCXze79+56v/4HpycYF3uFqB78pLPrSV5ZKAlDuIAAJNhaRi8tTdRNXh05yxX/TyNnzD6LwSM89vQ==}
@@ -3518,6 +3452,40 @@ snapshots:
       fs-extra: 7.0.1
       human-id: 4.2.2
       prettier: 2.8.8
+
+  '@codearena/plugin-backend-http@0.1.2(@codearena/plugin-sdk@0.1.0(react@18.3.1))(@codearena/schemas@0.1.0)(react@18.3.1)':
+    dependencies:
+      '@babel/parser': 7.29.9
+      '@codearena/plugin-sdk': 0.1.0(react@18.3.1)
+      '@codearena/schemas': 0.1.0
+      react: 18.3.1
+      sucrase: 3.35.1
+      zod: 3.25.76
+
+  '@codearena/plugin-react-native@0.1.3(@codearena/plugin-sdk@0.1.0(react@18.3.1))(@codearena/schemas@0.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@babel/parser': 7.29.9
+      '@babel/types': 7.29.8
+      '@codearena/plugin-sdk': 0.1.0(react@18.3.1)
+      '@codearena/schemas': 0.1.0
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      react-native-web: 0.21.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      sucrase: 3.35.1
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - encoding
+
+  '@codearena/plugin-sdk@0.1.0(react@18.3.1)':
+    dependencies:
+      '@codearena/schemas': 0.1.0
+      zod: 3.25.76
+    optionalDependencies:
+      react: 18.3.1
+
+  '@codearena/schemas@0.1.0':
+    dependencies:
+      zod: 3.25.76
 
   '@docsearch/css@3.8.2': {}
 

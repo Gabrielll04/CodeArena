@@ -63,9 +63,9 @@ describe('resolveHostPlugins', () => {
     expect(problems).toEqual([]);
     const byId = Object.fromEntries(plugins.map((p) => [p.manifest.pluginId, p]));
     expect(Object.keys(byId).sort()).toEqual(['backend-http', 'react-native']);
-    expect(byId['react-native']!.entries.sandbox).toMatch(/sandbox[\\/]runtime\.tsx$/);
+    expect(byId['react-native']!.entries.sandbox).toMatch(/dist[\\/]sandbox\.js$/);
     expect(byId['react-native']!.entries.server).toBeUndefined();
-    expect(byId['backend-http']!.entries.server).toMatch(/server[\\/]index\.ts$/);
+    expect(byId['backend-http']!.entries.server).toMatch(/dist[\\/]server\.js$/);
     expect(byId['backend-http']!.entries.sandbox).toBeUndefined();
   });
 

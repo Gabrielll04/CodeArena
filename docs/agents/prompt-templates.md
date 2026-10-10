@@ -5,7 +5,7 @@ Depois de receber o JSON, valide com `pnpm validate:packs arquivo.json` ou impor
 
 ## 1. Gerar um pack de React Native
 
-Contexto: `AGENTS.md`, `docs/agents/question-pack-schema.md`, `docs/agents/checklist-rules.md`, `plugins/react-native/docs/agents.md`.
+Contexto: `AGENTS.md`, `docs/agents/question-pack-schema.md`, `docs/agents/checklist-rules.md`, `docs/agents/plugin-react-native.md`.
 
 ```text
 Você é um autor de questões técnicas para o CodeArena.
@@ -32,7 +32,7 @@ Regras:
 
 ## 2. Gerar um pack de backend HTTP
 
-Contexto: `AGENTS.md`, `docs/agents/question-pack-schema.md`, `docs/agents/checklist-rules.md`, `plugins/backend-http/docs/agents.md`.
+Contexto: `AGENTS.md`, `docs/agents/question-pack-schema.md`, `docs/agents/checklist-rules.md`, `docs/agents/plugin-backend-http.md`.
 
 ```text
 Você é um autor de questões técnicas para o CodeArena.
@@ -124,16 +124,16 @@ Depois rode `pnpm validate:packs arquivo.json`: cada questão deve mostrar `INFO
 
 ## 7. Criar um plugin novo
 
-Contexto: `docs/plugins/creating-a-plugin.md`, `packages/plugin-sdk/src/types.ts`, `plugins/react-native/src/index.ts`.
+Contexto: `docs/plugins/creating-a-plugin.md`, `packages/plugin-sdk/src/types.ts`, [`src/index.ts` do plugin react-native](https://github.com/Gabrielll04/codearena-plugin-react-native/blob/HEAD/src/index.ts).
 
 ```text
 Crie um plugin do CodeArena para <disciplina/ambiente, ex.: SQL com SQLite em memória>.
 Siga docs/plugins/creating-a-plugin.md:
-- pacote em plugins/<id>/ com package.json (manifesto "codearena"), src/index.ts (definição com definePlugin) e
+- repositório criado com `npm create @codearena/plugin`, com package.json (manifesto "codearena"), src/index.ts (definição com definePlugin) e
   src/ui/index.tsx (ClientQuizPlugin), cada entrada com export default;
 - validadores com schema Zod de params, modo "static" ou "dynamic" e mensagens curtas em português;
-- testes em plugins/<id>/test usando evaluateChecklist de @codearena/core;
+- testes em test/ usando evaluateChecklist de @codearena/core;
 - ativação com pnpm add -w e uma linha em codearena.config.json (nenhum arquivo de apps/ muda);
-- documentação para agentes em plugins/<id>/docs/agents.md e um pack de exemplo em plugins/<id>/packs/, listado em codearena.packs.
+- documentação para agentes em docs/agents.md e um pack de exemplo em packs/, listado em codearena.packs.
 Não altere packages/core, packages/schemas nem apps/.
 ```

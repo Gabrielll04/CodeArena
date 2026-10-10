@@ -90,13 +90,13 @@ Ao fim da questão, professor e alunos veem a correção esperada como diff.
 
 ## Packs de exemplo
 
-- `plugins/react-native/packs/depuracao-react-native.json`: botão sem `title`, contador sem estado, estilo com propriedade errada.
-- `plugins/backend-http/packs/depuracao-backend-http.json`: corpo vazio sem `express.json()`, 404 que responde 200, rota que nunca responde.
+- [`depuracao-react-native.json`](https://github.com/Gabrielll04/codearena-plugin-react-native/blob/HEAD/packs/depuracao-react-native.json): botão sem `title`, contador sem estado, estilo com propriedade errada.
+- [`depuracao-backend-http.json`](https://github.com/Gabrielll04/codearena-plugin-backend-http/blob/HEAD/packs/depuracao-backend-http.json): corpo vazio sem `express.json()`, 404 que responde 200, rota que nunca responde.
 
 ## Verificando
 
 ```bash
-pnpm validate:packs plugins/react-native/packs/depuracao-react-native.json
+pnpm validate:packs meu-pack-de-depuracao.json
 ```
 
 Saídas relevantes:

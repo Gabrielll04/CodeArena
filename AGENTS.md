@@ -20,10 +20,8 @@ o servidor valida de novo e concede XP (base + bônus por velocidade).
 | `packages/core/src/authoring.ts` | Avisos de qualidade de questões (`lintQuestion`) |
 | `packages/plugin-sdk/src/types.ts` | Contrato de plugins (`QuizPlugin`, `ChecklistValidator`) |
 | `codearena.config.json` | Plugins ativos na instalação (lidos por `packages/plugin-host`) |
-| `plugins/react-native/src/index.ts` | Validadores do plugin `react-native` |
-| `plugins/backend-http/src/index.ts` | Validadores do plugin `backend-http` |
 | `docs/agents/debug-questions.md` | Como criar questões de depuração (`kind: "debug"`) |
-| `plugins/*/packs/*.json` | Packs de exemplo válidos de cada plugin (inclui `depuracao-*.json`) |
+| `node_modules/@codearena/plugin-*/packs/*.json` | Packs de exemplo válidos de cada plugin (inclui `depuracao-*.json`) |
 | `docs/agents/` | Instruções detalhadas para gerar conteúdo |
 | `scripts/validate-packs.ts` | Validador de packs (schema + checklist contra a solução) |
 
@@ -32,8 +30,8 @@ Leia nesta ordem antes de gerar questões:
 1. `docs/agents/overview.md`
 2. `docs/agents/question-pack-schema.md`
 3. `docs/agents/checklist-rules.md`
-4. O guia do plugin alvo, que fica dentro do pacote do plugin: `plugins/react-native/docs/agents.md` ou
-   `plugins/backend-http/docs/agents.md` (para outros plugins, `node_modules/<pacote>/docs/agents.md`)
+4. O guia do plugin alvo, que vem dentro do pacote: `node_modules/@codearena/plugin-react-native/docs/agents.md` ou
+   `node_modules/@codearena/plugin-backend-http/docs/agents.md` (também em `docs/agents/plugin-<id>.md` no site)
 5. `docs/agents/prompt-templates.md` (prompts prontos)
 
 ## Regras obrigatórias para gerar questões
@@ -71,7 +69,7 @@ e aponta regras frágeis. Saída com `ERRO` significa que o pack não deve ser e
 
 - TypeScript estrito; mensagens de interface em português, curtas e funcionais, sem emojis.
 - O servidor é a fonte oficial de tempo, pontuação e validação; nunca confie em dados do cliente para XP.
-- Código de aluno nunca roda no processo principal do servidor (ver `plugins/backend-http/src/server`).
+- Código de aluno nunca roda no processo principal do servidor (ver `src/server` no repositório do plugin `backend-http`).
 - Plugins são pacotes separados (`docs/decisoes/0001-plugins-como-pacotes.md`): seguem `docs/plugins/creating-a-plugin.md`,
   não alteram `packages/core` e trazem as próprias dependências. Packs são só JSON e nunca contêm código.
 - Rode `pnpm typecheck && pnpm test` antes de propor mudanças; `pnpm test:e2e` para fluxos de sala.
