@@ -109,6 +109,10 @@ if (command === 'split') {
     } else {
       delete pkg.repository?.directory;
     }
+    // publishConfig.exports só existe no pnpm; fora do monorepo os exports apontam direto para dist.
+    // Proveniência só funciona publicando pelo CI, então não fica obrigatória.
+    if (pkg.publishConfig?.exports) pkg.exports = pkg.publishConfig.exports;
+    pkg.publishConfig = { access: 'public' };
     writeJson(file, pkg);
     git(['add', 'package.json'], worktree);
     git(['commit', '-m', 'Prepare standalone repository', '-m', 'Dependencies on the CodeArena core now use the published versions.'], worktree);
