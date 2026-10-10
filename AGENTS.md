@@ -70,5 +70,6 @@ e aponta regras frágeis. Saída com `ERRO` significa que o pack não deve ser e
 - TypeScript estrito; mensagens de interface em português, curtas e funcionais, sem emojis.
 - O servidor é a fonte oficial de tempo, pontuação e validação; nunca confie em dados do cliente para XP.
 - Código de aluno nunca roda no processo principal do servidor (ver `plugins/backend-http/src/server`).
-- Novos plugins seguem `docs/plugins/creating-a-plugin.md` e não alteram `packages/core`.
+- Plugins são pacotes separados (`docs/decisoes/0001-plugins-como-pacotes.md`): seguem `docs/plugins/creating-a-plugin.md`,
+  não alteram `packages/core` e trazem as próprias dependências. Packs são só JSON e nunca contêm código.
 - Rode `pnpm typecheck && pnpm test` antes de propor mudanças; `pnpm test:e2e` para fluxos de sala.

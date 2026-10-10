@@ -56,6 +56,10 @@ export default defineConfig({
         items: [{ text: 'Criando um plugin', link: '/plugins/creating-a-plugin' }],
       },
       {
+        text: 'Decisões',
+        items: [{ text: '0001: Plugins como pacotes', link: '/decisoes/0001-plugins-como-pacotes' }],
+      },
+      {
         text: 'Comunidade',
         items: [{ text: 'Contribuindo', link: '/contribuindo' }],
       },

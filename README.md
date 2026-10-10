@@ -112,9 +112,9 @@ packages/
   schemas/         Zod do question pack e contratos de eventos
   plugin-sdk/      Contratos e registro de plugins
   core/            Checklist, XP, ranking, ciclo de vida da sala, lint de autoria
-plugins/
+plugins/           (temporário: sairão para repositórios próprios, ver decisão 0001)
   react-native/    Validadores AST + preview isolado (react-native-web)
-  backend-http/    Runtime Express/Fastify + Worker + processo Node restrito + cliente HTTP
+  backend-http/    Runtime Express + Worker + processo Node restrito + cliente HTTP
 content/packs/     Packs de exemplo (seed)
 docs/
   agents/          Instruções para agentes de IA gerarem conteúdo
@@ -171,10 +171,17 @@ Publicação: o workflow `.github/workflows/docs.yml` publica no GitHub Pages a 
 Use os prompts de [`docs/agents/prompt-templates.md`](docs/agents/prompt-templates.md) com `AGENTS.md` e os guias de
 `docs/agents/` como contexto, depois rode `pnpm validate:packs pack.json` ou importe pelo app.
 
-## Criando um plugin
+## Núcleo, plugins e packs
 
-Veja [`docs/plugins/creating-a-plugin.md`](docs/plugins/creating-a-plugin.md). Um plugin é um pacote em `plugins/<id>`
-registrado em `apps/server/src/plugins.ts` e `apps/web/src/plugins/registry.tsx`; o núcleo não muda.
+- **Núcleo** (este repositório): sala em tempo real, checklist, XP, interface e o SDK de plugins.
+- **Plugins**: pacotes npm separados, um por disciplina, ativados em `codearena.config.json`. Quem não usa um plugin não
+  carrega as dependências dele. Oficiais: `react-native` e `backend-http` (Express).
+- **Packs**: questões em JSON. Nunca contêm código; só apontam para um `pluginId`.
+
+A migração para esse modelo está em andamento: hoje os dois plugins ainda ficam em `plugins/`. Decisão, modelo alvo e
+etapas em [`docs/decisoes/0001-plugins-como-pacotes.md`](docs/decisoes/0001-plugins-como-pacotes.md) e
+[`docs/architecture.md`](docs/architecture.md#nucleo-plugins-e-packs). Para criar um plugin:
+[`docs/plugins/creating-a-plugin.md`](docs/plugins/creating-a-plugin.md).
 
 ## Contribuindo
 

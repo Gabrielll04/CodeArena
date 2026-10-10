@@ -11,30 +11,55 @@ Plugins adicionam disciplinas ou ambientes de execução ao CodeArena sem altera
 
 O contrato está em `packages/plugin-sdk` (`@codearena/plugin-sdk` e `@codearena/plugin-sdk/ui`).
 
-## Anatomia
+::: info Plugin é um pacote separado
+Pela decisão [0001: Plugins como pacotes separados](../decisoes/0001-plugins-como-pacotes.md), cada plugin é um pacote
+npm com repositório próprio, ativado por instalação em `codearena.config.json`. O núcleo não traz as dependências de
+nenhum plugin. A migração está planejada (ver [Arquitetura](../architecture.md#etapas-da-migracao)); enquanto ela não
+termina, siga a seção "Hoje (durante a migração)" abaixo.
+:::
 
-```
-plugins/meu-plugin/
+## Anatomia (modelo alvo)
+
+```text
+codearena-plugin-meu-plugin/      repositório próprio
+  src/index.ts      definição independente de ambiente (roda no navegador e no servidor)
+  src/server.ts     opcional: recursos só do servidor (ex.: executor em processo isolado)
+  src/ui.tsx        ClientQuizPlugin: plugin + painéis React (só navegador)
+  src/sandbox.tsx   opcional: runtime carregado dentro do iframe isolado de preview
+  packs/*.json      packs de exemplo do plugin
+  docs/agents.md    guia para agentes de IA gerarem questões deste plugin
+  test/validators.test.ts
   package.json
-  src/
-    index.ts        # definição independente de ambiente (roda no navegador e no servidor)
-    ui/index.tsx    # ClientQuizPlugin: plugin + painéis React (só navegador)
-    server/index.ts # opcional: versão com recursos de servidor (ex.: executor isolado)
-  test/
-    validators.test.ts
 ```
 
 ```json
 {
-  "name": "@codearena/plugin-meu-plugin",
-  "private": true,
+  "name": "codearena-plugin-meu-plugin",
+  "version": "1.0.0",
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./ui": "./src/ui/index.tsx" },
-  "dependencies": { "@codearena/plugin-sdk": "workspace:*", "@codearena/schemas": "workspace:*", "zod": "^3.25.76" },
-  "devDependencies": { "@codearena/core": "workspace:*" },
-  "peerDependencies": { "react": "^18.3.1" }
+  "exports": { ".": "./dist/index.js", "./ui": "./dist/ui.js" },
+  "dependencies": { "zod": "^3.25.76" },
+  "peerDependencies": { "@codearena/plugin-sdk": "^1.0.0", "@codearena/schemas": "^1.0.0", "react": "^18.3.0" },
+  "devDependencies": { "@codearena/core": "^1.0.0" },
+  "codearena": {
+    "pluginId": "meu-plugin",
+    "sdk": "^1.0.0",
+    "ui": "./ui",
+    "packs": ["./packs/meu-plugin-basico.json"]
+  }
 }
 ```
+
+- O campo `codearena` é o manifesto: `pluginId`, faixa do SDK, entradas `server`/`ui`/`sandbox` (opcionais) e packs de exemplo.
+- Dependências pesadas (simuladores, parsers, bibliotecas de desenho) ficam **no plugin**. Quem não instala o plugin não as baixa.
+- SDK, schemas e React são `peerDependencies`, para existir uma única cópia na instalação.
+- Nomes: `@codearena/plugin-<id>` para os oficiais; `codearena-plugin-<id>` para os da comunidade.
+
+### Hoje (durante a migração)
+
+Até a etapa 4 da migração, desenvolva o plugin em `plugins/<id>/` neste repositório, com o mesmo layout e
+`"@codearena/plugin-sdk": "workspace:*"` no lugar das versões publicadas. Mantenha o plugin autocontido (nada de
+importar de `apps/` nem de outro plugin) para que ele possa sair para um repositório próprio sem mudanças.
 
 ## Contrato (`QuizPlugin`)
 
@@ -145,7 +170,23 @@ export const pythonClientPlugin: ClientQuizPlugin = {
 };
 ```
 
-## Registro (as duas únicas linhas fora do plugin)
+## Ativação
+
+**Modelo alvo:** nenhuma linha do núcleo muda. A instalação adiciona o pacote e o lista na configuração:
+
+```bash
+pnpm add codearena-plugin-python-basico
+```
+
+```json
+{ "plugins": ["@codearena/plugin-react-native", "@codearena/plugin-backend-http", "codearena-plugin-python-basico"] }
+```
+
+Depois, `pnpm build`. O servidor lê o manifesto, confere a faixa do SDK e registra o plugin; o navegador só baixa a
+interface dele ao abrir uma questão `python-basico`. Durante o desenvolvimento, a lista aceita um caminho local
+(`"../codearena-plugin-python-basico"`).
+
+**Hoje (durante a migração):** o registro ainda é manual, em dois arquivos.
 
 `apps/server/src/plugins.ts` (validação oficial):
 
@@ -166,6 +207,16 @@ Se o plugin usa um iframe isolado de preview, registre o runtime em `apps/web/sr
 (veja o plugin `react-native`). Se o painel usa classes Tailwind, elas já são incluídas (`plugins/*/src/**`).
 
 Packs que apontam para um plugin não registrado mostram o erro "Plugin não instalado" na biblioteca, na importação e na sala.
+
+## Packs do plugin
+
+Plugin é código; pack é conteúdo. Os packs de exemplo de um plugin ficam **dentro do pacote** (`packs/*.json`) e são
+declarados em `codearena.packs`. O servidor os carrega como somente leitura; o professor pode duplicá-los para editar.
+
+- Packs de exemplo seguem as mesmas regras de qualquer pack: JSON válido para `QuestionPackSchema`, sem código executável
+  além de `starterCode` e `solution`.
+- Packs de professores não dependem do repositório do plugin: são importados pela interface ou pela API e vivem nos dados da instalação.
+- Hoje os packs oficiais ainda estão em `content/packs/`; eles passam para os pacotes dos plugins na etapa 3 da migração.
 
 ## Testes
 
@@ -190,14 +241,16 @@ Rode também `pnpm validate:packs` com um pack de exemplo do seu plugin depois d
   (processo filho, contêiner ou serviço externo), sempre com limite de tempo e memória.
 - Use `createSession` para iniciar a execução uma vez por rodada e `disposeSession` para encerrar.
 - Se o ambiente não estiver disponível, falhe com mensagem explícita (nunca aprove por padrão).
-- Veja `plugins/backend-http`: `BackendExecutor` com implementação em Worker (`src/ui/workerExecutor.ts`)
-  e em processo Node com permissões restritas (`src/server/childProcessExecutor.ts`).
+- Use o plugin `backend-http` como referência: `BackendExecutor` com implementação em Worker (`src/ui/workerExecutor.ts`)
+  e em processo Node com permissões restritas (`src/server/childProcessExecutor.ts`), executando apps Express.
 
 ## Checklist de publicação
 
 - [ ] `definePlugin` passa (id em kebab-case, validadores com `mode`).
 - [ ] Validadores com `params` em Zod e mensagens curtas em português.
 - [ ] Mesmo resultado no navegador e no servidor para o mesmo código.
-- [ ] Testes em `plugins/<id>/test`.
-- [ ] `docs/agents/plugin-<id>.md` com validadores, parâmetros, limites e exemplos de questões.
-- [ ] Pack de exemplo em `content/packs/` aprovado por `pnpm validate:packs`.
+- [ ] Testes no próprio pacote (`test/`).
+- [ ] Manifesto `codearena` com `pluginId`, faixa do SDK e packs de exemplo.
+- [ ] `docs/agents.md` no pacote com validadores, parâmetros, limites e exemplos de questões.
+- [ ] Packs de exemplo em `packs/` aprovados por `pnpm validate:packs`.
+- [ ] Nenhuma dependência nova no núcleo.

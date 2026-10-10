@@ -48,7 +48,7 @@ Leia [`docs/architecture.md`](docs/architecture.md) (pacotes, estados da sala, e
 packages/schemas      contratos Zod (packs e eventos)
 packages/plugin-sdk   contrato dos plugins
 packages/core         checklist, XP, ranking, sala, lint de autoria
-plugins/*             react-native, backend-http (e os seus)
+plugins/*             react-native e backend-http (sairão para repositórios próprios)
 apps/server           Fastify + Socket.IO
 apps/web              React + Vite + Tailwind
 content/packs         packs de exemplo
@@ -86,11 +86,17 @@ docs/                 documentação (também publicada como site, VitePress)
 
 ### Contribuindo com um plugin
 
-1. Siga o exemplo completo de [`docs/plugins/creating-a-plugin.md`](docs/plugins/creating-a-plugin.md).
-2. Crie `plugins/<id>/` com `src/index.ts`, `src/ui/index.tsx` e `test/`.
-3. Registre o plugin em `apps/server/src/plugins.ts` e em `apps/web/src/plugins/registry.tsx` (as únicas linhas fora do plugin).
-4. Escreva `docs/agents/plugin-<id>.md` com validadores, parâmetros, limites e exemplos, e um pack de exemplo em `content/packs/`.
-5. Se o plugin executa código, o isolamento é obrigatório e precisa estar descrito no PR (veja `SECURITY.md`).
+Plugins são **pacotes separados**, cada um em seu próprio repositório
+([decisão 0001](docs/decisoes/0001-plugins-como-pacotes.md)). Este repositório recebe só mudanças no núcleo e no SDK.
+Os plugins oficiais são `react-native` e `backend-http` (Express).
+
+1. Siga [`docs/plugins/creating-a-plugin.md`](docs/plugins/creating-a-plugin.md).
+2. Enquanto o SDK não está publicado no npm (migração em andamento), desenvolva em `plugins/<id>/` e registre em
+   `apps/server/src/plugins.ts` e `apps/web/src/plugins/registry.tsx`. Depois da migração, o plugin vai para um
+   repositório próprio e é ativado em `codearena.config.json`, sem PR aqui.
+3. Coloque os packs de exemplo dentro do plugin (`packs/`) e o guia para agentes em `docs/agents.md` do plugin.
+4. Se o plugin executa código, o isolamento é obrigatório e precisa estar descrito no PR (veja `SECURITY.md`).
+5. Precisa de algo novo no SDK? Abra uma issue aqui: mudanças no contrato seguem versionamento semântico.
 
 ## Revisão
 
