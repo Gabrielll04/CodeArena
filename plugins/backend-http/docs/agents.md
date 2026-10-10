@@ -1,9 +1,3 @@
----
-editLink: false
----
-
-<!-- Gerado por scripts/sync-docs.mjs a partir de @codearena/plugin-backend-http/docs/agents.md. Não edite este arquivo. -->
-
 # Plugin `backend-http`
 
 Questões de backend em Node. O aluno escreve um servidor **Express** ou **Fastify**; a checklist pode verificar o
@@ -141,17 +135,17 @@ Implementadas em `plugins/backend-http/packs/backend-http-basico.json`:
 O painel "Cliente HTTP" mostra as rotas detectadas no código, permite montar a requisição (método, caminho, headers, body)
 e exibe status, headers, body e console da resposta. Quando um item dinâmico falha, a mensagem diz o que diferiu.
 
-![Requisição retornando 503 e item falhando](../images/backend-01-requisicao-falhando.png)
+![Requisição retornando 503 e item falhando](https://raw.githubusercontent.com/Gabrielll04/CodeArena/HEAD/docs/images/backend-01-requisicao-falhando.png)
 
 Com o código corrigido, o item passa, a resposta é validada pelo servidor e o editor trava. O console mostra o que o
 código do aluno imprimiu durante a requisição.
 
-![Resposta aceita no plugin backend-http](../images/backend-02-resposta-aceita.png)
+![Resposta aceita no plugin backend-http](https://raw.githubusercontent.com/Gabrielll04/CodeArena/HEAD/docs/images/backend-02-resposta-aceita.png)
 
 Dois casos de teste evitam respostas "decoradas": o código abaixo responde sempre `"42"`, passa em `/users/42` e é
 recusado em `/users/7`.
 
-![Resposta fixa recusada](../images/backend-03-resposta-decorada-recusada.png)
+![Resposta fixa recusada](https://raw.githubusercontent.com/Gabrielll04/CodeArena/HEAD/docs/images/backend-03-resposta-decorada-recusada.png)
 
 ## Limites do runner (o que não usar em questões)
 

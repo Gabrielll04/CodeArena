@@ -42,7 +42,7 @@ Decisão registrada em [0001: Plugins como pacotes separados](./decisoes/0001-pl
 
 | Aspecto | Hoje | Modelo alvo |
 | --- | --- | --- |
-| Onde ficam os plugins | `plugins/` neste repositório | um repositório e um pacote npm por plugin |
+| Onde ficam os plugins | `plugins/` neste repositório, já como pacotes autônomos (build, testes, CI e docs próprios); `scripts/extract-plugin.mjs` os leva para repositórios próprios | um repositório e um pacote npm por plugin |
 | Como são ativados | listados em `codearena.config.json` (feito) | igual |
 | Carregamento no navegador | sob demanda; plugins não listados nem entram no build (feito) | igual |
 | Packs de exemplo | dentro do pacote do plugin (`packs/`), declarados no manifesto (feito) | igual |
@@ -229,12 +229,34 @@ Cada etapa mantém o app funcionando e os testes passando.
 | 1 | `codearena.config.json` e carregamento sob demanda, ainda com os plugins em `plugins/` (**concluída**) | Bundle sem plugins não usados; o app não importa nenhum plugin diretamente |
 | 2 | Build (`dist` + tipos) e publicação de `schemas`, `plugin-sdk`, `core` e `plugin-host` (**pronta**; falta criar a organização `@codearena` no npm e o segredo `NPM_TOKEN`) | Plugins podem depender das versões publicadas |
 | 3 | Packs de exemplo para dentro dos plugins, com `codearena.packs` no manifesto (**concluída**) | `content/packs/` sai do núcleo |
-| 4 | `react-native` e `backend-http` para repositórios próprios | O núcleo os instala como dependências; E2E usa as versões publicadas |
+| 4 | `react-native` e `backend-http` para repositórios próprios (**pronta**; falta criar os repositórios e publicar) | O núcleo os instala como dependências; E2E usa as versões publicadas |
 | 5 | Modelo `create-codearena-plugin` e `pnpm codearena plugins add` (**concluída**) | Criar e instalar plugin sem tocar no núcleo |
 | 6 | Modo isolado para plugins de terceiros (**concluída**) | Plugins não revisados sem acesso ao app nem ao servidor |
 
-Enquanto a migração não termina, um plugin novo segue o caminho atual descrito em
-[Criando um plugin](./plugins/creating-a-plugin.md).
+### Concluindo as etapas 2 e 4
+
+O código está pronto; faltam ações nas contas do projeto, que só os mantenedores podem fazer:
+
+1. **npm:** criar a organização `codearena` em npmjs.com, gerar um token do tipo *Automation* e salvar como segredo
+   `NPM_TOKEN` no repositório do GitHub.
+2. **Primeira publicação:** criar a branch `main`, rodar `pnpm changeset` (pacotes do núcleo e plugins, versão
+   inicial), fazer commit e push. O workflow `release.yml` abre o PR "Versionar pacotes"; o merge publica no npm.
+   Antes, `pnpm check:packages` confere localmente o que será publicado.
+3. **Repositórios dos plugins:** criar `codearena-plugin-react-native` e `codearena-plugin-backend-http` no GitHub e
+   rodar, para cada um:
+
+   ```bash
+   node scripts/extract-plugin.mjs split react-native --remote https://github.com/<org>/codearena-plugin-react-native
+   ```
+
+   O comando separa `plugins/react-native` com o histórico, troca as dependências `workspace:` pelas versões
+   publicadas do núcleo e envia como `main` do repositório novo, que já tem CI próprio.
+4. **Núcleo passa a usar o npm:** com o plugin publicado a partir do repositório dele,
+   `node scripts/extract-plugin.mjs adopt react-native` remove `plugins/react-native` e instala a versão do npm.
+   Rode `pnpm typecheck && pnpm test && pnpm test:e2e` e faça commit.
+
+Até lá, um plugin novo pode ser criado com o gerador num repositório próprio (testando contra `pnpm codearena plugins
+add ../pasta`) ou dentro de `plugins/`, como descrito em [Criando um plugin](./plugins/creating-a-plugin.md).
 
 ## Estados da sala
 

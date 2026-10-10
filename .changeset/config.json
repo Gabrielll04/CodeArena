@@ -14,10 +14,13 @@
   "linked": [],
   "access": "public",
   "baseBranch": "main",
-  "updateInternalDependencies": "patch",
+  "updateInternalDependencies": "minor",
   "privatePackages": {
     "version": false,
     "tag": false
   },
-  "ignore": []
+  "ignore": [
+    "@codearena/plugin-react-native",
+    "@codearena/plugin-backend-http"
+  ]
 }

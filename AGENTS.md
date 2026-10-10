@@ -32,7 +32,8 @@ Leia nesta ordem antes de gerar questões:
 1. `docs/agents/overview.md`
 2. `docs/agents/question-pack-schema.md`
 3. `docs/agents/checklist-rules.md`
-4. O guia do plugin alvo: `docs/agents/plugin-react-native.md` ou `docs/agents/plugin-backend-http.md`
+4. O guia do plugin alvo, que fica dentro do pacote do plugin: `plugins/react-native/docs/agents.md` ou
+   `plugins/backend-http/docs/agents.md` (para outros plugins, `node_modules/<pacote>/docs/agents.md`)
 5. `docs/agents/prompt-templates.md` (prompts prontos)
 
 ## Regras obrigatórias para gerar questões

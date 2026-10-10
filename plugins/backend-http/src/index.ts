@@ -246,7 +246,7 @@ export function createBackendHttpPlugin(options: BackendHttpPluginOptions = {}):
     validators,
     authoring: {
       defaultStarterCode: DEFAULT_STARTER,
-      docsPath: 'docs/agents/plugin-backend-http.md',
+      docsPath: 'docs/agents.md',
       regexHelpers: [
         {
           id: 'creates-route',

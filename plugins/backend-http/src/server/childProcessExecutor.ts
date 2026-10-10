@@ -1,11 +1,15 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import type { DispatchResult, RequestInput } from '../runtime/sandbox-runtime.mjs';
 import { failedSession, type BackendExecutor, type BackendSession, type LoadResult } from '../types';
 
-const runnerPath = fileURLToPath(new URL('../runtime/runner.mjs', import.meta.url));
+// Código-fonte: src/server -> src/runtime. Pacote publicado: dist/server.js -> dist/runtime.
+const runnerPath = [new URL('./runtime/runner.mjs', import.meta.url), new URL('../runtime/runner.mjs', import.meta.url)]
+  .map((url) => fileURLToPath(url))
+  .find((path) => existsSync(path))!;
 const runtimeDir = dirname(runnerPath);
 
 export interface ChildProcessExecutorOptions {

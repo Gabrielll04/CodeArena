@@ -115,7 +115,7 @@ packages/
   core/            Checklist, XP, ranking, ciclo de vida da sala, lint de autoria
   plugin-host/     Lê codearena.config.json e carrega os plugins (servidor e build)
 codearena.config.json  Plugins ativos nesta instalação
-plugins/           (temporário: sairão para repositórios próprios, ver decisão 0001)
+plugins/           Plugins oficiais, já autônomos (sairão para repositórios próprios: scripts/extract-plugin.mjs)
   react-native/    Validadores AST + preview isolado (react-native-web)
   backend-http/    Runtime Express + Worker + processo Node restrito + cliente HTTP
   */packs/         Packs de exemplo de cada plugin

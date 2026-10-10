@@ -5,7 +5,7 @@ Depois de receber o JSON, valide com `pnpm validate:packs arquivo.json` ou impor
 
 ## 1. Gerar um pack de React Native
 
-Contexto: `AGENTS.md`, `docs/agents/question-pack-schema.md`, `docs/agents/checklist-rules.md`, `docs/agents/plugin-react-native.md`.
+Contexto: `AGENTS.md`, `docs/agents/question-pack-schema.md`, `docs/agents/checklist-rules.md`, `plugins/react-native/docs/agents.md`.
 
 ```text
 Você é um autor de questões técnicas para o CodeArena.
@@ -32,7 +32,7 @@ Regras:
 
 ## 2. Gerar um pack de backend HTTP
 
-Contexto: `AGENTS.md`, `docs/agents/question-pack-schema.md`, `docs/agents/checklist-rules.md`, `docs/agents/plugin-backend-http.md`.
+Contexto: `AGENTS.md`, `docs/agents/question-pack-schema.md`, `docs/agents/checklist-rules.md`, `plugins/backend-http/docs/agents.md`.
 
 ```text
 Você é um autor de questões técnicas para o CodeArena.

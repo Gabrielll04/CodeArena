@@ -13,3 +13,4 @@ playwright-report/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
 docs/contribuindo.md
+docs/agents/plugin-*.md

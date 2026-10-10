@@ -1,9 +1,3 @@
----
-editLink: false
----
-
-<!-- Gerado por scripts/sync-docs.mjs a partir de @codearena/plugin-react-native/docs/agents.md. Não edite este arquivo. -->
-
 # Plugin `react-native`
 
 Questões de React Native com preview em moldura de celular. O código do aluno é transpilado (sucrase) e renderizado
@@ -80,21 +74,21 @@ Veja todas implementadas em `plugins/react-native/packs/react-native-fundamentos
 
 Checklist parcial: ao escrever `export default function App()`, o primeiro item é marcado imediatamente.
 
-![Checklist parcial no plugin react-native](../images/rn-01-checklist-parcial.png)
+![Checklist parcial no plugin react-native](https://raw.githubusercontent.com/Gabrielll04/CodeArena/HEAD/docs/images/rn-01-checklist-parcial.png)
 
 Erros de sintaxe aparecem no preview (com a linha) e não derrubam o app. Observe que os três itens de texto já estão
 concluídos, mas o item `reactNativeCompiles` continua pendente: **sem um item de sintaxe, código quebrado que casa as
 regex seria aceito e o editor travaria com um app que não renderiza**. Por isso o pack de exemplo inclui esse item.
 
-![Erro de sintaxe no preview](../images/rn-02-erro-no-preview.png)
+![Erro de sintaxe no preview](https://raw.githubusercontent.com/Gabrielll04/CodeArena/HEAD/docs/images/rn-02-erro-no-preview.png)
 
 Checklist completa: o servidor valida de novo, concede o XP e o editor fica somente leitura. O preview continua interativo.
 
-![Resposta aceita e preview](../images/rn-03-resposta-aceita.png)
+![Resposta aceita e preview](https://raw.githubusercontent.com/Gabrielll04/CodeArena/HEAD/docs/images/rn-03-resposta-aceita.png)
 
 Questões com estado (`useState`) funcionam no preview; os toques do aluno rodam o código dele.
 
-![Contador com estado](../images/rn-04-contador-com-estado.png)
+![Contador com estado](https://raw.githubusercontent.com/Gabrielll04/CodeArena/HEAD/docs/images/rn-04-contador-com-estado.png)
 
 ## Diferenças entre React Native e web (alerte nos enunciados quando relevante)
 

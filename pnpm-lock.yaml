@@ -226,12 +226,6 @@ importers:
       '@babel/parser':
         specifier: ^7.29.0
         version: 7.29.9
-      '@codearena/plugin-sdk':
-        specifier: workspace:*
-        version: link:../../packages/plugin-sdk
-      '@codearena/schemas':
-        specifier: workspace:*
-        version: link:../../packages/schemas
       sucrase:
         specifier: ^3.35.0
         version: 3.35.1
@@ -240,14 +234,32 @@ importers:
         version: 3.25.76
     devDependencies:
       '@codearena/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/core
+      '@codearena/plugin-sdk':
+        specifier: workspace:^
+        version: link:../../packages/plugin-sdk
+      '@codearena/schemas':
+        specifier: workspace:^
+        version: link:../../packages/schemas
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.5
       '@types/react':
         specifier: ^18.3.12
         version: 18.3.31
       react:
         specifier: 18.3.1
         version: 18.3.1
+      tsup:
+        specifier: ^8.5.1
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.29)(tsx@4.23.15)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@22.20.5)(jiti@1.21.7)(tsx@4.23.15)
 
   plugins/react-native:
     dependencies:
@@ -257,12 +269,6 @@ importers:
       '@babel/types':
         specifier: ^7.29.0
         version: 7.29.8
-      '@codearena/plugin-sdk':
-        specifier: workspace:*
-        version: link:../../packages/plugin-sdk
-      '@codearena/schemas':
-        specifier: workspace:*
-        version: link:../../packages/schemas
       react-native-web:
         specifier: 0.21.4
         version: 0.21.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -274,8 +280,17 @@ importers:
         version: 3.25.76
     devDependencies:
       '@codearena/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/core
+      '@codearena/plugin-sdk':
+        specifier: workspace:^
+        version: link:../../packages/plugin-sdk
+      '@codearena/schemas':
+        specifier: workspace:^
+        version: link:../../packages/schemas
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.5
       '@types/react':
         specifier: ^18.3.12
         version: 18.3.31
@@ -288,6 +303,15 @@ importers:
       react-dom:
         specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
+      tsup:
+        specifier: ^8.5.1
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.29)(tsx@4.23.15)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@22.20.5)(jiti@1.21.7)(tsx@4.23.15)
 
   scripts:
     dependencies:

@@ -90,10 +90,11 @@ codearena-plugin-meu-plugin/      repositório próprio
 
 ### Hoje (durante a migração)
 
-Até a etapa 4 da migração, desenvolva o plugin em `plugins/<id>/` neste repositório, com o mesmo manifesto e
-`"@codearena/plugin-sdk": "workspace:*"` no lugar das versões publicadas. Enquanto o SDK está em `0.x`, declare
-`"sdk": "^0.1.0"`. Mantenha o plugin autocontido (nada de importar de `apps/` nem de outro plugin) para que ele possa
-sair para um repositório próprio sem mudanças. Os plugins `react-native` e `backend-http` já seguem esse formato.
+Os pacotes do CodeArena ainda não estão no npm, então um repositório criado pelo gerador ainda não instala
+`@codearena/*` sozinho. Até a primeira publicação, desenvolva o plugin em `plugins/<id>/` neste repositório (o gerador
+aceita essa pasta), com `"workspace:^"` nas dependências do SDK, e ative com `pnpm codearena plugins add ./plugins/<id>`.
+`react-native` e `backend-http` já estão nesse formato: cada um tem build, testes, `vitest.config.ts`, CI e
+`docs/agents.md` próprios e sai para um repositório com `scripts/extract-plugin.mjs` sem mudanças no código.
 
 ## Contrato (`QuizPlugin`)
 
@@ -230,14 +231,15 @@ A lista também aceita um caminho local, relativo ao arquivo de configuração (
 para desenvolver sem publicar. Nesse caso, rode `npm run dev` no plugin para manter `dist/` atualizado; o app usa uma
 única cópia de React e do SDK mesmo que o plugin tenha as dele.
 
-**Hoje (durante a migração),** com o plugin em `plugins/python-basico/`:
+**Hoje (durante a migração),** com o plugin em `plugins/python-basico/` (pacote do workspace, instalado pelo
+`pnpm install`):
 
 ```bash
-pnpm add -w @codearena/plugin-python-basico@workspace:*
+pnpm codearena plugins add ./plugins/python-basico
 ```
 
-e acrescente `"@codearena/plugin-python-basico"` em `codearena.config.json`. O runtime de preview (entrada `sandbox`) e
-as classes Tailwind dos painéis são incluídos automaticamente a partir do manifesto.
+O runtime de preview (entrada `sandbox`) e as classes Tailwind dos painéis são incluídos automaticamente a partir do
+manifesto.
 
 Problemas ao carregar (pacote não instalado, manifesto inválido, SDK incompatível, id diferente do manifesto) aparecem
 no log do servidor e no terminal do Vite; os outros plugins continuam funcionando. Packs que apontam para um plugin

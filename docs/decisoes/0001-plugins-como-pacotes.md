@@ -1,6 +1,7 @@
 # 0001: Plugins como pacotes separados; packs como conteúdo
 
-- **Status:** aceita (etapa 1 da migração concluída: `codearena.config.json` e carregamento sob demanda)
+- **Status:** aceita. Etapas 1, 3, 5 e 6 da migração concluídas; etapas 2 e 4 prontas, aguardando a publicação no npm
+  e a criação dos repositórios dos plugins ([como concluir](../architecture.md#concluindo-as-etapas-2-e-4)).
 - **Data:** 2026-10-10
 
 ## Contexto

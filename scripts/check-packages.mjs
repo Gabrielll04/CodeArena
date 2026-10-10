@@ -1,7 +1,8 @@
 /**
  * Confere se os pacotes publicáveis funcionam fora do monorepo:
  * build, `pnpm pack`, instalação num projeto vazio, typecheck (NodeNext, sem skipLibCheck) e execução de um plugin de teste.
- * Também gera um plugin com create-codearena-plugin e roda typecheck, testes e build dele contra os mesmos pacotes.
+ * Também gera um plugin com create-codearena-plugin e roda typecheck, testes e build dele contra os mesmos pacotes,
+ * e confere que os pacotes dos plugins oficiais contêm tudo o que o manifesto e os exports apontam.
  * Uso: pnpm check:packages
  */
 import { execFileSync } from 'node:child_process';
@@ -63,6 +64,22 @@ try {
     ].join('\n'),
   );
   run('node', ['generated.mjs'], consumer);
+  // Plugins oficiais: cada export publicado, pack de exemplo e guia para agentes precisa estar no tarball.
+  for (const id of ['react-native', 'backend-http']) {
+    const dir = join(root, 'plugins', id);
+    run('pnpm', ['build'], dir);
+    run('pnpm', ['pack', '--pack-destination', tarballs], dir);
+    const file = tarball(`@codearena/plugin-${id}`);
+    const listing = execFileSync('tar', ['-tzf', file], { encoding: 'utf8' }).split('\n');
+    const pkg = JSON.parse(execFileSync('tar', ['-xzOf', file, 'package/package.json'], { encoding: 'utf8' }));
+    const targets = Object.values(pkg.exports).flatMap((e) => Object.values(e));
+    const required = [...targets, ...pkg.codearena.packs, './docs/agents.md'].map((f) => `package/${f.replace(/^\.\//, '')}`);
+    const missing = required.filter((f) => !listing.includes(f));
+    if (missing.length) throw new Error(`${pkg.name}: faltam no pacote ${missing.join(', ')}`);
+    if (JSON.stringify(pkg).includes('workspace:')) throw new Error(`${pkg.name}: dependência workspace: no pacote publicado`);
+    console.log(`${pkg.name} ok`);
+  }
+
   console.log('\nPacotes prontos para publicar.');
 } finally {
   rmSync(work, { recursive: true, force: true });
