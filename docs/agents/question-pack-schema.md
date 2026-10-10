@@ -99,7 +99,7 @@ Entre 1 e 100 questões. Cada questão:
 }
 ```
 
-Exemplos completos: `plugins/react-native/packs/react-native-fundamentos.json` e `plugins/backend-http/packs/backend-http-basico.json`.
+Exemplos completos: [`react-native-fundamentos.json`](https://github.com/Gabrielll04/codearena-plugin-react-native/blob/HEAD/packs/react-native-fundamentos.json) e [`backend-http-basico.json`](https://github.com/Gabrielll04/codearena-plugin-backend-http/blob/HEAD/packs/backend-http-basico.json).
 
 ## Exemplos inválidos (e a mensagem que o app mostra)
 

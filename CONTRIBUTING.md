@@ -7,7 +7,7 @@ outras turmas. Este guia mostra como começar em poucos minutos.
 
 | Contribuição | Dificuldade | Onde começar |
 | --- | --- | --- |
-| **Pack de questões** (JSON) | baixa | [`docs/agents/question-pack-schema.md`](docs/agents/question-pack-schema.md) e `plugins/*/packs/` |
+| **Pack de questões** (JSON) | baixa | [`docs/agents/question-pack-schema.md`](docs/agents/question-pack-schema.md) e os packs dos plugins oficiais |
 | **Plugin** de uma disciplina ou linguagem | média | [`docs/plugins/creating-a-plugin.md`](docs/plugins/creating-a-plugin.md) |
 | **Documentação** e traduções | baixa | `docs/` e `README.md` |
 | **Bug** ou melhoria na interface | média | issues com a label `ajuda desejada` |
@@ -48,7 +48,6 @@ Leia [`docs/architecture.md`](docs/architecture.md) (pacotes, estados da sala, e
 packages/schemas      contratos Zod (packs e eventos)
 packages/plugin-sdk   contrato dos plugins
 packages/core         checklist, XP, ranking, sala, lint de autoria
-plugins/*             react-native e backend-http, com os packs de exemplo em packs/ (sairão para repositórios próprios)
 apps/server           Fastify + Socket.IO
 apps/web              React + Vite + Tailwind
 docs/                 documentação (também publicada como site, VitePress)
@@ -79,9 +78,9 @@ docs/                 documentação (também publicada como site, VitePress)
 ### Contribuindo com um pack
 
 1. Gere ou escreva o JSON seguindo `docs/agents/question-pack-schema.md` (os prompts de `docs/agents/prompt-templates.md` ajudam).
-2. Salve na pasta `packs/` do plugin que o pack usa (ex.: `plugins/backend-http/packs/<tema>.json`), acrescente o
-   caminho em `codearena.packs` no `package.json` do plugin e preencha `pack.author`.
-3. Rode `pnpm validate:packs plugins/<id>/packs/seu-pack.json` e `pnpm test`. Não pode haver `ERRO`.
+2. Valide aqui: `pnpm validate:packs seu-pack.json`. Não pode haver `ERRO`.
+3. Packs de exemplo ficam no repositório do plugin ([react-native](https://github.com/Gabrielll04/codearena-plugin-react-native), [backend-http](https://github.com/Gabrielll04/codearena-plugin-backend-http)): abra o PR lá, com o
+   arquivo em `packs/`, o caminho em `codearena.packs` e `pack.author` preenchido.
 4. Inclua `solution` em toda questão e use `kind: "debug"` quando for questão de depuração.
 
 ### Contribuindo com um plugin
@@ -90,11 +89,10 @@ Plugins são **pacotes separados**, cada um em seu próprio repositório
 ([decisão 0001](docs/decisoes/0001-plugins-como-pacotes.md)). Este repositório recebe só mudanças no núcleo e no SDK.
 Os plugins oficiais são `react-native` e `backend-http` (Express).
 
-1. Siga [`docs/plugins/creating-a-plugin.md`](docs/plugins/creating-a-plugin.md). O gerador
-   (`node packages/create-codearena-plugin/index.mjs plugins/<id> --id <id> --name "<nome>"`) cria a estrutura completa.
-2. Enquanto o SDK não está publicado no npm (migração em andamento), desenvolva em `plugins/<id>/`, instale na raiz
-   (`pnpm add -w @codearena/plugin-<id>@workspace:*`) e ative em `codearena.config.json`. Nenhum arquivo de `apps/`
-   muda. Depois da migração, o plugin vai para um repositório próprio, sem PR aqui.
+1. Crie o repositório com `npm create @codearena/plugin@latest` e siga
+   [`docs/plugins/creating-a-plugin.md`](docs/plugins/creating-a-plugin.md).
+2. Teste numa instalação do CodeArena com `pnpm codearena plugins add ../seu-plugin` e publique no npm. Nenhum PR aqui
+   é necessário. Mudanças nos plugins oficiais vão para os repositórios deles.
 3. Coloque os packs de exemplo dentro do plugin (`packs/`) e o guia para agentes em `docs/agents.md` do plugin.
 4. Se o plugin executa código, o isolamento é obrigatório e precisa estar descrito no PR (veja `SECURITY.md`).
 5. Precisa de algo novo no SDK? Abra uma issue aqui: mudanças no contrato seguem versionamento semântico.
