@@ -11,6 +11,8 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    // Endereços públicos de Codespaces e Gitpod (o Vite recusa hosts desconhecidos).
+    allowedHosts: ['.app.github.dev', '.githubpreview.dev', '.gitpod.io'],
     // O iframe do preview tem origem opaca (sandbox sem allow-same-origin) e carrega módulos via CORS.
     cors: { origin: '*' },
     proxy: {
