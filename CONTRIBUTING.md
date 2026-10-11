@@ -59,8 +59,11 @@ docs/                 documentação (também publicada como site, VitePress)
 - **Código de aluno nunca roda no processo principal do servidor.** Use Web Worker no navegador e processo isolado no servidor.
 - **O núcleo não conhece plugins.** Plugins novos não alteram `packages/core` nem `packages/schemas`.
 - **Interface em português**, com textos curtos e funcionais. **Sem emojis** na interface, nos exemplos e nas questões.
-- **Identidade visual:** use os tokens do Tailwind (`ink`, `lime`, `violet`, `coral`, `cyan`, `amber`), `font-display`
-  (Space Grotesk) para títulos e `font-mono` para números e código. Reaproveite `components/ui.tsx`.
+- **Identidade visual:** o app é claro (legível no projetor) e o editor e os painéis de plugin ficam numa bancada escura
+  (classe `workbench`). Use os tokens do Tailwind: `fg`, `canvas`, `surface` e `sunken` mudam sozinhos entre os dois
+  ambientes; `cobalt` (ações), `mint` (concluído), `tomato` (erro), `sun` (XP) e `sky` (executando) são os acentos.
+  Títulos e números grandes em `font-display` (Archivo), texto em `font-sans` (Atkinson Hyperlegible Next), código em
+  `font-mono`. Desenhos isométricos (blocos, torre, pódio) ficam em `components/iso.tsx`. Reaproveite `components/ui.tsx`.
 - **Animações curtas** e que respeitem `prefers-reduced-motion`; sons só depois de interação do usuário.
 - **Checklists** de questões: objetivas, verificáveis por máquina, com labels no imperativo (veja `AGENTS.md`).
 
