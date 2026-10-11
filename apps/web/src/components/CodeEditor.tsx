@@ -25,7 +25,7 @@ export function CodeEditor({ value, onChange, language, path, readOnly, height =
         theme="codearena"
         height={height}
         loading={
-          <div className="flex h-full items-center justify-center gap-2 text-sm text-white/40">
+          <div className="flex h-full items-center justify-center gap-2 text-sm text-fg/55">
             <Spinner className="h-4 w-4" /> Carregando editor
           </div>
         }

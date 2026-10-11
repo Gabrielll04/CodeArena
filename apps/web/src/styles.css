@@ -1,12 +1,45 @@
-@import '@fontsource-variable/space-grotesk';
+@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource-variable/atkinson-hyperlegible-next';
 @import '@fontsource-variable/jetbrains-mono';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Dois ambientes: a página é clara (legível no projetor da sala) e a bancada, onde ficam o editor e os
+ * painéis dos plugins, é escura. As cores fg/canvas/surface/sunken trocam de valor dentro de .workbench.
+ */
 :root {
+  color-scheme: light;
+  --fg: 23 27 51;
+  --canvas: 237 239 244;
+  --surface: 255 255 255;
+  --sunken: 228 231 239;
+  --cobalt: 44 71 240;
+  --mint: 11 138 95;
+  --tomato: 214 58 32;
+  --sun-deep: 143 91 0;
+  --sky-deep: 12 97 137;
+}
+
+.workbench,
+body.plugin-frame {
   color-scheme: dark;
+  --fg: 232 235 245;
+  --canvas: 17 20 38;
+  --surface: 25 29 52;
+  --sunken: 12 14 28;
+  --cobalt: 138 155 255;
+  --mint: 63 217 160;
+  --tomato: 255 122 97;
+  --sun-deep: 255 195 77;
+  --sky-deep: 92 200 242;
+  color: rgb(var(--fg));
+}
+
+.workbench {
+  background-color: rgb(var(--canvas));
 }
 
 html,
@@ -16,23 +49,25 @@ body,
 }
 
 body {
-  @apply bg-ink-900 font-sans text-white antialiased;
-  background-image:
-    radial-gradient(1200px 600px at 10% -10%, rgba(140, 97, 255, 0.16), transparent 60%),
-    radial-gradient(900px 500px at 110% 10%, rgba(185, 255, 59, 0.08), transparent 60%),
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  background-size: auto, auto, 32px 32px, 32px 32px;
-  background-attachment: fixed;
+  @apply bg-canvas font-sans text-fg antialiased;
+}
+
+.font-display {
+  font-stretch: 108%;
+  letter-spacing: -0.015em;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
 
 ::selection {
-  background: rgba(140, 97, 255, 0.45);
+  background: rgba(44, 71, 240, 0.22);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: rgb(var(--fg) / 0.2) transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

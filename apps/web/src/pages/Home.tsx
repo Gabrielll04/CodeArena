@@ -1,13 +1,14 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { HeroDemo } from '../components/HeroDemo';
 import { Logo } from '../components/Logo';
-import { Button, Input, Panel } from '../components/ui';
+import { Button, Input } from '../components/ui';
 
 const STEPS = [
-  { title: 'Desafio', text: 'O professor abre uma sala com questões de código.' },
-  { title: 'Checklist', text: 'Cada item marca sozinho conforme você escreve.' },
-  { title: 'XP', text: 'Resposta completa e rápida vale mais pontos.' },
+  { title: 'O professor abre a sala', text: 'Escolhe um pack de questões e mostra o código de 6 dígitos para a turma.' },
+  { title: 'A turma escreve o código', text: 'Cada item da checklist marca sozinho e vira um bloco da torre.' },
+  { title: 'O servidor confere', text: 'Com a torre completa, a resposta é validada de novo e vale XP. Quem termina antes ganha mais.' },
 ];
 
 export function HomePage() {
@@ -15,64 +16,66 @@ export function HomePage() {
   const [code, setCode] = useState('');
 
   return (
-    <main className="mx-auto flex min-h-full max-w-5xl flex-col justify-center gap-10 px-5 py-10">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
-        <Logo size="lg" />
-        <h1 className="max-w-3xl font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
-          Escreva o código.
-          <br />
-          <span className="text-lime">A checklist confirma.</span> O relógio decide.
-        </h1>
-        <p className="max-w-xl text-lg text-white/60">Desafios de programação ao vivo para a turma inteira, validados automaticamente.</p>
-      </motion.div>
+    <main className="mx-auto flex min-h-full max-w-6xl flex-col px-5 py-6 sm:py-8">
+      <header className="flex items-center justify-between gap-4">
+        <Logo />
+        <Link to="/teacher" className="rounded-lg px-3 py-2 text-sm font-bold text-fg/70 transition hover:bg-fg/[0.06] hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cobalt">
+          Área do professor
+        </Link>
+      </header>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Panel className="p-6">
-          <h2 className="font-display text-xl font-bold">Entrar em uma sala</h2>
-          <p className="mt-1 text-sm text-white/50">Digite o código de 6 dígitos que o professor mostrou.</p>
+      <section className="grid flex-1 items-center gap-10 py-10 md:grid-cols-[1.1fr_1fr] md:gap-14 md:py-14">
+        <motion.div className="min-w-0" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+          <h1 className="font-display text-[2.5rem] font-black leading-[0.98] sm:text-5xl lg:text-[3.2rem]">
+            Escreva o código.
+            <br />
+            A checklist confere.
+            <br />
+            <span className="text-cobalt">A torre sobe.</span>
+          </h1>
+          <p className="mt-5 max-w-md text-lg leading-relaxed text-fg/70">
+            Desafios de programação ao vivo para a turma inteira, conferidos automaticamente enquanto cada aluno digita.
+          </p>
+
           <form
-            className="mt-5 flex gap-2"
+            className="mt-8 max-w-md"
             onSubmit={(event) => {
               event.preventDefault();
               navigate(`/join${code ? `?code=${code}` : ''}`);
             }}
           >
-            <Input
-              aria-label="Código da sala"
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder="000000"
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              className="h-14 flex-1 text-center font-mono text-2xl tracking-[0.4em]"
-            />
-            <Button type="submit" variant="primary" size="lg">
-              Entrar
-            </Button>
-          </form>
-        </Panel>
-        <Panel className="flex flex-col p-6">
-          <h2 className="font-display text-xl font-bold">Área do professor</h2>
-          <p className="mt-1 text-sm text-white/50">Importe ou crie questões, abra uma sala e acompanhe a turma.</p>
-          <div className="mt-auto pt-5">
-            <Link to="/teacher">
-              <Button variant="violet" size="lg" className="w-full">
-                Abrir biblioteca de questões
+            <label htmlFor="home-room-code" className="mb-2 block text-sm font-bold text-fg/80">
+              Código da sala
+            </label>
+            <div className="flex gap-2">
+              <Input
+                id="home-room-code"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="000000"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="h-14 flex-1 text-center font-display text-3xl font-extrabold tracking-[0.3em] tabular"
+              />
+              <Button type="submit" variant="primary" size="lg">
+                Entrar
               </Button>
-            </Link>
-          </div>
-        </Panel>
-      </div>
+            </div>
+          </form>
+        </motion.div>
 
-      <ol className="grid gap-3 sm:grid-cols-3">
+        <motion.div className="min-w-0" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
+          <HeroDemo />
+        </motion.div>
+      </section>
+
+      <ol className="grid gap-6 border-t border-fg/10 pt-6 sm:grid-cols-3">
         {STEPS.map((step, i) => (
-          <li key={step.title} className="flex gap-3 rounded-2xl border border-white/[0.06] p-4">
-            <span className="font-mono text-sm font-bold text-lime">0{i + 1}</span>
-            <span>
-              <span className="block font-semibold">{step.title}</span>
-              <span className="text-sm text-white/50">{step.text}</span>
-            </span>
+          <li key={step.title}>
+            <p className="font-display text-sm font-extrabold text-cobalt">Passo {i + 1}</p>
+            <p className="mt-1 font-bold">{step.title}</p>
+            <p className="mt-1 text-sm leading-relaxed text-fg/65">{step.text}</p>
           </li>
         ))}
       </ol>

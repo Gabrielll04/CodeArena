@@ -14,20 +14,22 @@ export function cx(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(' ');
 }
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'violet';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'ink';
 type Size = 'sm' | 'md' | 'lg';
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-lime text-ink-950 hover:brightness-110 shadow-[0_8px_24px_-12px_rgba(185,255,59,.7)]',
-  violet: 'bg-violet text-white hover:brightness-110 shadow-[0_8px_24px_-12px_rgba(140,97,255,.8)]',
-  secondary: 'bg-white/[0.07] text-white ring-1 ring-white/10 hover:bg-white/[0.12]',
-  ghost: 'text-white/70 hover:bg-white/[0.06] hover:text-white',
-  danger: 'bg-coral/15 text-coral ring-1 ring-coral/30 hover:bg-coral/25',
+  // Botões com borda inferior funda: parecem blocos e "afundam" ao clicar.
+  primary: 'bg-[#2C47F0] text-white shadow-[0_3px_0_0_#1B2FB0] hover:bg-[#3953FF] active:translate-y-[2px] active:shadow-[0_1px_0_0_#1B2FB0]',
+  ink: 'bg-ink text-white shadow-[0_3px_0_0_#05060D] hover:bg-ink-700 active:translate-y-[2px] active:shadow-[0_1px_0_0_#05060D]',
+  secondary:
+    'bg-surface text-fg ring-1 ring-inset ring-fg/15 shadow-[0_2px_0_0_rgb(var(--fg)/0.12)] hover:bg-fg/[0.04] active:translate-y-[1px] active:shadow-none',
+  ghost: 'text-fg/70 hover:bg-fg/[0.06] hover:text-fg',
+  danger: 'bg-tomato/10 text-tomato ring-1 ring-inset ring-tomato/30 hover:bg-tomato/15',
 };
 const SIZES: Record<Size, string> = {
   sm: 'h-8 px-3 text-xs rounded-lg gap-1.5',
-  md: 'h-10 px-4 text-sm rounded-xl gap-2',
-  lg: 'h-14 px-6 text-base rounded-2xl gap-2.5',
+  md: 'h-10 px-4 text-sm rounded-lg gap-2',
+  lg: 'h-14 px-6 text-base rounded-xl gap-2.5',
 };
 
 export const Button = forwardRef<
@@ -39,8 +41,8 @@ export const Button = forwardRef<
       ref={ref}
       disabled={disabled || loading}
       className={cx(
-        'inline-flex select-none items-center justify-center font-semibold transition duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime/70 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900',
+        'inline-flex select-none items-center justify-center font-bold transition duration-100 disabled:pointer-events-none disabled:opacity-40',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cobalt focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
         VARIANTS[variant],
         SIZES[size],
         className,
@@ -64,7 +66,7 @@ export function Spinner({ className }: { className?: string }) {
 
 export function Panel({ className, children, ...props }: { className?: string; children: ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cx('rounded-2xl border border-white/[0.07] bg-ink-850/80 shadow-panel backdrop-blur', className)} {...props}>
+    <div className={cx('rounded-2xl border border-fg/[0.09] bg-surface shadow-panel', className)} {...props}>
       {children}
     </div>
   );
@@ -73,32 +75,35 @@ export function Panel({ className, children, ...props }: { className?: string; c
 export function Field({ label, hint, error, children, htmlFor }: { label: string; hint?: ReactNode; error?: string | null; children: ReactNode; htmlFor?: string }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={htmlFor} className="block text-xs font-semibold uppercase tracking-wider text-white/55">
+      <label htmlFor={htmlFor} className="block text-sm font-bold text-fg/80">
         {label}
       </label>
       {children}
-      {error ? <p className="text-xs text-coral">{error}</p> : hint ? <p className="text-xs text-white/40">{hint}</p> : null}
+      {error ? <p className="text-xs text-tomato">{error}</p> : hint ? <p className="text-xs text-fg/55">{hint}</p> : null}
     </div>
   );
 }
 
 const inputBase =
-  'w-full rounded-xl bg-ink-950/60 px-3 py-2 text-sm text-white placeholder:text-white/25 ring-1 ring-white/10 outline-none transition focus:ring-2 focus:ring-lime/60 disabled:opacity-50';
+  'w-full min-w-0 rounded-lg bg-surface px-3 py-2 text-fg placeholder:text-fg/40 ring-1 ring-inset ring-fg/20 outline-none transition focus:ring-2 focus:ring-cobalt disabled:opacity-50';
+
+/** Tamanho de texto padrão dos campos, só quando a chamada não define outro (as classes não se sobrepõem). */
+const inputSize = (className?: string) => (/(^|\s)text-(xs|sm|base|lg|\d?xl|\[)/.test(className ?? '') ? '' : 'text-sm');
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...props }, ref) {
-  return <input ref={ref} className={cx(inputBase, className)} {...props} />;
+  return <input ref={ref} className={cx(inputBase, inputSize(className), className)} {...props} />;
 });
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea(
   { className, ...props },
   ref,
 ) {
-  return <textarea ref={ref} className={cx(inputBase, 'min-h-[80px] resize-y', className)} {...props} />;
+  return <textarea ref={ref} className={cx(inputBase, inputSize(className), 'min-h-[80px] resize-y', className)} {...props} />;
 });
 
 export function Select({ className, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <select className={cx(inputBase, 'appearance-none pr-8', className)} {...props}>
+    <select className={cx(inputBase, inputSize(className), 'appearance-none pr-8', className)} {...props}>
       {children}
     </select>
   );
@@ -110,30 +115,30 @@ export function Toggle({ checked, onChange, label, description, id }: { checked:
   return (
     <label htmlFor={inputId} className="flex cursor-pointer items-start justify-between gap-4">
       <span>
-        <span className="block text-sm font-medium text-white">{label}</span>
-        {description && <span className="block text-xs text-white/45">{description}</span>}
+        <span className="block text-sm font-medium text-fg">{label}</span>
+        {description && <span className="block text-xs text-fg/60">{description}</span>}
       </span>
       <span className="relative mt-0.5 inline-flex shrink-0">
         <input id={inputId} type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
-        <span className="h-6 w-11 rounded-full bg-white/10 ring-1 ring-white/10 transition peer-checked:bg-lime/80 peer-focus-visible:ring-2 peer-focus-visible:ring-lime" />
-        <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5 peer-checked:bg-ink-950" />
+        <span className="h-6 w-11 rounded-full bg-fg/10 ring-1 ring-fg/10 transition peer-checked:bg-cobalt peer-focus-visible:ring-2 peer-focus-visible:ring-cobalt" />
+        <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
       </span>
     </label>
   );
 }
 
 const BADGE_TONES = {
-  neutral: 'bg-white/[0.07] text-white/70 ring-white/10',
-  lime: 'bg-lime-soft text-lime ring-lime/25',
-  violet: 'bg-violet-soft text-[#C3ADFF] ring-violet/30',
-  coral: 'bg-coral-soft text-coral ring-coral/30',
-  cyan: 'bg-cyan-soft text-cyan ring-cyan/30',
-  amber: 'bg-amber-soft text-amber ring-amber/30',
+  neutral: 'bg-fg/[0.06] text-fg/75 ring-fg/10',
+  mint: 'bg-mint/10 text-mint ring-mint/25',
+  cobalt: 'bg-cobalt/10 text-cobalt ring-cobalt/25',
+  tomato: 'bg-tomato/10 text-tomato ring-tomato/25',
+  sky: 'bg-sky/10 text-sky-deep ring-sky/30',
+  sun: 'bg-sun-soft text-sun-deep ring-sun/40',
 } as const;
 
 export function Badge({ tone = 'neutral', children, className }: { tone?: keyof typeof BADGE_TONES; children: ReactNode; className?: string }) {
   return (
-    <span className={cx('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1', BADGE_TONES[tone], className)}>
+    <span className={cx('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold ring-1 ring-inset', BADGE_TONES[tone], className)}>
       {children}
     </span>
   );
@@ -173,7 +178,7 @@ export function Dialog({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.12 }}
         >
-          <div className="absolute inset-0 bg-ink-950/85" onClick={onClose} aria-hidden />
+          <div className="absolute inset-0 bg-ink/45" onClick={onClose} aria-hidden />
           <motion.div
             role="dialog"
             aria-modal="true"
@@ -183,20 +188,20 @@ export function Dialog({
             exit={{ y: 8, opacity: 0 }}
             transition={{ duration: 0.16, ease: 'easeOut' }}
             className={cx(
-              'relative flex max-h-full w-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-ink-850 shadow-2xl',
+              'relative flex max-h-full w-full flex-col overflow-hidden rounded-2xl border border-fg/10 bg-surface shadow-lift',
               wide === 'full' ? 'h-full max-w-[1500px]' : wide ? 'max-w-3xl' : 'max-w-lg',
             )}
           >
-            <div className="flex items-center justify-between border-b border-white/[0.07] px-5 py-4">
+            <div className="flex items-center justify-between border-b border-fg/[0.07] px-5 py-4">
               <h2 className="font-display text-lg font-bold">{title}</h2>
-              <button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-1.5 text-white/50 hover:bg-white/10 hover:text-white">
+              <button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-1.5 text-fg/60 hover:bg-fg/10 hover:text-fg">
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M6 6l12 12M18 6 6 18" />
                 </svg>
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-auto px-5 py-4">{children}</div>
-            {footer && <div className="flex justify-end gap-2 border-t border-white/[0.07] px-5 py-3">{footer}</div>}
+            {footer && <div className="flex justify-end gap-2 border-t border-fg/[0.07] px-5 py-3">{footer}</div>}
           </motion.div>
         </motion.div>
       )}
@@ -207,9 +212,9 @@ export function Dialog({
 
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center">
+    <div className="rounded-2xl border border-dashed border-fg/20 p-8 text-center">
       <p className="font-display text-lg font-semibold">{title}</p>
-      {children && <div className="mt-2 text-sm text-white/50">{children}</div>}
+      {children && <div className="mt-2 text-sm text-fg/60">{children}</div>}
     </div>
   );
 }

@@ -30,9 +30,9 @@ export function Timer({ startsAt, endsAt, finishedAt, size = 'md' }: TimerProps)
 
   return (
     <div className="flex min-w-0 items-center gap-3" role="timer" aria-label={`Tempo restante ${formatSeconds(remaining)}`}>
-      <div className={cx('relative h-2 flex-1 overflow-hidden rounded-full bg-white/[0.08]', size === 'lg' && 'h-3')}>
+      <div className={cx('relative h-2 flex-1 overflow-hidden rounded-full bg-fg/10', size === 'lg' && 'h-3')}>
         <motion.div
-          className={cx('absolute inset-y-0 left-0 rounded-full', urgent ? 'bg-coral' : ratio < 0.4 ? 'bg-amber' : 'bg-lime')}
+          className={cx('absolute inset-y-0 left-0 rounded-full', urgent ? 'bg-tomato' : ratio < 0.4 ? 'bg-sun' : 'bg-cobalt')}
           style={{ width: `${ratio * 100}%` }}
           transition={{ ease: 'linear' }}
         />
@@ -42,9 +42,9 @@ export function Timer({ startsAt, endsAt, finishedAt, size = 'md' }: TimerProps)
         initial={urgent ? { scale: 1.25 } : false}
         animate={{ scale: 1 }}
         className={cx(
-          'font-mono font-bold tabular-nums',
-          size === 'lg' ? 'text-4xl' : 'text-lg',
-          urgent ? 'text-coral' : 'text-white',
+          'font-display font-extrabold tabular',
+          size === 'lg' ? 'text-5xl' : 'text-xl',
+          urgent ? 'text-tomato' : 'text-fg',
         )}
         data-testid="timer"
       >

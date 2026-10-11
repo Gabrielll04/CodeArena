@@ -18,7 +18,7 @@ export function AvatarPicker({ value, onChange }: { value: AvatarId; onChange: (
             onClick={() => onChange(id)}
             className={cx(
               'flex aspect-square items-center justify-center rounded-2xl transition',
-              selected ? 'bg-lime/15 ring-2 ring-lime' : 'bg-white/[0.04] ring-1 ring-white/[0.08] hover:bg-white/[0.08]',
+              selected ? 'bg-cobalt/10 ring-2 ring-cobalt' : 'bg-surface ring-1 ring-fg/10 hover:bg-fg/[0.04]',
             )}
           >
             <Avatar id={id} size={44} className={cx('transition', selected && 'scale-110')} />

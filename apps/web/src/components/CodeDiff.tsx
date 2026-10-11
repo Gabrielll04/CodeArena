@@ -21,7 +21,7 @@ export function CodeDiff({ original, modified, language, fontSize = 13 }: CodeDi
         theme="codearena"
         height="100%"
         loading={
-          <div className="flex h-full items-center justify-center gap-2 text-sm text-white/40">
+          <div className="flex h-full items-center justify-center gap-2 text-sm text-fg/55">
             <Spinner className="h-4 w-4" /> Carregando diferenças
           </div>
         }
@@ -48,15 +48,15 @@ export function CodeDiff({ original, modified, language, fontSize = 13 }: CodeDi
 export function SolutionView({ solution, starter, debug, pluginId }: { solution: string; starter: string; debug: boolean; pluginId: string }) {
   const language = useClientPlugin(pluginId).plugin?.editorLanguage ?? 'javascript';
   if (!debug) {
-    return <pre className="mt-2 overflow-auto rounded-xl bg-ink-950/70 p-4 font-mono text-xs leading-relaxed text-white/85">{solution}</pre>;
+    return <pre className="mt-2 overflow-auto rounded-xl bg-sunken p-4 font-mono text-xs leading-relaxed text-fg/85">{solution}</pre>;
   }
   return (
     <div className="mt-2" data-testid="solution-diff">
-      <div className="mb-2 flex justify-between text-[11px] font-semibold uppercase tracking-wider text-white/45">
+      <div className="mb-2 flex justify-between text-xs font-bold text-fg/60">
         <span>Código com bug</span>
         <span>Correção esperada</span>
       </div>
-      <div className="h-72 overflow-hidden rounded-xl ring-1 ring-white/10">
+      <div className="h-72 overflow-hidden rounded-xl ring-1 ring-fg/10">
         <CodeDiff original={starter} modified={solution} language={language} />
       </div>
     </div>

@@ -53,32 +53,32 @@ export function TeacherPage() {
   return (
     <div className="flex min-h-full flex-col">
       <TopBar>
-        <span className="text-sm font-semibold text-white/60">Área do professor</span>
+        <span className="text-sm font-semibold text-fg/60">Área do professor</span>
       </TopBar>
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-5 py-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="font-display text-3xl font-bold">Biblioteca de questões</h1>
-            <p className="mt-1 text-white/50">Importe um JSON, crie um pack ou abra uma sala com um pack existente.</p>
+            <p className="mt-1 text-fg/60">Importe um JSON, crie um pack ou abra uma sala com um pack existente.</p>
           </div>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => setImportOpen(true)} data-testid="open-import">
               <Icon name="upload" /> Importar JSON
             </Button>
-            <Button variant="violet" onClick={() => navigate('/teacher/packs/new')}>
+            <Button variant="ink" onClick={() => navigate('/teacher/packs/new')}>
               <Icon name="plus" /> Novo pack
             </Button>
           </div>
         </div>
 
         {error && (
-          <p role="alert" className="rounded-xl bg-coral/10 px-3 py-2 text-sm text-coral">
+          <p role="alert" className="rounded-xl bg-tomato/10 px-3 py-2 text-sm text-tomato">
             {error}
           </p>
         )}
 
         {!packs ? (
-          <div className="flex items-center gap-2 text-white/50">
+          <div className="flex items-center gap-2 text-fg/60">
             <Spinner className="h-4 w-4" /> Carregando packs
           </div>
         ) : packs.length === 0 ? (
@@ -92,17 +92,17 @@ export function TeacherPage() {
                   <Panel className="flex h-full flex-col p-5" data-testid={`pack-${pack.id}`}>
                     <div className="mb-2 flex flex-wrap items-center gap-1.5">
                       {pack.pluginIds.map((id) => (
-                        <Badge key={id} tone={id === 'react-native' ? 'cyan' : id === 'backend-http' ? 'amber' : 'violet'}>
+                        <Badge key={id} tone={id === 'react-native' ? 'sky' : id === 'backend-http' ? 'sun' : 'cobalt'}>
                           {pluginInfo(id)?.displayName ?? id}
                         </Badge>
                       ))}
                       {pack.source === 'builtin' && <Badge>Exemplo</Badge>}
-                      <span className="ml-auto font-mono text-[11px] text-white/35">v{pack.version}</span>
+                      <span className="ml-auto font-mono text-[11px] text-fg/50">v{pack.version}</span>
                     </div>
                     <h2 className="font-display text-lg font-bold leading-snug">{pack.title}</h2>
-                    {pack.description && <p className="mt-1 line-clamp-2 text-sm text-white/55">{pack.description}</p>}
-                    <p className="mt-2 text-xs text-white/40">{plural(pack.questionCount, 'questão', 'questões')}</p>
-                    {missing.length > 0 && <p className="mt-2 text-xs text-coral">Plugin não instalado: {missing.join(', ')}</p>}
+                    {pack.description && <p className="mt-1 line-clamp-2 text-sm text-fg/55">{pack.description}</p>}
+                    <p className="mt-2 text-xs text-fg/55">{plural(pack.questionCount, 'questão', 'questões')}</p>
+                    {missing.length > 0 && <p className="mt-2 text-xs text-tomato">Plugin não instalado: {missing.join(', ')}</p>}
                     <div className="mt-auto flex flex-wrap gap-2 pt-4">
                       <Button variant="primary" size="sm" onClick={() => void openRoom(pack)} disabled={missing.length > 0 || opening !== null} data-testid="open-room">
                         <Icon name="play" /> Abrir sala
@@ -228,9 +228,9 @@ function ImportDialog({ open, onClose, onImported }: { open: boolean; onClose: (
             setDragging(false);
             void readFile(e.dataTransfer.files[0]);
           }}
-          className={`flex flex-col items-center gap-2 rounded-2xl border-2 border-dashed p-6 text-center transition ${dragging ? 'border-lime bg-lime/5' : 'border-white/10'}`}
+          className={`flex flex-col items-center gap-2 rounded-2xl border-2 border-dashed p-6 text-center transition ${dragging ? 'border-mint bg-mint/5' : 'border-fg/10'}`}
         >
-          <p className="text-sm text-white/60">Arraste um arquivo .json aqui ou</p>
+          <p className="text-sm text-fg/60">Arraste um arquivo .json aqui ou</p>
           <Button size="sm" onClick={() => fileRef.current?.click()}>
             Escolher arquivo
           </Button>
@@ -254,14 +254,14 @@ function ImportDialog({ open, onClose, onImported }: { open: boolean; onClose: (
         />
         <IssueList issues={issues} title="O arquivo tem problemas" />
         {valid && (
-          <div className="rounded-xl border border-lime/30 bg-lime/[0.06] p-3 text-sm" data-testid="import-valid">
-            <p className="font-semibold text-lime">Pack válido</p>
-            <p className="mt-1 text-white/70">
+          <div className="rounded-xl border border-mint/30 bg-mint/[0.06] p-3 text-sm" data-testid="import-valid">
+            <p className="font-semibold text-mint">Pack válido</p>
+            <p className="mt-1 text-fg/70">
               {valid.pack.title} · {plural(valid.questions.length, 'questão', 'questões')} · plugin {valid.pack.pluginId} · v{valid.pack.version}
             </p>
           </div>
         )}
-        <p className="text-xs text-white/40">
+        <p className="text-xs text-fg/55">
           Formato documentado em <code className="font-mono">docs/agents/question-pack-schema.md</code>. Agentes de IA podem gerar packs com os prompts de{' '}
           <code className="font-mono">docs/agents/prompt-templates.md</code>.
         </p>
@@ -309,10 +309,10 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
       <div className="space-y-5">
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wider text-white/55">Questões</p>
+              <p className="text-xs font-bold text-fg/55">Questões</p>
               <button
                 type="button"
-                className="text-xs text-white/50 hover:text-white"
+                className="text-xs text-fg/60 hover:text-fg"
                 onClick={() =>
                   setSelected(selected.size === stored.pack.questions.length ? new Set() : new Set(stored.pack.questions.map((q) => q.id)))
                 }
@@ -323,7 +323,7 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
             <ul className="max-h-64 space-y-1.5 overflow-auto">
               {stored.pack.questions.map((q, i) => (
                 <li key={q.id}>
-                  <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-white/[0.03] p-3 hover:bg-white/[0.06]">
+                  <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-fg/[0.03] p-3 hover:bg-fg/[0.06]">
                     <input
                       type="checkbox"
                       className="mt-1 accent-[#B9FF3B]"
@@ -339,12 +339,12 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
                       <span className="block text-sm font-medium">
                         {i + 1}. {q.title ?? q.prompt}
                         {q.kind === 'debug' && (
-                          <Badge tone="coral" className="ml-2 align-middle">
+                          <Badge tone="tomato" className="ml-2 align-middle">
                             Depuração
                           </Badge>
                         )}
                       </span>
-                      <span className="text-xs text-white/40">
+                      <span className="text-xs text-fg/55">
                         {q.timeLimitSeconds} s · {q.baseXP} + até {q.speedBonusMax} XP · {plural(q.checklist.length, 'item', 'itens')}
                       </span>
                     </span>
@@ -353,11 +353,11 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
               ))}
             </ul>
           </div>
-          <div className="space-y-4 rounded-2xl bg-white/[0.03] p-4">
+          <div className="space-y-4 rounded-2xl bg-fg/[0.03] p-4">
             <Toggle label="Modo discreto" description="Alunos veem só o top 3 e a própria posição; sem pódio." checked={discreetMode} onChange={setDiscreet} />
             <Toggle label="Bônus de sequência" description="XP extra para acertos consecutivos." checked={streakEnabled} onChange={setStreak} />
           </div>
-          {error && <p className="text-sm text-coral">{error}</p>}
+          {error && <p className="text-sm text-tomato">{error}</p>}
       </div>
     </Dialog>
   );

@@ -212,6 +212,11 @@ export default pythonClientPlugin;
 
 E no fim de `src/index.ts`: `export default pythonPlugin;`.
 
+Os painéis do plugin (preview e painel lateral) ficam na **bancada**, a área escura ao lado do editor, enquanto o resto
+do app é claro. Use as classes do Tailwind do app pensando nesse fundo escuro: `text-white/80`, `bg-white/5`,
+`ring-white/10`, `bg-black/20`. As cores `fg`, `surface`, `sunken`, `mint`, `tomato` e `cobalt` também funcionam e já
+vêm ajustadas para a bancada. Os nomes antigos (`lime`, `violet`, `coral`, `cyan`, `amber`) continuam disponíveis.
+
 ## Ativação
 
 Nenhuma linha do núcleo muda. Na pasta da instalação:

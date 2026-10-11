@@ -17,22 +17,22 @@ interface AvatarDesign {
 
 /** Desenhos fixos por id: formas geométricas com rosto de robô, sem upload. */
 export const AVATAR_DESIGNS: Record<AvatarId, AvatarDesign> = {
-  bolt: { label: 'Bolt', shape: 'squircle', from: '#B9FF3B', to: '#3DDC84', eyes: 'visor', mark: 'bolt' },
-  prism: { label: 'Prism', shape: 'diamond', from: '#8C61FF', to: '#3DDCFF', eyes: 'dots', mark: 'none' },
-  orbit: { label: 'Orbit', shape: 'circle', from: '#3DDCFF', to: '#2E6BFF', eyes: 'cyclops', mark: 'antenna' },
-  cube: { label: 'Cube', shape: 'squircle', from: '#FFC940', to: '#FF7A3D', eyes: 'pixel', mark: 'ears' },
-  wave: { label: 'Wave', shape: 'blob', from: '#3DDCFF', to: '#8C61FF', eyes: 'slits', mark: 'none' },
-  spark: { label: 'Spark', shape: 'hex', from: '#FF5D7D', to: '#FFC940', eyes: 'dots', mark: 'crest' },
-  hex: { label: 'Hex', shape: 'hex', from: '#8C61FF', to: '#FF5D7D', eyes: 'visor', mark: 'antenna' },
-  comet: { label: 'Comet', shape: 'circle', from: '#FF7A3D', to: '#FF5D7D', eyes: 'slits', mark: 'horns' },
-  pixel: { label: 'Pixel', shape: 'squircle', from: '#3DDC84', to: '#3DDCFF', eyes: 'pixel', mark: 'antenna' },
-  nova: { label: 'Nova', shape: 'shield', from: '#FFC940', to: '#B9FF3B', eyes: 'cyclops', mark: 'crest' },
+  bolt: { label: 'Bolt', shape: 'squircle', from: '#3FD9A0', to: '#12A877', eyes: 'visor', mark: 'bolt' },
+  prism: { label: 'Prism', shape: 'diamond', from: '#2C47F0', to: '#5CC8F2', eyes: 'dots', mark: 'none' },
+  orbit: { label: 'Orbit', shape: 'circle', from: '#5CC8F2', to: '#1B2FB0', eyes: 'cyclops', mark: 'antenna' },
+  cube: { label: 'Cube', shape: 'squircle', from: '#FFB21E', to: '#F27A2E', eyes: 'pixel', mark: 'ears' },
+  wave: { label: 'Wave', shape: 'blob', from: '#5CC8F2', to: '#2C47F0', eyes: 'slits', mark: 'none' },
+  spark: { label: 'Spark', shape: 'hex', from: '#E8492C', to: '#FFB21E', eyes: 'dots', mark: 'crest' },
+  hex: { label: 'Hex', shape: 'hex', from: '#2C47F0', to: '#E8492C', eyes: 'visor', mark: 'antenna' },
+  comet: { label: 'Comet', shape: 'circle', from: '#F27A2E', to: '#E8492C', eyes: 'slits', mark: 'horns' },
+  pixel: { label: 'Pixel', shape: 'squircle', from: '#12A877', to: '#5CC8F2', eyes: 'pixel', mark: 'antenna' },
+  nova: { label: 'Nova', shape: 'shield', from: '#FFB21E', to: '#3FD9A0', eyes: 'cyclops', mark: 'crest' },
   gear: { label: 'Gear', shape: 'hex', from: '#9AA3C7', to: '#5A6194', eyes: 'visor', mark: 'ears' },
-  drop: { label: 'Drop', shape: 'blob', from: '#2E6BFF', to: '#8C61FF', eyes: 'dots', mark: 'antenna' },
-  ring: { label: 'Ring', shape: 'circle', from: '#B9FF3B', to: '#FFC940', eyes: 'dots', mark: 'ears' },
-  leaf: { label: 'Leaf', shape: 'shield', from: '#3DDC84', to: '#B9FF3B', eyes: 'slits', mark: 'bolt' },
-  flare: { label: 'Flare', shape: 'diamond', from: '#FF5D7D', to: '#8C61FF', eyes: 'cyclops', mark: 'horns' },
-  node: { label: 'Node', shape: 'squircle', from: '#5A6194', to: '#3DDCFF', eyes: 'dots', mark: 'crest' },
+  drop: { label: 'Drop', shape: 'blob', from: '#1B2FB0', to: '#2C47F0', eyes: 'dots', mark: 'antenna' },
+  ring: { label: 'Ring', shape: 'circle', from: '#3FD9A0', to: '#FFB21E', eyes: 'dots', mark: 'ears' },
+  leaf: { label: 'Leaf', shape: 'shield', from: '#12A877', to: '#3FD9A0', eyes: 'slits', mark: 'bolt' },
+  flare: { label: 'Flare', shape: 'diamond', from: '#E8492C', to: '#2C47F0', eyes: 'cyclops', mark: 'horns' },
+  node: { label: 'Node', shape: 'squircle', from: '#5A6194', to: '#5CC8F2', eyes: 'dots', mark: 'crest' },
 };
 
 const SHAPES: Record<Shape, string> = {
@@ -49,7 +49,7 @@ function Eyes({ kind }: { kind: Eyes }) {
     case 'visor':
       return (
         <>
-          <rect x="17" y="25" width="30" height="12" rx="6" fill="#0B0D18" />
+          <rect x="17" y="25" width="30" height="12" rx="6" fill="#171B33" />
           <rect x="21" y="29" width="8" height="4" rx="2" fill="#fff" />
           <rect x="35" y="29" width="8" height="4" rx="2" fill="#fff" />
         </>
@@ -57,23 +57,23 @@ function Eyes({ kind }: { kind: Eyes }) {
     case 'cyclops':
       return (
         <>
-          <circle cx="32" cy="30" r="9" fill="#0B0D18" />
+          <circle cx="32" cy="30" r="9" fill="#171B33" />
           <circle cx="32" cy="30" r="4.5" fill="#fff" />
-          <circle cx="33.5" cy="28.5" r="1.5" fill="#0B0D18" />
+          <circle cx="33.5" cy="28.5" r="1.5" fill="#171B33" />
         </>
       );
     case 'slits':
       return (
         <>
-          <rect x="19" y="28" width="10" height="4" rx="2" fill="#0B0D18" />
-          <rect x="35" y="28" width="10" height="4" rx="2" fill="#0B0D18" />
+          <rect x="19" y="28" width="10" height="4" rx="2" fill="#171B33" />
+          <rect x="35" y="28" width="10" height="4" rx="2" fill="#171B33" />
         </>
       );
     case 'pixel':
       return (
         <>
-          <rect x="20" y="25" width="8" height="8" fill="#0B0D18" />
-          <rect x="36" y="25" width="8" height="8" fill="#0B0D18" />
+          <rect x="20" y="25" width="8" height="8" fill="#171B33" />
+          <rect x="36" y="25" width="8" height="8" fill="#171B33" />
           <rect x="22" y="27" width="3" height="3" fill="#fff" />
           <rect x="38" y="27" width="3" height="3" fill="#fff" />
         </>
@@ -81,8 +81,8 @@ function Eyes({ kind }: { kind: Eyes }) {
     default:
       return (
         <>
-          <circle cx="24" cy="30" r="4.5" fill="#0B0D18" />
-          <circle cx="40" cy="30" r="4.5" fill="#0B0D18" />
+          <circle cx="24" cy="30" r="4.5" fill="#171B33" />
+          <circle cx="40" cy="30" r="4.5" fill="#171B33" />
           <circle cx="25.3" cy="28.7" r="1.4" fill="#fff" />
           <circle cx="41.3" cy="28.7" r="1.4" fill="#fff" />
         </>
@@ -144,7 +144,7 @@ export function Avatar({ id, size = 40, className, title }: { id: AvatarId; size
       <path d={SHAPES[design.shape]} fill={`url(#${gradientId})`} />
       <path d={SHAPES[design.shape]} fill="none" stroke="#fff" strokeOpacity=".18" strokeWidth="1.5" />
       <Eyes kind={design.eyes} />
-      <rect x="27" y="42" width="10" height="3" rx="1.5" fill="#0B0D18" opacity=".55" />
+      <rect x="27" y="42" width="10" height="3" rx="1.5" fill="#171B33" opacity=".55" />
     </svg>
   );
 }

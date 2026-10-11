@@ -8,6 +8,7 @@ import { SolutionView } from '../components/CodeDiff';
 import { Countdown } from '../components/Countdown';
 import { CountUp } from '../components/CountUp';
 import { Leaderboard, Podium } from '../components/Leaderboard';
+import { Pedestal } from '../components/Pedestal';
 import { QuestionWorkspace } from '../components/QuestionWorkspace';
 import { Timer } from '../components/Timer';
 import { ConnectionBanner, TopBar } from '../components/TopBar';
@@ -39,8 +40,8 @@ export function PlayPage() {
   if (status === 'removed') {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
-        <p className="font-display text-2xl font-bold">Você saiu da sala</p>
-        <p className="text-white/60">{removedReason}</p>
+        <p className="font-display text-3xl font-black">Você saiu da sala</p>
+        <p className="text-fg/60">{removedReason}</p>
         <Link to="/join">
           <Button variant="primary">Entrar em outra sala</Button>
         </Link>
@@ -49,7 +50,7 @@ export function PlayPage() {
   }
   if (!snapshot || !snapshot.me) {
     return (
-      <div className="flex h-full items-center justify-center gap-2 text-white/50">
+      <div className="flex h-full items-center justify-center gap-2 text-fg/60">
         <Spinner className="h-5 w-5" /> Entrando na sala
       </div>
     );
@@ -60,16 +61,16 @@ export function PlayPage() {
       <ConnectionBanner connected={connected} />
       <TopBar
         right={
-          <div className="flex items-center gap-2 rounded-xl bg-white/[0.05] py-1 pl-1 pr-3">
+          <div className="flex items-center gap-2 rounded-lg py-1 pl-1 pr-1">
             <Avatar id={snapshot.me.avatar} size={30} />
             <span className="hidden max-w-[120px] truncate text-sm font-semibold sm:inline">{snapshot.me.name}</span>
-            <span className="font-mono text-sm font-bold text-lime" data-testid="my-xp">
+            <span className="rounded-md bg-sun px-1.5 font-mono text-sm font-bold text-ink" data-testid="my-xp">
               {formatXP(snapshot.me.totalXP)} XP
             </span>
           </div>
         }
       >
-        <span className="hidden truncate text-sm text-white/50 md:inline">{snapshot.packTitle}</span>
+        <span className="hidden truncate text-sm text-fg/60 md:inline">{snapshot.packTitle}</span>
       </TopBar>
       <div className="min-h-0 flex-1">
         <PhaseView snapshot={snapshot} />
@@ -98,17 +99,15 @@ function Lobby({ snapshot }: { snapshot: RoomSnapshot }) {
   const me = snapshot.me!;
   return (
     <div className="mx-auto flex h-full max-w-4xl flex-col items-center gap-8 overflow-auto px-5 py-10 text-center" data-testid="lobby">
-      <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}>
-        <Avatar id={me.avatar} size={96} />
-      </motion.div>
+      <Pedestal avatar={me.avatar} size={150} />
       <div>
-        <p className="font-display text-3xl font-bold">Você está na sala, {me.name}</p>
-        <p className="mt-2 flex items-center justify-center gap-2 text-white/50">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-lime" aria-hidden /> Aguardando o professor iniciar
+        <p className="font-display text-4xl font-black">Você está na sala, {me.name}</p>
+        <p className="mt-2 flex items-center justify-center gap-2 text-fg/60">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-cobalt" aria-hidden /> Aguardando o professor iniciar
         </p>
       </div>
       <Panel className="w-full p-5">
-        <p className="mb-4 text-left text-xs font-bold uppercase tracking-[0.14em] text-white/50">
+        <p className="mb-4 text-left text-sm font-bold text-fg/60">
           Na sala: {snapshot.players.length}
         </p>
         <ul className="flex flex-wrap justify-center gap-3">
@@ -123,7 +122,7 @@ function Lobby({ snapshot }: { snapshot: RoomSnapshot }) {
                 className="flex w-20 flex-col items-center gap-1"
               >
                 <Avatar id={p.avatar} size={44} />
-                <span className={cx('max-w-full truncate text-xs', p.id === me.playerId ? 'font-bold text-lime' : 'text-white/70')}>{p.name}</span>
+                <span className={cx('max-w-full truncate text-xs', p.id === me.playerId ? 'font-bold text-cobalt' : 'text-fg/70')}>{p.name}</span>
               </motion.li>
             ))}
           </AnimatePresence>
@@ -139,7 +138,7 @@ function QuestionGate({ snapshot }: { snapshot: RoomSnapshot }) {
   const state = useClientPlugin(snapshot.question!.question.pluginId);
   if (state.status === 'loading') {
     return (
-      <div className="flex h-full items-center justify-center gap-2 text-white/50" data-testid="plugin-loading">
+      <div className="flex h-full items-center justify-center gap-2 text-fg/60" data-testid="plugin-loading">
         <Spinner className="h-5 w-5" /> Carregando a questão
       </div>
     );
@@ -147,8 +146,8 @@ function QuestionGate({ snapshot }: { snapshot: RoomSnapshot }) {
   if (state.status === 'error') {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-        <p className="text-coral">Não foi possível carregar o plugin desta questão.</p>
-        <p className="max-w-md text-sm text-white/50">{state.error}</p>
+        <p className="text-tomato">Não foi possível carregar o plugin desta questão.</p>
+        <p className="max-w-md text-sm text-fg/60">{state.error}</p>
         <Button variant="ghost" onClick={() => window.location.reload()}>
           Recarregar
         </Button>
@@ -220,16 +219,16 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
   ) : (
     <div className="space-y-2 text-sm" aria-live="polite" data-testid="answer-status">
       {submitting || answer?.status === 'validating' ? (
-        <p className="flex items-center gap-2 text-cyan">
+        <p className="flex items-center gap-2 text-sky-deep">
           <Spinner className="h-4 w-4" /> Validando no servidor
         </p>
       ) : late ? (
-        <p className="text-amber">O tempo acabou antes da resposta chegar. Sem XP nesta questão.</p>
+        <p className="text-sun-deep">O tempo acabou antes da resposta chegar. Sem XP nesta questão.</p>
       ) : rejected ? (
-        <div className="rounded-xl border border-amber/30 bg-amber/[0.07] p-3 text-amber">
+        <div className="rounded-xl border border-sun/30 bg-sun/[0.07] p-3 text-sun-deep">
           <p className="font-semibold">O servidor não confirmou a resposta</p>
-          <p className="mt-0.5 text-xs text-white/70">{rejected.message}</p>
-          <ul className="mt-1.5 space-y-0.5 text-xs text-white/60">
+          <p className="mt-0.5 text-xs text-fg/70">{rejected.message}</p>
+          <ul className="mt-1.5 space-y-0.5 text-xs text-fg/60">
             {rejected.items
               .filter((i) => !i.passed)
               .map((i) => (
@@ -239,12 +238,12 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
                 </li>
               ))}
           </ul>
-          <p className="mt-1.5 text-xs text-white/50">Ajuste o código; o envio é refeito automaticamente.</p>
+          <p className="mt-1.5 text-xs text-fg/60">Ajuste o código; o envio é refeito automaticamente.</p>
         </div>
       ) : failure ? (
-        <p className="text-coral">{failure}</p>
+        <p className="text-tomato">{failure}</p>
       ) : (
-        <p className="text-white/55">
+        <p className="text-fg/55">
           {live.evaluation.requiredTotal - live.evaluation.requiredDone === 1
             ? 'Falta 1 item. A resposta é enviada sozinha quando a checklist completar.'
             : `Faltam ${live.evaluation.requiredTotal - live.evaluation.requiredDone} itens. A resposta é enviada sozinha quando a checklist completar.`}
@@ -255,14 +254,14 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-4 border-b border-white/[0.07] px-4 py-2.5">
-        <span className="shrink-0 rounded-lg bg-white/[0.06] px-2.5 py-1 font-mono text-xs font-bold">
+      <div className="flex items-center gap-4 border-b border-fg/10 bg-surface px-4 py-2.5">
+        <span className="shrink-0 rounded-md bg-ink px-2.5 py-1 font-display text-sm font-extrabold text-white tabular">
           {active.index + 1}/{active.total}
         </span>
         <div className="min-w-0 flex-1">
           <Timer startsAt={active.startsAt} endsAt={active.endsAt} finishedAt={active.finishedAt} />
         </div>
-        <span className="hidden shrink-0 text-xs text-white/50 sm:inline" data-testid="answered-count">
+        <span className="hidden shrink-0 text-xs text-fg/60 sm:inline" data-testid="answered-count">
           {snapshot.answeredCount} de {snapshot.connectedCount} concluíram
         </span>
       </div>
@@ -307,13 +306,13 @@ function AcceptedOverlay({ xp }: { xp: number }) {
       initial={{ opacity: 0, y: -20, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      className="pointer-events-none absolute right-4 top-4 flex items-center gap-3 rounded-2xl bg-lime px-4 py-3 text-ink-950 shadow-glow"
+      className="pointer-events-none absolute right-4 top-4 flex items-center gap-3 rounded-xl bg-sun px-4 py-3 text-ink shadow-lift"
       data-testid="accepted-overlay"
     >
       <Icon name="check" className="h-6 w-6" />
       <div>
-        <p className="text-xs font-bold uppercase tracking-wider">Resposta registrada</p>
-        <p className="font-mono text-2xl font-bold">
+        <p className="text-sm font-bold">Resposta registrada</p>
+        <p className="font-display text-3xl font-black tabular">
           +<CountUp value={xp} /> XP
         </p>
       </div>
@@ -327,15 +326,15 @@ function AcceptedCard({ answer, snapshot }: { answer: PlayerAnswer; snapshot: Ro
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-lime/40 bg-lime/[0.07] p-4"
+      className="rounded-2xl border border-mint/50 bg-surface p-4"
       data-testid="answer-accepted"
     >
-      <p className="font-display text-lg font-bold text-lime">Resposta confirmada pelo servidor</p>
-      <p className="mt-1 text-sm text-white/70">
+      <p className="font-bold text-mint">Resposta confirmada pelo servidor</p>
+      <p className="mt-1 text-sm text-fg/70">
         Restavam {formatDuration(answer.remainingMs)} no relógio. XP provisório: <strong className="font-mono">{formatXP(answer.xp)}</strong>
       </p>
-      {answer.message && <p className="mt-1 text-xs text-white/50">{answer.message}</p>}
-      <p className="mt-2 text-xs text-white/50">
+      {answer.message && <p className="mt-1 text-xs text-fg/60">{answer.message}</p>}
+      <p className="mt-2 text-xs text-fg/60">
         {waiting > 0 ? `Aguardando ${waiting} ${waiting === 1 ? 'colega' : 'colegas'} ou o fim do tempo.` : 'Todos concluíram.'}
       </p>
     </motion.div>
@@ -355,29 +354,29 @@ function Review({ snapshot }: { snapshot: RoomSnapshot }) {
   return (
     <div className="mx-auto h-full max-w-3xl space-y-6 overflow-auto px-5 py-8" data-testid="review">
       <div className="text-center">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/50">
+        <p className="text-sm font-bold text-fg/60">
           Questão {snapshot.questionIndex + 1} encerrada
         </p>
         <motion.p
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className={cx('mt-2 font-display text-4xl font-bold', gained > 0 ? 'text-lime' : 'text-white/80')}
+          className={cx('mt-3 font-display text-5xl font-black leading-tight tabular', gained > 0 ? 'text-ink' : 'text-fg/70')}
         >
           {gained > 0 ? (
-            <>
+            <span className="inline-block rounded-xl bg-sun px-4 py-1">
               +<CountUp value={gained} /> XP
-            </>
+            </span>
           ) : (
             'Sem XP nesta questão'
           )}
         </motion.p>
         {myEntry && (
-          <p className="mt-1 text-white/60">
+          <p className="mt-3 text-fg/70">
             Você está em {myEntry.rank}º lugar com {formatXP(myEntry.totalXP)} XP
           </p>
         )}
         {results && (
-          <p className="mt-1 text-sm text-white/40">
+          <p className="mt-1 text-sm text-fg/55">
             {results.correctCount} de {results.playerCount} concluíram · tempo médio {formatDuration(results.averageTimeMs)}
           </p>
         )}
@@ -385,7 +384,7 @@ function Review({ snapshot }: { snapshot: RoomSnapshot }) {
 
       <Panel className="p-4">
         <Leaderboard entries={snapshot.leaderboard} highlightId={me.playerId} reveal />
-        {snapshot.settings.discreetMode && <p className="mt-3 text-center text-xs text-white/40">Modo discreto: apenas o top 3 e a sua posição aparecem.</p>}
+        {snapshot.settings.discreetMode && <p className="mt-3 text-center text-xs text-fg/55">Modo discreto: apenas o top 3 e a sua posição aparecem.</p>}
       </Panel>
 
       {solution && (
@@ -404,8 +403,8 @@ function Review({ snapshot }: { snapshot: RoomSnapshot }) {
         </div>
       )}
 
-      <p className="flex items-center justify-center gap-2 text-sm text-white/50">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-violet" aria-hidden />
+      <p className="flex items-center justify-center gap-2 text-sm text-fg/60">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-cobalt" aria-hidden />
         {isLast ? 'Aguardando o professor encerrar a sessão' : 'Aguardando a próxima questão'}
       </p>
     </div>
@@ -423,12 +422,12 @@ function Ended({ snapshot }: { snapshot: RoomSnapshot }) {
   return (
     <div className="mx-auto h-full max-w-3xl space-y-8 overflow-auto px-5 py-10 text-center" data-testid="session-ended">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/50">Sessão encerrada</p>
-        <p className="mt-2 font-display text-4xl font-bold">
+        <p className="text-sm font-bold text-fg/60">Sessão encerrada</p>
+        <p className="mt-2 font-display text-6xl font-black tabular">
           <CountUp value={me.totalXP} /> XP
         </p>
         {mine && (
-          <p className="mt-1 text-white/60">
+          <p className="mt-1 text-fg/60">
             {mine.rank}º lugar · {mine.correctCount} de {mine.questionCount} questões · tempo médio {formatDuration(mine.averageTimeMs)}
           </p>
         )}

@@ -133,8 +133,8 @@ export function PackEditorPage() {
   if (loadError) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3">
-        <p className="text-coral">{loadError}</p>
-        <Link to="/teacher" className="text-lime">
+        <p className="text-tomato">{loadError}</p>
+        <Link to="/teacher" className="text-mint">
           Voltar
         </Link>
       </div>
@@ -142,7 +142,7 @@ export function PackEditorPage() {
   }
   if (!draft || !validation) {
     return (
-      <div className="flex h-full items-center justify-center gap-2 text-white/50">
+      <div className="flex h-full items-center justify-center gap-2 text-fg/60">
         <Spinner className="h-5 w-5" /> Carregando
       </div>
     );
@@ -182,17 +182,17 @@ export function PackEditorPage() {
   return (
     <div className="flex h-full flex-col">
       <TopBar logoTo="/teacher">
-        <Link to="/teacher" className="flex items-center gap-1 text-sm text-white/50 hover:text-white">
+        <Link to="/teacher" className="flex items-center gap-1 text-sm text-fg/60 hover:text-fg">
           <Icon name="back" /> Biblioteca
         </Link>
         <span className="truncate text-sm font-semibold">{draft.pack.title || 'Novo pack'}</span>
-        {dirty ? <Badge tone="amber">Alterações não salvas</Badge> : savedAt ? <Badge tone="lime">Salvo</Badge> : null}
+        {dirty ? <Badge tone="sun">Alterações não salvas</Badge> : savedAt ? <Badge tone="mint">Salvo</Badge> : null}
       </TopBar>
 
       <div className="grid min-h-0 flex-1 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <aside className="min-h-0 space-y-5 overflow-auto border-b border-white/[0.07] p-4 lg:border-b-0 lg:border-r">
+        <aside className="min-h-0 space-y-5 overflow-auto border-b border-fg/[0.07] p-4 lg:border-b-0 lg:border-r">
           <section className="space-y-3">
-            <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">Pack</h2>
+            <h2 className="text-sm font-bold text-fg/60">Pack</h2>
             <Field label="Título" htmlFor="pack-title">
               <Input id="pack-title" value={draft.pack.title} onChange={(e) => update({ ...draft, pack: { ...draft.pack, title: e.target.value } })} />
             </Field>
@@ -207,7 +207,7 @@ export function PackEditorPage() {
             <Field label="Plugin" htmlFor="pack-plugin" hint={pluginInfo(draft.pack.pluginId)?.description ?? plugin?.description}>
               <Select id="pack-plugin" value={draft.pack.pluginId} onChange={(e) => update({ ...draft, pack: { ...draft.pack, pluginId: e.target.value } })}>
                 {pluginCatalog.map((p) => (
-                  <option key={p.id} value={p.id} className="bg-ink-850">
+                  <option key={p.id} value={p.id} className="bg-surface">
                     {p.displayName}
                   </option>
                 ))}
@@ -232,7 +232,7 @@ export function PackEditorPage() {
 
           <section className="space-y-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">Questões</h2>
+              <h2 className="text-sm font-bold text-fg/60">Questões</h2>
               <Button
                 size="sm"
                 variant="ghost"
@@ -252,15 +252,15 @@ export function PackEditorPage() {
                   <div
                     className={cx(
                       'group flex items-center gap-2 rounded-xl px-3 py-2 text-sm',
-                      i === selected ? 'bg-violet/20 ring-1 ring-violet/50' : 'bg-white/[0.03] hover:bg-white/[0.06]',
+                      i === selected ? 'bg-surface font-bold ring-1 ring-inset ring-cobalt shadow-panel' : 'hover:bg-fg/[0.06]',
                     )}
                   >
                     <button type="button" className="min-w-0 flex-1 truncate text-left" onClick={() => setSelected(i)}>
-                      <span className="mr-1.5 font-mono text-xs text-white/40">{i + 1}.</span>
+                      <span className="mr-1.5 font-mono text-xs text-fg/55">{i + 1}.</span>
                       {q.title || q.prompt || q.id}
                     </button>
                     <span className="flex opacity-0 transition group-hover:opacity-100">
-                      <button type="button" aria-label="Mover para cima" disabled={i === 0} className="p-1 text-white/50 hover:text-white disabled:opacity-20" onClick={() => {
+                      <button type="button" aria-label="Mover para cima" disabled={i === 0} className="p-1 text-fg/60 hover:text-fg disabled:opacity-20" onClick={() => {
                         const qs = [...draft.questions];
                         [qs[i - 1], qs[i]] = [qs[i]!, qs[i - 1]!];
                         update({ ...draft, questions: qs });
@@ -268,7 +268,7 @@ export function PackEditorPage() {
                       }}>
                         <Icon name="up" className="h-3.5 w-3.5" />
                       </button>
-                      <button type="button" aria-label="Mover para baixo" disabled={i === draft.questions.length - 1} className="p-1 text-white/50 hover:text-white disabled:opacity-20" onClick={() => {
+                      <button type="button" aria-label="Mover para baixo" disabled={i === draft.questions.length - 1} className="p-1 text-fg/60 hover:text-fg disabled:opacity-20" onClick={() => {
                         const qs = [...draft.questions];
                         [qs[i + 1], qs[i]] = [qs[i]!, qs[i + 1]!];
                         update({ ...draft, questions: qs });
@@ -276,7 +276,7 @@ export function PackEditorPage() {
                       }}>
                         <Icon name="down" className="h-3.5 w-3.5" />
                       </button>
-                      <button type="button" aria-label="Duplicar questão" className="p-1 text-white/50 hover:text-white" onClick={() => {
+                      <button type="button" aria-label="Duplicar questão" className="p-1 text-fg/60 hover:text-fg" onClick={() => {
                         const copy = { ...structuredClone(q), id: uniqueId(`${q.id}-copia`, ids) };
                         const qs = [...draft.questions];
                         qs.splice(i + 1, 0, copy);
@@ -285,7 +285,7 @@ export function PackEditorPage() {
                       }}>
                         <Icon name="copy" className="h-3.5 w-3.5" />
                       </button>
-                      <button type="button" aria-label="Excluir questão" disabled={draft.questions.length === 1} className="p-1 text-white/50 hover:text-coral disabled:opacity-20" onClick={() => {
+                      <button type="button" aria-label="Excluir questão" disabled={draft.questions.length === 1} className="p-1 text-fg/60 hover:text-tomato disabled:opacity-20" onClick={() => {
                         update({ ...draft, questions: draft.questions.filter((_, j) => j !== i) });
                         setSelected(Math.max(0, Math.min(selected, draft.questions.length - 2)));
                       }}>
@@ -298,7 +298,7 @@ export function PackEditorPage() {
             </ol>
           </section>
 
-          <section className="space-y-2 border-t border-white/[0.07] pt-4">
+          <section className="space-y-2 border-t border-fg/[0.07] pt-4">
             <Button variant="primary" className="w-full" disabled={!validation.ok} loading={saving} onClick={() => void save()} data-testid="save-pack">
               Salvar pack
             </Button>
@@ -310,7 +310,7 @@ export function PackEditorPage() {
             >
               <Icon name="download" /> Exportar JSON
             </Button>
-            {saveError && <p className="text-xs text-coral">{saveError}</p>}
+            {saveError && <p className="text-xs text-tomato">{saveError}</p>}
             {!validation.ok && <IssueList issues={validation.issues.slice(0, 12)} title="Falta completar" />}
           </section>
         </aside>
@@ -324,13 +324,13 @@ export function PackEditorPage() {
               onChange={(q) => updateQuestion(selected, q)}
             />
           ) : pluginState.status === 'loading' ? (
-            <div className="flex items-center gap-2 p-6 text-white/50">
+            <div className="flex items-center gap-2 p-6 text-fg/60">
               <Spinner className="h-4 w-4" /> Carregando o plugin
             </div>
           ) : pluginState.status === 'error' ? (
-            <p className="p-6 text-coral">Não foi possível carregar o plugin "{draft.pack.pluginId}": {pluginState.error}</p>
+            <p className="p-6 text-tomato">Não foi possível carregar o plugin "{draft.pack.pluginId}": {pluginState.error}</p>
           ) : (
-            <p className="p-6 text-coral">Plugin "{draft.pack.pluginId}" não está instalado.</p>
+            <p className="p-6 text-tomato">Plugin "{draft.pack.pluginId}" não está instalado.</p>
           )}
         </main>
       </div>
@@ -383,7 +383,7 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
     <div className="mx-auto max-w-5xl space-y-6 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-2xl font-bold">Editar questão</h1>
-        <Button variant="violet" onClick={() => setPreviewOpen(true)} data-testid="preview-as-student">
+        <Button variant="ink" onClick={() => setPreviewOpen(true)} data-testid="preview-as-student">
           <Icon name="eye" /> Pré-visualizar como aluno
         </Button>
       </div>
@@ -398,8 +398,8 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
           </Field>
         </div>
         <div className="space-y-1.5">
-          <span className="block text-xs font-semibold uppercase tracking-wider text-white/55">Tipo da questão</span>
-          <div role="radiogroup" aria-label="Tipo da questão" className="inline-flex rounded-xl bg-ink-950/60 p-1 ring-1 ring-white/10">
+          <span className="block text-xs font-bold text-fg/55">Tipo da questão</span>
+          <div role="radiogroup" aria-label="Tipo da questão" className="inline-flex rounded-xl bg-sunken p-1 ring-1 ring-fg/10">
             {(
               [
                 ['build', 'Construir', 'O aluno escreve a solução.'],
@@ -416,14 +416,14 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
                 onClick={() => set('kind', value)}
                 className={cx(
                   'rounded-lg px-4 py-1.5 text-sm font-semibold transition',
-                  question.kind === value ? (value === 'debug' ? 'bg-coral/20 text-coral' : 'bg-white/10 text-white') : 'text-white/50 hover:text-white',
+                  question.kind === value ? (value === 'debug' ? 'bg-tomato/20 text-tomato' : 'bg-fg/10 text-fg') : 'text-fg/60 hover:text-fg',
                 )}
               >
                 {label}
               </button>
             ))}
           </div>
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-fg/55">
             {question.kind === 'debug'
               ? 'O código inicial é o código com bug. Descreva o sintoma no enunciado e verifique o comportamento corrigido na checklist.'
               : 'O código inicial é o ponto de partida (pode ficar vazio).'}
@@ -443,15 +443,15 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
             <Input id="q-bonus" type="number" min={0} value={question.speedBonusMax} onChange={(e) => set('speedBonusMax', Number(e.target.value))} />
           </Field>
         </div>
-        <p className="text-xs text-white/45">
-          Exemplo: quem concluir com metade do tempo restante recebe {xpHalf.base} + {xpHalf.speedBonus} = <strong className="text-white/80">{xpHalf.total} XP</strong>.
+        <p className="text-xs text-fg/60">
+          Exemplo: quem concluir com metade do tempo restante recebe {xpHalf.base} + {xpHalf.speedBonus} = <strong className="text-fg/80">{xpHalf.total} XP</strong>.
         </p>
         <Toggle label="Travar o editor após resposta correta" checked={question.lockOnComplete} onChange={(v) => set('lockOnComplete', v)} />
       </Panel>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel className="overflow-hidden">
-          <p className="border-b border-white/[0.07] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white/50">
+          <p className="border-b border-fg/[0.07] px-4 py-2 text-sm font-bold text-fg/60">
             {question.kind === 'debug' ? 'Código com bug (ponto de partida)' : 'Código inicial'}
           </p>
           <div className="h-56">
@@ -459,7 +459,7 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
           </div>
         </Panel>
         <Panel className="overflow-hidden">
-          <p className="border-b border-white/[0.07] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white/50">Solução esperada</p>
+          <p className="border-b border-fg/[0.07] px-4 py-2 text-sm font-bold text-fg/60">Solução esperada</p>
           <div className="h-56">
             <CodeEditor value={question.solution} onChange={(v) => set('solution', v)} language={plugin.editorLanguage} path={`file:///authoring/${question.id}/solution-${plugin.editorFileName ?? 'code'}`} fontSize={13} />
           </div>
@@ -480,7 +480,7 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
             <Icon name="plus" /> Adicionar item
           </Button>
         </div>
-        <p className="text-xs text-white/45">Itens objetivos, no imperativo ("Criar o componente App"). Todos os obrigatórios precisam estar concluídos para a resposta valer.</p>
+        <p className="text-xs text-fg/60">Itens objetivos, no imperativo ("Criar o componente App"). Todos os obrigatórios precisam estar concluídos para a resposta valer.</p>
         <ol className="space-y-3">
           {question.checklist.map((item, index) => (
             <ItemEditor
@@ -520,17 +520,17 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
           </div>
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="h-72 overflow-hidden rounded-xl ring-1 ring-white/10">
+          <div className="h-72 overflow-hidden rounded-xl ring-1 ring-fg/10">
             <CodeEditor value={testCode} onChange={setTestCode} language={plugin.editorLanguage} path={`file:///authoring/${question.id}/test-${plugin.editorFileName ?? 'code'}`} fontSize={13} />
           </div>
           <Checklist items={question.checklist} evaluation={live.evaluation} checking={live.checking} announce={false} compact />
         </div>
         {server && (
-          <div className="rounded-xl bg-white/[0.03] p-3 text-sm" data-testid="server-test-result">
+          <div className="rounded-xl bg-fg/[0.03] p-3 text-sm" data-testid="server-test-result">
             {'error' in server ? (
-              <p className="text-coral">{server.error}</p>
+              <p className="text-tomato">{server.error}</p>
             ) : (
-              <p className={server.evaluation.allRequiredDone ? 'text-lime' : 'text-amber'}>
+              <p className={server.evaluation.allRequiredDone ? 'text-mint' : 'text-sun-deep'}>
                 Servidor: {server.evaluation.requiredDone}/{server.evaluation.requiredTotal} itens obrigatórios confirmados
                 {server.evaluation.allRequiredDone ? '. Resposta seria aceita.' : '. Resposta seria recusada.'}
               </p>
@@ -541,7 +541,7 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
 
       <Panel className="space-y-3 p-5">
         <h2 className="font-display text-lg font-bold">Qualidade da questão</h2>
-        {warnings ? <WarningList warnings={warnings} /> : <Spinner className="h-4 w-4 text-white/40" />}
+        {warnings ? <WarningList warnings={warnings} /> : <Spinner className="h-4 w-4 text-fg/55" />}
       </Panel>
 
       <StudentPreview open={previewOpen} onClose={() => setPreviewOpen(false)} question={publicQuestion} plugin={plugin} />
@@ -596,11 +596,11 @@ function ItemEditor({
   };
 
   return (
-    <li className="rounded-2xl border border-white/[0.07] bg-ink-950/40 p-4" data-testid={`item-editor-${index}`}>
+    <li className="rounded-2xl border border-fg/10 bg-canvas p-4" data-testid={`item-editor-${index}`}>
       <div className="flex flex-wrap items-start gap-2">
         <span
           title={status === 'done' ? 'Satisfeito pelo código de teste' : 'Não satisfeito pelo código de teste'}
-          className={cx('mt-2.5 h-3 w-3 shrink-0 rounded-full', status === 'done' ? 'bg-lime' : status === 'failed' ? 'bg-coral' : 'bg-white/20')}
+          className={cx('mt-2.5 h-3 w-3 shrink-0 rounded-full', status === 'done' ? 'bg-mint' : status === 'failed' ? 'bg-tomato' : 'bg-fg/20')}
         />
         <Input aria-label="Texto do item" value={item.label} onChange={(e) => setLabel(e.target.value)} placeholder="Ex.: Criar o componente App" className="min-w-[200px] flex-1" />
         <Select aria-label="Tipo de regra" value={rule.type} onChange={(e) => {
@@ -610,20 +610,20 @@ function ItemEditor({
           setRule(next);
         }} className="w-48">
           {(Object.keys(RULE_LABELS) as ChecklistRule['type'][]).map((t) => (
-            <option key={t} value={t} className="bg-ink-850" disabled={t === 'pluginRule' && validators.length === 0}>
+            <option key={t} value={t} className="bg-surface" disabled={t === 'pluginRule' && validators.length === 0}>
               {RULE_LABELS[t]}
             </option>
           ))}
         </Select>
         <span className="flex">
-          <button type="button" aria-label="Mover item para cima" className="p-2 text-white/40 hover:text-white" onClick={() => onMove(-1)}>
+          <button type="button" aria-label="Mover item para cima" className="p-2 text-fg/55 hover:text-fg" onClick={() => onMove(-1)}>
             <Icon name="up" />
           </button>
-          <button type="button" aria-label="Mover item para baixo" className="p-2 text-white/40 hover:text-white" onClick={() => onMove(1)}>
+          <button type="button" aria-label="Mover item para baixo" className="p-2 text-fg/55 hover:text-fg" onClick={() => onMove(1)}>
             <Icon name="down" />
           </button>
           {onRemove && (
-            <button type="button" aria-label="Remover item" className="p-2 text-white/40 hover:text-coral" onClick={onRemove}>
+            <button type="button" aria-label="Remover item" className="p-2 text-fg/55 hover:text-tomato" onClick={onRemove}>
               <Icon name="trash" />
             </button>
           )}
@@ -634,11 +634,11 @@ function ItemEditor({
         {(rule.type === 'contains' || rule.type === 'notContains') && (
           <div className="flex flex-wrap items-center gap-3">
             <Input aria-label="Texto procurado" value={rule.value} onChange={(e) => setRule({ ...rule, value: e.target.value })} placeholder="Texto exato" className="flex-1 font-mono" />
-            <label className="flex items-center gap-1.5 text-xs text-white/60">
+            <label className="flex items-center gap-1.5 text-xs text-fg/60">
               <input type="checkbox" className="accent-[#B9FF3B]" checked={rule.caseSensitive} onChange={(e) => setRule({ ...rule, caseSensitive: e.target.checked })} />
               Diferenciar maiúsculas
             </label>
-            <label className="flex items-center gap-1.5 text-xs text-white/60">
+            <label className="flex items-center gap-1.5 text-xs text-fg/60">
               <input type="checkbox" className="accent-[#B9FF3B]" checked={rule.ignoreComments} onChange={(e) => setRule({ ...rule, ignoreComments: e.target.checked })} />
               Ignorar comentários
             </label>
@@ -650,12 +650,12 @@ function ItemEditor({
             <div className="flex flex-wrap items-center gap-2">
               <Input aria-label="Padrão regex" value={rule.pattern} onChange={(e) => setRule({ ...rule, pattern: e.target.value })} placeholder="export\s+default\s+function\s+App\s*\(" className="min-w-[240px] flex-1 font-mono" />
               <Input aria-label="Flags" value={rule.flags} onChange={(e) => setRule({ ...rule, flags: e.target.value.replace(/[^imsu]/g, '') })} placeholder="flags" className="w-20 font-mono" />
-              <label className="flex items-center gap-1.5 text-xs text-white/60">
+              <label className="flex items-center gap-1.5 text-xs text-fg/60">
                 <input type="checkbox" className="accent-[#B9FF3B]" checked={rule.ignoreComments} onChange={(e) => setRule({ ...rule, ignoreComments: e.target.checked })} />
                 Ignorar comentários
               </label>
             </div>
-            {regexError && <p className="text-xs text-coral">Regex inválida: {regexError}</p>}
+            {regexError && <p className="text-xs text-tomato">Regex inválida: {regexError}</p>}
           </>
         )}
 
@@ -665,9 +665,9 @@ function ItemEditor({
               setHelperId(e.target.value);
               setHelperInput(helpers.find((h) => h.id === e.target.value)?.defaultInput ?? '');
             }} className="w-56 text-xs">
-              <option value="" className="bg-ink-850">Padrões comuns de regex</option>
+              <option value="" className="bg-surface">Padrões comuns de regex</option>
               {helpers.map((h) => (
-                <option key={h.id} value={h.id} className="bg-ink-850">
+                <option key={h.id} value={h.id} className="bg-surface">
                   {h.label}
                 </option>
               ))}
@@ -692,12 +692,12 @@ function ItemEditor({
               setRule({ type: 'pluginRule', validator: e.target.value, params });
             }}>
               {validators.map(([name, v]) => (
-                <option key={name} value={name} className="bg-ink-850">
+                <option key={name} value={name} className="bg-surface">
                   {name} ({v.mode === 'dynamic' ? 'executa o código' : 'análise estática'})
                 </option>
               ))}
             </Select>
-            <p className="text-xs text-white/45">{plugin.validators?.[rule.validator]?.description}</p>
+            <p className="text-xs text-fg/60">{plugin.validators?.[rule.validator]?.description}</p>
             <Textarea
               aria-label="Parâmetros do validador (JSON)"
               value={paramsText}
@@ -715,14 +715,14 @@ function ItemEditor({
                 }
               }}
             />
-            {paramsError && <p className="text-xs text-coral">JSON inválido: {paramsError}</p>}
+            {paramsError && <p className="text-xs text-tomato">JSON inválido: {paramsError}</p>}
           </div>
         )}
 
         <div className="flex flex-wrap items-center gap-3">
           <Input aria-label="Id do item" value={item.id} onChange={(e) => onChange({ ...item, id: slugify(e.target.value, '') })} className="w-44 font-mono text-xs" />
           <Input aria-label="Dica (opcional)" value={item.hint ?? ''} onChange={(e) => onChange({ ...item, hint: e.target.value || undefined })} placeholder="Dica exibida enquanto pendente (opcional)" className="min-w-[200px] flex-1 text-xs" />
-          <label className="flex items-center gap-1.5 text-xs text-white/60">
+          <label className="flex items-center gap-1.5 text-xs text-fg/60">
             <input type="checkbox" className="accent-[#B9FF3B]" checked={item.optional} onChange={(e) => onChange({ ...item, optional: e.target.checked })} />
             Opcional
           </label>

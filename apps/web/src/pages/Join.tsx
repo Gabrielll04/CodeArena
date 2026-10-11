@@ -1,10 +1,9 @@
-import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AVATAR_IDS, PlayerNameSchema, RoomCodeSchema, type AvatarId } from '@codearena/schemas';
-import { Avatar } from '../components/Avatar';
 import { AvatarPicker } from '../components/AvatarPicker';
 import { Logo } from '../components/Logo';
+import { Pedestal } from '../components/Pedestal';
 import { Button, Field, Input, Panel } from '../components/ui';
 import { api } from '../lib/api';
 import { usePlayer } from '../stores/player';
@@ -47,13 +46,13 @@ export function JoinPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-full max-w-2xl flex-col justify-center gap-6 px-5 py-10">
+    <main className="mx-auto flex min-h-full max-w-2xl flex-col justify-center gap-6 px-5 py-8">
       <Logo />
       <Panel className="p-6 sm:p-8">
         <form onSubmit={submit} className="space-y-6" noValidate>
           <div>
-            <h1 className="font-display text-3xl font-bold">Entrar na sala</h1>
-            <p className="mt-1 text-sm text-white/50">Sem cadastro. Escolha um nome e um avatar.</p>
+            <h1 className="font-display text-4xl font-black">Entrar na sala</h1>
+            <p className="mt-1 text-sm text-fg/60">Sem cadastro. Escolha um nome e um avatar.</p>
           </div>
 
           <Field
@@ -70,7 +69,7 @@ export function JoinPage() {
               value={code}
               maxLength={6}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              className="h-14 text-center font-mono text-3xl tracking-[0.4em]"
+              className="h-16 text-center font-display text-4xl font-extrabold tracking-[0.3em] tabular"
             />
           </Field>
 
@@ -79,20 +78,18 @@ export function JoinPage() {
           </Field>
 
           <div className="space-y-2">
-            <span className="block text-xs font-semibold uppercase tracking-wider text-white/55">Avatar</span>
+            <span className="block text-sm font-bold text-fg/80">Avatar</span>
             <AvatarPicker value={avatar} onChange={setAvatar} />
           </div>
 
           {error && (
-            <p role="alert" className="rounded-xl bg-coral/10 px-3 py-2 text-sm text-coral">
+            <p role="alert" className="rounded-lg bg-tomato/10 px-3 py-2 text-sm font-semibold text-tomato">
               {error}
             </p>
           )}
 
-          <div className="flex items-center gap-4">
-            <motion.div key={avatar} initial={{ scale: 0.7, rotate: -10 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 500, damping: 20 }}>
-              <Avatar id={avatar} size={56} />
-            </motion.div>
+          <div className="flex items-end gap-4">
+            <Pedestal avatar={avatar} size={72} />
             <Button type="submit" variant="primary" size="lg" className="flex-1" loading={status === 'joining'}>
               Entrar
             </Button>

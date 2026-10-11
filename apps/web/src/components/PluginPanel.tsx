@@ -11,19 +11,19 @@ export function PluginPanel({ plugin, context }: { plugin: ClientQuizPlugin<any>
   const [active, setActive] = useState(tabs[0]?.id);
 
   if (!tabs.length) {
-    return <p className="p-4 text-sm text-white/50">O plugin {plugin.displayName} não tem painel lateral.</p>;
+    return <p className="p-4 text-sm text-fg/60">O plugin {plugin.displayName} não tem painel lateral.</p>;
   }
   const current = tabs.find((t) => t.id === active) ?? tabs[0]!;
   return (
     <div className="flex h-full min-h-0 flex-col">
       {tabs.length > 1 && (
-        <div className="flex gap-1 border-b border-white/[0.07] p-2">
+        <div className="flex gap-1 border-b border-fg/[0.07] p-2">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setActive(tab.id)}
-              className={cx('rounded-lg px-3 py-1 text-xs font-semibold', tab.id === current.id ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white')}
+              className={cx('rounded-lg px-3 py-1 text-xs font-semibold', tab.id === current.id ? 'bg-fg/10 text-fg' : 'text-fg/60 hover:text-fg')}
             >
               {tab.label}
             </button>

@@ -54,16 +54,16 @@ export function ItemInsights({ rows, highlightHardest = false, showTime = false 
         const complete = row.total > 0 && row.done === row.total;
         return (
           <li key={row.id} data-testid={`insight-${row.id}`} data-done={row.done} data-total={row.total} className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5">
-            <span className="pt-0.5 font-mono text-xs text-white/35">{index + 1}</span>
+            <span className="pt-0.5 font-mono text-xs text-fg/50">{index + 1}</span>
             <div className="min-w-0">
-              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-snug text-white/85">
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-snug text-fg/85">
                 <span>{row.label}</span>
-                {row.optional && <span className="text-[11px] font-medium uppercase tracking-wider text-white/30">opcional</span>}
-                {isHardest && <Badge tone="coral">Mais travou</Badge>}
+                {row.optional && <span className="text-xs font-semibold text-fg/55">opcional</span>}
+                {isHardest && <Badge tone="tomato">Mais travou</Badge>}
               </p>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.07]" aria-hidden>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-fg/[0.07]" aria-hidden>
                 <motion.div
-                  className={cx('h-full rounded-full', isHardest ? 'bg-coral' : complete ? 'bg-lime' : 'bg-violet')}
+                  className={cx('h-full rounded-full', isHardest ? 'bg-tomato' : complete ? 'bg-mint' : 'bg-cobalt')}
                   initial={{ width: 0 }}
                   animate={{ width: `${percent}%` }}
                   transition={{ type: 'spring', stiffness: 200, damping: 26 }}
@@ -71,10 +71,10 @@ export function ItemInsights({ rows, highlightHardest = false, showTime = false 
               </div>
             </div>
             <div className="pt-0.5 text-right">
-              <p className={cx('font-mono text-sm font-bold tabular-nums', isHardest ? 'text-coral' : complete ? 'text-lime' : 'text-white')}>
+              <p className={cx('font-mono text-sm font-bold tabular-nums', isHardest ? 'text-tomato' : complete ? 'text-mint' : 'text-fg')}>
                 {row.done}/{row.total}
               </p>
-              {showTime && <p className="font-mono text-[11px] text-white/40">{row.medianTimeMs === null || row.medianTimeMs === undefined ? '-' : formatDuration(row.medianTimeMs)}</p>}
+              {showTime && <p className="font-mono text-[11px] text-fg/55">{row.medianTimeMs === null || row.medianTimeMs === undefined ? '-' : formatDuration(row.medianTimeMs)}</p>}
             </div>
           </li>
         );

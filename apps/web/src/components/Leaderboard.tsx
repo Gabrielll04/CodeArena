@@ -4,6 +4,7 @@ import type { LeaderboardEntry } from '@codearena/schemas';
 import { formatXP } from '../lib/format';
 import { Avatar } from './Avatar';
 import { CountUp } from './CountUp';
+import { DropIn, IsoBox, project } from './iso';
 import { cx, Icon } from './ui';
 
 export interface LeaderboardProps {
@@ -53,26 +54,26 @@ export function Leaderboard({ entries, highlightId, reveal = false, limit, size 
               data-testid="leaderboard-row"
               data-player={entry.name}
               className={cx(
-                'flex items-center gap-3 rounded-2xl border px-3 py-2.5',
-                me ? 'border-lime/50 bg-lime/[0.08]' : 'border-white/[0.06] bg-white/[0.03]',
+                'flex items-center gap-3 rounded-xl border bg-surface px-3 py-2.5',
+                me ? 'border-cobalt bg-cobalt/[0.06] ring-1 ring-inset ring-cobalt' : 'border-fg/[0.09]',
                 !entry.connected && 'opacity-60',
                 big && 'px-4 py-3',
               )}
             >
-              <span className={cx('w-7 text-center font-mono font-bold text-white/60', big && 'w-9 text-xl', position <= 3 && 'text-white')}>
+              <span className={cx('w-7 text-center font-display text-lg font-extrabold tabular text-fg/45', big && 'w-9 text-2xl', position <= 3 && 'text-fg')}>
                 {position}
               </span>
               <Avatar id={entry.avatar} size={big ? 44 : 34} />
               <div className="min-w-0 flex-1">
                 <p className={cx('truncate font-semibold', big && 'text-lg')}>
                   {entry.name}
-                  {me && <span className="ml-2 text-xs font-medium text-lime">você</span>}
+                  {me && <span className="ml-2 rounded bg-cobalt px-1.5 py-0.5 text-[11px] font-bold text-white">você</span>}
                 </p>
                 {revealed && delta !== 0 && (
                   <motion.p
                     initial={{ opacity: 0, x: -6 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className={cx('flex items-center gap-1 text-xs font-semibold', delta > 0 ? 'text-lime' : 'text-coral')}
+                    className={cx('flex items-center gap-1 text-xs font-semibold', delta > 0 ? 'text-mint' : 'text-tomato')}
                   >
                     <Icon name={delta > 0 ? 'arrow-up' : 'arrow-down'} className="h-3 w-3" />
                     {Math.abs(delta)} {Math.abs(delta) === 1 ? 'posição' : 'posições'}
@@ -84,14 +85,14 @@ export function Leaderboard({ entries, highlightId, reveal = false, limit, size 
                   initial={{ opacity: 0, scale: 0.7 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.3 + index * 0.05 }}
-                  className="rounded-lg bg-lime/15 px-2 py-0.5 font-mono text-xs font-bold text-lime"
+                  className="rounded-md bg-sun px-2 py-0.5 font-mono text-xs font-bold text-ink"
                 >
                   +{formatXP(entry.questionXP)}
                 </motion.span>
               )}
-              <span className={cx('w-20 text-right font-mono font-bold tabular-nums', big && 'w-28 text-xl')}>
+              <span className={cx('w-24 text-right font-display text-lg font-extrabold tabular', big && 'w-32 text-2xl')}>
                 {revealed ? <CountUp from={startXP} value={entry.totalXP} /> : formatXP(reveal ? startXP : entry.totalXP)}
-                <span className="ml-1 text-[10px] font-semibold text-white/40">XP</span>
+                <span className="ml-1 font-sans text-[11px] font-bold text-fg/55">XP</span>
               </span>
             </motion.li>
           );
@@ -101,29 +102,67 @@ export function Leaderboard({ entries, highlightId, reveal = false, limit, size 
   );
 }
 
+const PODIUM = {
+  1: { slot: 1, height: 2.2, color: '#FFB21E', avatar: 64 },
+  2: { slot: 0, height: 1.5, color: '#2C47F0', avatar: 52 },
+  3: { slot: 2, height: 1.0, color: '#E8492C', avatar: 52 },
+} as const;
+
+/** Pódio isométrico: três blocos lado a lado, com o avatar de cada aluno em cima. */
 export function Podium({ entries }: { entries: LeaderboardEntry[] }) {
   const top = entries.slice(0, 3);
-  const order = [top[1], top[0], top[2]].filter(Boolean) as LeaderboardEntry[];
-  const heights: Record<number, string> = { 1: 'h-40', 2: 'h-28', 3: 'h-20' };
-  const colors: Record<number, string> = { 1: 'from-lime/40', 2: 'from-violet/40', 3: 'from-cyan/30' };
+  const unit = 54;
+  const size = 1.2;
+  const step = 1.35;
+  const blocks = top.map((entry, i) => {
+    const spec = PODIUM[(i + 1) as 1 | 2 | 3];
+    const x = spec.slot * step;
+    const y = (2 - spec.slot) * step;
+    return { entry, spec, x, y, place: entry.rank };
+  });
+  const corners = blocks.flatMap(({ x, y, spec }) => [project(x, y + size, 0, unit), project(x + size, y, 0, unit), project(x + size, y + size, 0, unit), project(x, y, spec.height, unit)]);
+  const minX = Math.min(...corners.map((c) => c.x)) - 24;
+  const maxX = Math.max(...corners.map((c) => c.x)) + 24;
+  const minY = Math.min(...corners.map((c) => c.y)) - 64 - 52;
+  const maxY = Math.max(...corners.map((c) => c.y)) + 8;
+  // Entrada do 3º para o 1º lugar.
+  const delayFor = (place: number) => (place === 1 ? 0.4 : place === 2 ? 0.2 : 0);
   return (
-    <div className="flex items-end justify-center gap-3 sm:gap-5" data-testid="podium">
-      {order.map((entry, index) => (
-        <motion.div
-          key={entry.playerId}
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 + (entry.rank === 1 ? 0.5 : index * 0.2), type: 'spring', stiffness: 200, damping: 20 }}
-          className="flex w-24 flex-col items-center gap-2 sm:w-32"
-        >
-          <Avatar id={entry.avatar} size={entry.rank === 1 ? 72 : 56} />
-          <p className="max-w-full truncate text-center font-semibold">{entry.name}</p>
-          <p className="font-mono text-sm text-white/70">{formatXP(entry.totalXP)} XP</p>
-          <div className={cx('flex w-full items-start justify-center rounded-t-2xl bg-gradient-to-b to-transparent pt-2', heights[entry.rank] ?? 'h-16', colors[entry.rank] ?? 'from-white/10')}>
-            <span className="font-display text-3xl font-bold">{entry.rank}</span>
-          </div>
-        </motion.div>
-      ))}
+    <div className="flex justify-center" data-testid="podium">
+      <svg viewBox={`${minX} ${minY} ${maxX - minX} ${maxY - minY}`} className="w-full max-w-[560px] overflow-visible" role="img" aria-label={`Pódio: ${top.map((e) => `${e.rank}º ${e.name}`).join(', ')}`}>
+        {blocks.map(({ entry, spec, x, y, place }, index) => {
+          const label = project(x + size / 2, y + size, spec.height / 2, unit);
+          const head = project(x + size / 2, y + size / 2, spec.height, unit);
+          const name = entry.name.length > 14 ? `${entry.name.slice(0, 13)}…` : entry.name;
+          return (
+            <DropIn key={entry.playerId} delay={delayFor(index + 1)} distance={90}>
+              <motion.g whileHover={{ y: -6 }} transition={{ type: 'spring', stiffness: 500, damping: 18 }}>
+                <IsoBox unit={unit} x={x} y={y} w={size} d={size} h={spec.height} color={spec.color} />
+                <text
+                  transform={`matrix(${Math.sqrt(3) / 2} 0.5 0 1 ${label.x} ${label.y})`}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  className="font-display"
+                  fontSize={unit * 0.62}
+                  fontWeight={800}
+                  fill={index === 0 ? '#171B33' : '#FFFFFF'}
+                >
+                  {place}
+                </text>
+                <g transform={`translate(${head.x - spec.avatar / 2} ${head.y - spec.avatar + 4})`}>
+                  <Avatar id={entry.avatar} size={spec.avatar} />
+                </g>
+                <text x={head.x} y={head.y - spec.avatar - 30} textAnchor="middle" className="fill-fg font-display" fontSize={16} fontWeight={800}>
+                  {name}
+                </text>
+                <text x={head.x} y={head.y - spec.avatar - 12} textAnchor="middle" className="fill-fg/70 font-mono" fontSize={13} fontWeight={700}>
+                  {formatXP(entry.totalXP)} XP
+                </text>
+              </motion.g>
+            </DropIn>
+          );
+        })}
+      </svg>
     </div>
   );
 }

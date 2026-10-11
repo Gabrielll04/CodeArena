@@ -12,7 +12,7 @@ const HostPage = lazy(() => import('./pages/Host').then((m) => ({ default: m.Hos
 
 function Loading() {
   return (
-    <div className="flex h-full items-center justify-center gap-2 text-white/50">
+    <div className="flex h-full items-center justify-center gap-2 text-fg/60">
       <Spinner className="h-5 w-5" /> Carregando
     </div>
   );
