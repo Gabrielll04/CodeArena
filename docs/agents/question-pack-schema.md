@@ -45,8 +45,8 @@ Entre 1 e 100 questões. Cada questão:
 | `timeLimitSeconds` | inteiro | sim | 10 a 3600 |
 | `baseXP` | inteiro | sim | 0 a 10000; XP por acertar |
 | `speedBonusMax` | inteiro | sim | 0 a 10000; bônus máximo por velocidade |
-| `starterCode` | string | não (padrão `""`) | código inicial do editor |
-| `solution` | string | não (padrão `""`) | solução esperada; **recomendada sempre** |
+| `starterCode` | string | não (padrão `""`) | código inicial do editor; em plugins visuais, o documento inicial do editor do plugin (texto, em geral JSON) |
+| `solution` | string | não (padrão `""`) | solução esperada; **recomendada sempre** (em plugins visuais, também um documento) |
 | `lockOnComplete` | boolean | não (padrão `true`) | trava o editor após a resposta ser aceita |
 | `checklist` | item[] | sim | 1 a 12 itens, ao menos 1 obrigatório |
 | `pluginData` | objeto | não (padrão `{}`) | metadados livres do plugin |

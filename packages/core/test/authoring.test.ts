@@ -51,3 +51,33 @@ describe('lintQuestion: questões de depuração', () => {
     expect(result).toContain('warning:O código inicial já satisfaz este item.');
   });
 });
+
+describe('lintQuestion: plugins com resposta visual', () => {
+  const visual = {
+    id: 'redes',
+    displayName: 'Redes',
+    description: '',
+    version: '1.0.0',
+    editorLanguage: 'json',
+    answerFormat: 'document' as const,
+    answerLabel: 'Topologia',
+    getStarterCode: (q: { starterCode: string }) => q.starterCode,
+    validators: { temPc: { description: '', mode: 'static' as const, validate: ({ code }: { code: string }) => code.includes('"pc"') } },
+  };
+
+  it('avisa quando a checklist usa regra de texto sobre o documento do editor', async () => {
+    const q = question({
+      starterCode: '{"devices":[]}',
+      solution: '{"devices":[{"type":"pc"}]}',
+      checklist: [
+        { id: 'pc', label: 'Adicionar um PC', rule: { type: 'pluginRule', validator: 'temPc' } },
+        { id: 'texto', label: 'Ter o texto pc', rule: { type: 'contains', value: 'pc"' } },
+      ],
+    });
+    const warnings = await lintQuestion(q, visual);
+    expect(warnings.filter((w) => w.itemId === 'texto').map((w) => w.message)).toContain(
+      'Regra de texto numa resposta visual: o conteúdo é gerado pelo editor de topologia e pode mudar de formato. Prefira um validador do plugin.',
+    );
+    expect(warnings.some((w) => w.itemId === 'pc' && w.level !== 'info')).toBe(false);
+  });
+});

@@ -13,6 +13,19 @@ export interface PluginUIContext {
   mode: 'play' | 'authoring' | 'preview';
 }
 
+/**
+ * Contexto do editor de resposta de um plugin visual. `code` é a resposta atual (o documento do plugin).
+ * O editor é controlado: mostra sempre `code` e avisa mudanças por `onChange`, que fica ausente em modo
+ * somente leitura (resposta travada, solução esperada, comparação).
+ */
+export interface PluginEditorContext extends PluginUIContext {
+  /**
+   * Troca a resposta inteira. Chame em mudanças concluídas (soltar um aparelho, ligar um cabo, confirmar um campo),
+   * não a cada movimento do mouse: cada chamada reavalia a checklist.
+   */
+  onChange?: (code: string) => void;
+}
+
 /** Plugin com interface para o navegador. */
 export interface ClientQuizPlugin<S = unknown> extends QuizPlugin<S> {
   /** Título da aba/painel do plugin (ex.: "Preview", "Cliente HTTP"). */
@@ -22,6 +35,12 @@ export interface ClientQuizPlugin<S = unknown> extends QuizPlugin<S> {
   renderPreview?(context: PluginUIContext): ReactNode;
   /** Painel de ferramentas (ex.: cliente HTTP). */
   renderSidePanel?(context: PluginUIContext): ReactNode;
+  /**
+   * Editor de resposta próprio, no lugar do editor de código (ex.: área de montar topologias ou circuitos).
+   * Usado pelo aluno, no editor do professor (estado inicial, solução e teste) e para mostrar respostas.
+   * Ocupa a área central inteira; tem de caber em qualquer tamanho e funcionar com teclado.
+   */
+  renderEditor?(context: PluginEditorContext): ReactNode;
 }
 
 /** Opções que o app entrega à entrada "ui" de um plugin. */

@@ -65,6 +65,19 @@ export async function lintQuestion(
     }
   }
 
+  if (plugin?.answerFormat === 'document') {
+    // A resposta é o documento que o editor visual do plugin gera (em geral JSON): o texto dele não é escrito pelo aluno.
+    for (const item of question.checklist) {
+      if (item.rule.type !== 'pluginRule') {
+        warnings.push({
+          level: 'warning',
+          itemId: item.id,
+          message: `Regra de texto numa resposta visual: o conteúdo é gerado pelo editor de ${(plugin.answerLabel ?? 'resposta').toLowerCase()} e pode mudar de formato. Prefira um validador do plugin.`,
+        });
+      }
+    }
+  }
+
   if (!question.solution.trim()) {
     warnings.push({ level: 'warning', message: 'Sem solução esperada: não dá para provar que a checklist é alcançável.' });
   } else {

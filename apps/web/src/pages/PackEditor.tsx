@@ -14,7 +14,7 @@ import {
   type QuestionPack,
 } from '@codearena/schemas';
 import { Checklist } from '../components/Checklist';
-import { CodeEditor } from '../components/CodeEditor';
+import { AnswerEditor, answerLabel, hasPluginEditor } from '../components/AnswerEditor';
 import { IssueList, WarningList } from '../components/IssueList';
 import { QuestionWorkspace } from '../components/QuestionWorkspace';
 import { TopBar } from '../components/TopBar';
@@ -350,6 +350,8 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
   }, [question, plugin.id]);
   const debouncedQuestion = useDebounced(question, 600);
   const debouncedPublic = useDebounced(publicQuestion, 300);
+  const visual = hasPluginEditor(plugin);
+  const label = answerLabel(plugin);
   const live = useChecklist(testCode, debouncedPublic, plugin);
   const xpHalf = calculateXP({ baseXP: question.baseXP, speedBonusMax: question.speedBonusMax, timeLimitMs: question.timeLimitSeconds * 1000, remainingMs: question.timeLimitSeconds * 500 });
 
@@ -452,16 +454,22 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel className="overflow-hidden">
           <p className="border-b border-white/[0.07] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white/50">
-            {question.kind === 'debug' ? 'Código com bug (ponto de partida)' : 'Código inicial'}
+            {visual
+              ? question.kind === 'debug'
+                ? `${label} com defeito (ponto de partida)`
+                : `${label} inicial`
+              : question.kind === 'debug'
+                ? 'Código com bug (ponto de partida)'
+                : 'Código inicial'}
           </p>
-          <div className="h-56">
-            <CodeEditor value={question.starterCode} onChange={(v) => set('starterCode', v)} language={plugin.editorLanguage} path={`file:///authoring/${question.id}/starter-${plugin.editorFileName ?? 'code'}`} fontSize={13} />
+          <div className={visual ? 'h-96' : 'h-56'} data-testid="authoring-starter">
+            <AnswerEditor plugin={plugin} question={publicQuestion} value={question.starterCode} onChange={(v) => set('starterCode', v)} mode="authoring" path={`file:///authoring/${question.id}/starter-${plugin.editorFileName ?? 'code'}`} fontSize={13} />
           </div>
         </Panel>
         <Panel className="overflow-hidden">
           <p className="border-b border-white/[0.07] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white/50">Solução esperada</p>
-          <div className="h-56">
-            <CodeEditor value={question.solution} onChange={(v) => set('solution', v)} language={plugin.editorLanguage} path={`file:///authoring/${question.id}/solution-${plugin.editorFileName ?? 'code'}`} fontSize={13} />
+          <div className={visual ? 'h-96' : 'h-56'} data-testid="authoring-solution">
+            <AnswerEditor plugin={plugin} question={publicQuestion} value={question.solution} onChange={(v) => set('solution', v)} mode="authoring" path={`file:///authoring/${question.id}/solution-${plugin.editorFileName ?? 'code'}`} fontSize={13} />
           </div>
         </Panel>
       </div>
@@ -512,7 +520,7 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
               Usar solução
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setTestCode(question.starterCode)}>
-              {question.kind === 'debug' ? 'Usar código com bug' : 'Usar código inicial'}
+              {visual ? (question.kind === 'debug' ? `Usar ${label.toLowerCase()} com defeito` : `Usar ${label.toLowerCase()} inicial`) : question.kind === 'debug' ? 'Usar código com bug' : 'Usar código inicial'}
             </Button>
             <Button size="sm" loading={serverBusy} onClick={() => void testOnServer()} data-testid="test-on-server">
               Validar no servidor
@@ -520,8 +528,8 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
           </div>
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="h-72 overflow-hidden rounded-xl ring-1 ring-white/10">
-            <CodeEditor value={testCode} onChange={setTestCode} language={plugin.editorLanguage} path={`file:///authoring/${question.id}/test-${plugin.editorFileName ?? 'code'}`} fontSize={13} />
+          <div className={cx('overflow-hidden rounded-xl ring-1 ring-white/10', visual ? 'h-96' : 'h-72')} data-testid="authoring-test">
+            <AnswerEditor plugin={plugin} question={publicQuestion} value={testCode} onChange={setTestCode} mode="authoring" path={`file:///authoring/${question.id}/test-${plugin.editorFileName ?? 'code'}`} evaluation={live.evaluation} fontSize={13} />
           </div>
           <Checklist items={question.checklist} evaluation={live.evaluation} checking={live.checking} announce={false} compact />
         </div>

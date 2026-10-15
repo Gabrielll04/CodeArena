@@ -394,12 +394,7 @@ function Review({ snapshot }: { snapshot: RoomSnapshot }) {
             <Icon name="eye" /> {showSolution ? 'Ocultar solução esperada' : snapshot.question?.question.kind === 'debug' ? 'Ver a correção esperada' : 'Ver solução esperada'}
           </Button>
           {showSolution && (
-            <SolutionView
-              solution={solution}
-              starter={snapshot.question?.question.starterCode ?? ''}
-              debug={snapshot.question?.question.kind === 'debug'}
-              pluginId={snapshot.question?.question.pluginId ?? ''}
-            />
+            <SolutionView solution={solution} question={snapshot.question?.question} />
           )}
         </div>
       )}

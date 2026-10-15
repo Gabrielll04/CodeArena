@@ -4,16 +4,19 @@
  * metadados e respostas por postMessage e mostra os painéis do plugin dentro de iframes.
  */
 import { useEffect, useRef } from 'react';
-import type { ClientQuizPlugin, PluginUIContext } from '@codearena/plugin-sdk/ui';
+import type { ClientQuizPlugin, PluginEditorContext, PluginUIContext } from '@codearena/plugin-sdk/ui';
+import { MAX_CODE_LENGTH } from '@codearena/schemas';
 import { createPluginProxy, ISOLATION_CHANNEL, type IsolatedPluginDescription } from '@codearena/plugin-host/isolation';
 
 const READY_TIMEOUT_MS = 15_000;
 const CALL_TIMEOUT_MS = 5_000;
 
-const frameUrl = (pluginId: string, role: 'logic' | 'preview' | 'side') =>
+type FrameRole = 'logic' | 'preview' | 'side' | 'editor';
+
+const frameUrl = (pluginId: string, role: FrameRole) =>
   `/plugin-frame.html?plugin=${encodeURIComponent(pluginId)}&role=${role}`;
 
-function createFrame(pluginId: string, role: 'logic' | 'preview' | 'side'): HTMLIFrameElement {
+function createFrame(pluginId: string, role: FrameRole): HTMLIFrameElement {
   const frame = document.createElement('iframe');
   // Sem allow-same-origin: o plugin não acessa o DOM, os cookies nem o armazenamento do app.
   frame.setAttribute('sandbox', 'allow-scripts');
@@ -26,6 +29,7 @@ interface UiInfo {
   sidePanelTitle?: string;
   hasPreview: boolean;
   hasSidePanel: boolean;
+  hasEditor?: boolean;
 }
 
 /** Inicia o iframe de lógica do plugin e devolve um ClientQuizPlugin que encaminha as chamadas para ele. */
@@ -102,22 +106,38 @@ export function loadIsolatedPlugin(pluginId: string): Promise<ClientQuizPlugin<a
       sidePanelTitle: ui.sidePanelTitle,
       ...(ui.hasPreview && { renderPreview: (context: PluginUIContext) => <IsolatedPanel pluginId={pluginId} role="preview" context={context} /> }),
       ...(ui.hasSidePanel && { renderSidePanel: (context: PluginUIContext) => <IsolatedPanel pluginId={pluginId} role="side" context={context} /> }),
+      ...(ui.hasEditor && { renderEditor: (context: PluginEditorContext) => <IsolatedPanel pluginId={pluginId} role="editor" context={context} /> }),
     };
   });
 }
 
-/** Painel do plugin dentro de um iframe isolado; recebe o contexto (questão pública, código, avaliação) por postMessage. */
-function IsolatedPanel({ pluginId, role, context }: { pluginId: string; role: 'preview' | 'side'; context: PluginUIContext }) {
+/**
+ * Painel ou editor do plugin dentro de um iframe isolado. Recebe o contexto (questão pública, resposta, avaliação)
+ * por postMessage. No papel "editor", o iframe pode devolver uma resposta nova: só texto, dentro do limite de
+ * tamanho, vindo deste iframe e enquanto o app aceitar edição. O servidor valida a resposta de novo de qualquer forma.
+ */
+function IsolatedPanel({ pluginId, role, context }: { pluginId: string; role: 'preview' | 'side' | 'editor'; context: PluginUIContext | PluginEditorContext }) {
   const ref = useRef<HTMLIFrameElement>(null);
   const latest = useRef(context);
   latest.current = context;
 
-  const send = () =>
-    ref.current?.contentWindow?.postMessage({ channel: ISOLATION_CHANNEL, type: 'context', context: JSON.parse(JSON.stringify(latest.current)) }, '*');
+  const send = () => {
+    const { onChange, ...data } = latest.current as PluginEditorContext;
+    // Funções não atravessam; o iframe só sabe se pode editar.
+    const payload = role === 'editor' ? { ...data, readOnly: data.readOnly || !onChange } : data;
+    ref.current?.contentWindow?.postMessage({ channel: ISOLATION_CHANNEL, type: 'context', context: JSON.parse(JSON.stringify(payload)) }, '*');
+  };
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
-      if (event.source === ref.current?.contentWindow && event.data?.channel === ISOLATION_CHANNEL && event.data.type === 'ready') send();
+      if (event.source !== ref.current?.contentWindow || event.data?.channel !== ISOLATION_CHANNEL) return;
+      if (event.data.type === 'ready') send();
+      if (event.data.type === 'change' && role === 'editor') {
+        const value: unknown = event.data.value;
+        const { onChange, readOnly } = latest.current as PluginEditorContext;
+        if (readOnly || !onChange || typeof value !== 'string' || value.length > MAX_CODE_LENGTH) return;
+        onChange(value);
+      }
     };
     window.addEventListener('message', listener);
     return () => window.removeEventListener('message', listener);
@@ -128,7 +148,7 @@ function IsolatedPanel({ pluginId, role, context }: { pluginId: string; role: 'p
   return (
     <iframe
       ref={ref}
-      title={`Painel do plugin ${pluginId}`}
+      title={role === 'editor' ? `Editor do plugin ${pluginId}` : `Painel do plugin ${pluginId}`}
       sandbox="allow-scripts"
       src={frameUrl(pluginId, role)}
       className="block h-full min-h-[240px] w-full border-0 bg-transparent"

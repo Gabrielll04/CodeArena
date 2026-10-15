@@ -3,9 +3,9 @@ import type { ClientQuizPlugin } from '@codearena/plugin-sdk/ui';
 import type { PublicQuestion } from '@codearena/schemas';
 import type { LiveChecklist } from '../hooks/useChecklist';
 import { Checklist } from './Checklist';
+import { AnswerEditor, answerLabel, hasPluginEditor } from './AnswerEditor';
 import { DebugBar } from './DebugBar';
-import { CodeEditor } from './CodeEditor';
-import { PluginPanel, pluginPanelTitle } from './PluginPanel';
+import { hasPluginPanel, PluginPanel, pluginPanelTitle } from './PluginPanel';
 import { Prompt } from './Prompt';
 import { Badge, cx } from './ui';
 
@@ -50,11 +50,15 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
   const { evaluation } = live;
   const remaining = evaluation.requiredTotal - evaluation.requiredDone;
   const panelTitle = pluginPanelTitle(plugin);
+  const label = answerLabel(plugin);
+  const visual = hasPluginEditor(plugin);
+  // Plugins visuais sem painel extra ganham a largura toda para o editor.
+  const withPanel = hasPluginPanel(plugin);
 
   const mobileTabs: { id: MobileTab; label: string }[] = [
     { id: 'task', label: `Tarefa ${evaluation.requiredDone}/${evaluation.requiredTotal}` },
-    { id: 'code', label: 'Código' },
-    { id: 'panel', label: panelTitle },
+    { id: 'code', label },
+    ...(withPanel ? [{ id: 'panel' as const, label: panelTitle }] : []),
   ];
 
   return (
@@ -76,7 +80,12 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
         ))}
       </nav>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)_minmax(320px,400px)]">
+      <div
+        className={cx(
+          'grid min-h-0 flex-1 grid-cols-1',
+          withPanel ? 'lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)_minmax(320px,400px)]' : 'lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]',
+        )}
+      >
         <aside className={cx('min-h-0 flex-col gap-4 overflow-auto p-4 lg:flex lg:border-r lg:border-white/[0.07]', tab === 'task' ? 'flex' : 'hidden')}>
           {heading}
           <div className="rounded-2xl border border-white/[0.07] bg-ink-850/60 p-4" data-testid="question-prompt">
@@ -96,9 +105,9 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
           )}
         </aside>
 
-        <section className={cx('relative min-h-[50vh] flex-col lg:flex lg:min-h-0', tab === 'code' ? 'flex' : 'hidden')} aria-label="Editor">
+        <section className={cx('relative min-h-[50vh] flex-col lg:flex lg:min-h-0', tab === 'code' ? 'flex' : 'hidden')} aria-label={visual ? `Editor de ${label.toLowerCase()}` : 'Editor'}>
           <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-2 text-xs text-white/50">
-            <span className="font-mono">{plugin.editorFileName ?? 'codigo'}</span>
+            <span className={visual ? 'font-semibold' : 'font-mono'}>{visual ? label : (plugin.editorFileName ?? 'codigo')}</span>
             <span className="flex items-center gap-3">
               <span className="lg:hidden" aria-live="polite">
                 {evaluation.requiredDone}/{evaluation.requiredTotal}
@@ -108,29 +117,34 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
           </div>
           {question.kind === 'debug' && (
             <DebugBar
+              plugin={plugin}
+              question={question}
               original={plugin.getStarterCode(question)}
               current={code}
-              language={plugin.editorLanguage}
               readOnly={readOnly}
               onRestore={() => onRestore?.()}
             />
           )}
           <div className="relative min-h-0 flex-1">
-            <CodeEditor
+            <AnswerEditor
+              plugin={plugin}
+              question={question}
               value={code}
               onChange={readOnly ? undefined : onCodeChange}
-              language={plugin.editorLanguage}
+              mode={mode}
               path={modelPath}
-              readOnly={readOnly}
+              evaluation={evaluation}
               ariaLabel="Editor de código da resposta"
             />
             {editorOverlay}
           </div>
         </section>
 
-        <aside className={cx('min-h-0 flex-col lg:flex lg:border-l lg:border-white/[0.07]', tab === 'panel' ? 'flex' : 'hidden')} aria-label={panelTitle}>
-          <PluginPanel plugin={plugin} context={{ question, code, readOnly, evaluation, mode }} />
-        </aside>
+        {withPanel && (
+          <aside className={cx('min-h-0 flex-col lg:flex lg:border-l lg:border-white/[0.07]', tab === 'panel' ? 'flex' : 'hidden')} aria-label={panelTitle}>
+            <PluginPanel plugin={plugin} context={{ question, code, readOnly, evaluation, mode }} />
+          </aside>
+        )}
       </div>
     </div>
   );

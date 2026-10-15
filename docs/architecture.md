@@ -52,6 +52,14 @@ Decisão registrada em [0001: Plugins como pacotes separados](./decisoes/0001-pl
 Plugins oficiais: **`react-native`** (componentes com preview em celular) e **`backend-http`** (servidores Express validados
 por requisições HTTP).
 
+### Respostas visuais
+
+Plugins de matérias que pedem montagem visual (topologias de rede, circuitos) declaram `answerFormat: "document"` e
+desenham o próprio editor (`renderEditor`). A resposta continua sendo texto (o estado do editor, em geral JSON), então
+o envio, o rascunho, a checklist, a validação no servidor e a pontuação são os mesmos dos plugins de código. Detalhes em
+[Criando um plugin > Plugins visuais](plugins/creating-a-plugin.md#plugins-visuais-topologias-circuitos-diagramas) e na
+[decisão 0002](decisoes/0002-respostas-visuais.md).
+
 ### Pacotes do núcleo
 
 | Pacote | Responsabilidade | Depende de |
@@ -201,6 +209,7 @@ ou `pnpm codearena plugins add codearena-plugin-eletrica --isolated`.
 | Servidor | importado no processo do servidor | processo Node filho com `--permission`: lê só a pasta do plugin e `node_modules`, não escreve em disco, não cria processos nem workers, ambiente vazio, 128 MB, 5 s por chamada (travou: o processo é encerrado e reiniciado) |
 | Navegador | módulo carregado na página do app | iframe `sandbox="allow-scripts"` (origem opaca) servido por `plugin-frame.html`: sem acesso ao DOM, cookies, armazenamento ou sessão do app |
 | Comunicação | chamadas diretas | mensagens (IPC no servidor, `postMessage` no navegador) com dados simples: questão pública, código, item, parâmetros |
+| Editor de resposta (plugins visuais) | desenhado na página do app | iframe com o papel `editor`: devolve a resposta só como texto, de até 50 mil caracteres, e o app ignora mudanças com a resposta travada |
 
 O app nunca importa um plugin isolado: o módulo `virtual:codearena/plugins` não tem loader para ele, e só
 `plugin-frame.html` importa `virtual:codearena/isolated-plugins`. O app usa um proxy (`createPluginProxy`, em

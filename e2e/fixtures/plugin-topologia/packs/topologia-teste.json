@@ -1,0 +1,137 @@
+{
+  "pack": {
+    "title": "Redes locais (referência visual)",
+    "description": "Usado pelos testes E2E de plugins com editor visual.",
+    "pluginId": "topologia-teste",
+    "version": "1.0.0",
+    "author": "CodeArena",
+    "tags": [
+      "redes",
+      "teste"
+    ]
+  },
+  "questions": [
+    {
+      "id": "rede-local",
+      "title": "Primeira rede local",
+      "prompt": "Monte uma rede local com dois PCs ligados a um switch, na rede 192.168.0.0/24, e faça o PC1 alcançar o PC2.",
+      "timeLimitSeconds": 300,
+      "baseXP": 500,
+      "speedBonusMax": 300,
+      "starterCode": "{\"devices\":[],\"links\":[]}",
+      "solution": "{\"devices\":[{\"id\":\"pc1\",\"type\":\"pc\",\"x\":180,\"y\":330,\"ip\":\"192.168.0.10\"},{\"id\":\"pc2\",\"type\":\"pc\",\"x\":620,\"y\":330,\"ip\":\"192.168.0.11\"},{\"id\":\"sw1\",\"type\":\"switch\",\"x\":400,\"y\":140}],\"links\":[[\"pc1\",\"sw1\"],[\"pc2\",\"sw1\"]]}",
+      "checklist": [
+        {
+          "id": "dois-pcs",
+          "label": "Adicionar 2 PCs",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "contarDispositivos",
+            "params": {
+              "tipo": "pc",
+              "minimo": 2
+            }
+          }
+        },
+        {
+          "id": "um-switch",
+          "label": "Adicionar 1 switch",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "contarDispositivos",
+            "params": {
+              "tipo": "switch",
+              "minimo": 1
+            }
+          }
+        },
+        {
+          "id": "cabos",
+          "label": "Ligar cada PC ao switch",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "ligados",
+            "params": {
+              "tipo": "pc",
+              "a": "switch"
+            }
+          }
+        },
+        {
+          "id": "ips",
+          "label": "Configurar os PCs na rede 192.168.0.0/24",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "ipsNaRede",
+            "params": {
+              "tipo": "pc",
+              "rede": "192.168.0.0/24"
+            }
+          },
+          "hint": "Selecione cada PC e preencha o endereço IP, por exemplo 192.168.0.10."
+        },
+        {
+          "id": "ping",
+          "label": "Fazer o PC1 alcançar o PC2",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "ping",
+            "params": {
+              "de": "PC1",
+              "para": "PC2"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rede-com-defeito",
+      "title": "O PC2 não responde",
+      "kind": "debug",
+      "prompt": "O PC1 não consegue falar com o PC2 nesta rede. Encontre o problema e corrija.",
+      "timeLimitSeconds": 300,
+      "baseXP": 500,
+      "speedBonusMax": 300,
+      "starterCode": "{\"devices\":[{\"id\":\"pc1\",\"type\":\"pc\",\"x\":180,\"y\":330,\"ip\":\"192.168.0.10\"},{\"id\":\"pc2\",\"type\":\"pc\",\"x\":620,\"y\":330,\"ip\":\"192.168.1.11\"},{\"id\":\"sw1\",\"type\":\"switch\",\"x\":400,\"y\":140}],\"links\":[[\"pc1\",\"sw1\"],[\"pc2\",\"sw1\"]]}",
+      "solution": "{\"devices\":[{\"id\":\"pc1\",\"type\":\"pc\",\"x\":180,\"y\":330,\"ip\":\"192.168.0.10\"},{\"id\":\"pc2\",\"type\":\"pc\",\"x\":620,\"y\":330,\"ip\":\"192.168.0.11\"},{\"id\":\"sw1\",\"type\":\"switch\",\"x\":400,\"y\":140}],\"links\":[[\"pc1\",\"sw1\"],[\"pc2\",\"sw1\"]]}",
+      "checklist": [
+        {
+          "id": "cabos",
+          "label": "Manter cada PC ligado ao switch",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "ligados",
+            "params": {
+              "tipo": "pc",
+              "a": "switch"
+            }
+          }
+        },
+        {
+          "id": "ips",
+          "label": "Deixar os PCs na rede 192.168.0.0/24",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "ipsNaRede",
+            "params": {
+              "tipo": "pc",
+              "rede": "192.168.0.0/24"
+            }
+          }
+        },
+        {
+          "id": "ping",
+          "label": "Fazer o PC1 alcançar o PC2",
+          "rule": {
+            "type": "pluginRule",
+            "validator": "ping",
+            "params": {
+              "de": "PC1",
+              "para": "PC2"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

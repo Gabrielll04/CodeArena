@@ -1,0 +1,18 @@
+{
+  "name": "codearena-plugin-topologia-teste",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Plugin visual de referência: montar uma rede local (PCs, switches, roteadores, cabos e IPs). Usado nos testes E2E.",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./ui": "./src/ui.mjs"
+  },
+  "codearena": {
+    "pluginId": "topologia-teste",
+    "displayName": "Topologia de rede (referência)",
+    "sdk": "^0.1.0",
+    "ui": "./ui",
+    "packs": ["./packs/topologia-teste.json"]
+  }
+}

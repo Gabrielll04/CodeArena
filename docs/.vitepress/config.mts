@@ -60,7 +60,10 @@ export default defineConfig({
       },
       {
         text: 'Decisões',
-        items: [{ text: '0001: Plugins como pacotes', link: '/decisoes/0001-plugins-como-pacotes' }],
+        items: [
+          { text: '0001: Plugins como pacotes', link: '/decisoes/0001-plugins-como-pacotes' },
+          { text: '0002: Respostas visuais', link: '/decisoes/0002-respostas-visuais' },
+        ],
       },
       {
         text: 'Comunidade',

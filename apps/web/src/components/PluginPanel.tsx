@@ -35,6 +35,14 @@ export function PluginPanel({ plugin, context }: { plugin: ClientQuizPlugin<any>
   );
 }
 
+/**
+ * O plugin tem painel à direita. Plugins de código sem painel mantêm a coluna (com o aviso), como antes;
+ * plugins com editor próprio sem painel liberam a largura para o editor.
+ */
+export function hasPluginPanel(plugin: ClientQuizPlugin<any>): boolean {
+  return Boolean(plugin.renderPreview || plugin.renderSidePanel || !plugin.renderEditor);
+}
+
 export function pluginPanelTitle(plugin: ClientQuizPlugin<any> | undefined): string {
   if (!plugin) return 'Painel';
   return plugin.previewTitle ?? plugin.sidePanelTitle ?? 'Painel';

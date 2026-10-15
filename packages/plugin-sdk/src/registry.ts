@@ -26,6 +26,9 @@ export function definePlugin<P extends QuizPlugin<any>>(plugin: P): P {
   if (typeof plugin.getStarterCode !== 'function') {
     throw new PluginDefinitionError(`O plugin "${plugin.id}" precisa implementar getStarterCode().`);
   }
+  if (plugin.answerFormat !== undefined && plugin.answerFormat !== 'code' && plugin.answerFormat !== 'document') {
+    throw new PluginDefinitionError(`O plugin "${plugin.id}" tem answerFormat inválido: use "code" ou "document".`);
+  }
   for (const [name, validator] of Object.entries(plugin.validators ?? {})) {
     if (!VALIDATOR_NAME.test(name)) {
       throw new PluginDefinitionError(`Nome de validador inválido em "${plugin.id}": "${name}". Use camelCase.`);

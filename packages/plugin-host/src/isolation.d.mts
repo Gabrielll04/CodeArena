@@ -10,6 +10,8 @@ export interface IsolatedPluginDescription {
   version: string;
   editorLanguage: string;
   editorFileName?: string;
+  answerFormat: 'code' | 'document';
+  answerLabel?: string;
   validators: Record<string, { description: string; mode: 'static' | 'dynamic'; exampleParams?: Record<string, unknown> }>;
   hasSession: boolean;
   hasSubmissionCheck: boolean;

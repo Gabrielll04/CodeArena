@@ -134,5 +134,15 @@ describe('protocolo de isolamento (sem processo)', () => {
     expect(result.items[0]).toMatchObject({ status: 'done' });
     expect(disposed).toEqual([{ upper: 'ABC' }]);
     expect(await proxy.validateSubmission!('ab', {} as PublicQuestion)).toEqual({ valid: false, message: 'curto' });
+    expect(proxy.answerFormat).toBe('code');
+  });
+
+  it('o proxy informa o formato da resposta de plugins visuais e descarta valores estranhos', () => {
+    const base = { id: 'redes', displayName: 'Redes', description: '', version: '1', editorLanguage: 'json', getStarterCode: () => '' };
+    const visual = createPluginProxy(describePlugin({ ...base, answerFormat: 'document', answerLabel: 'Topologia' } as never), async () => null);
+    expect(visual).toMatchObject({ answerFormat: 'document', answerLabel: 'Topologia' });
+    const strange = createPluginProxy(describePlugin({ ...base, answerFormat: 'binario', answerLabel: 42 } as never), async () => null);
+    expect(strange.answerFormat).toBe('code');
+    expect(strange).not.toHaveProperty('answerLabel');
   });
 });

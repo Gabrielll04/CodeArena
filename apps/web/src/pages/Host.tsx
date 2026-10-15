@@ -311,12 +311,7 @@ function HostReview({ snapshot }: { snapshot: RoomSnapshot }) {
               <Icon name="eye" /> {showSolution ? 'Ocultar solução' : 'Mostrar solução esperada'}
             </Button>
             {showSolution && (
-              <SolutionView
-                solution={lastFinished.solution}
-                starter={snapshot.question?.question.starterCode ?? ''}
-                debug={snapshot.question?.question.kind === 'debug'}
-                pluginId={snapshot.question?.question.pluginId ?? ''}
-              />
+              <SolutionView solution={lastFinished.solution} question={snapshot.question?.question} />
             )}
           </Panel>
         )}

@@ -5,6 +5,7 @@
  * ?role=logic   validadores e metadados (iframe invisível, um por plugin)
  * ?role=preview painel de preview do plugin
  * ?role=side    painel de ferramentas do plugin
+ * ?role=editor  editor de resposta do plugin (plugins visuais); devolve a resposta nova com { type: 'change', value }
  */
 import { createRoot } from 'react-dom/client';
 import { useEffect, useState } from 'react';
@@ -38,7 +39,7 @@ async function loadPlugin(): Promise<ClientQuizPlugin<any>> {
   return typeof entry === 'function' ? entry({ sandboxUrl: `/sandbox.html?plugin=${encodeURIComponent(pluginId)}` }) : entry;
 }
 
-function Panel({ plugin, kind }: { plugin: ClientQuizPlugin<any>; kind: 'preview' | 'side' }) {
+function Panel({ plugin, kind }: { plugin: ClientQuizPlugin<any>; kind: 'preview' | 'side' | 'editor' }) {
   const [context, setContext] = useState<PluginUIContext | null>(null);
   useEffect(() => {
     onParentMessage((data) => {
@@ -47,6 +48,10 @@ function Panel({ plugin, kind }: { plugin: ClientQuizPlugin<any>; kind: 'preview
     post({ type: 'ready' });
   }, []);
   if (!context) return null;
+  if (kind === 'editor') {
+    const onChange = context.readOnly ? undefined : (code: string) => typeof code === 'string' && post({ type: 'change', value: code });
+    return <>{plugin.renderEditor?.({ ...context, onChange })}</>;
+  }
   return <>{kind === 'preview' ? plugin.renderPreview?.(context) : plugin.renderSidePanel?.(context)}</>;
 }
 
@@ -70,11 +75,13 @@ loadPlugin().then(
           sidePanelTitle: plugin.sidePanelTitle,
           hasPreview: typeof plugin.renderPreview === 'function',
           hasSidePanel: typeof plugin.renderSidePanel === 'function',
+          hasEditor: typeof plugin.renderEditor === 'function',
         },
       });
       return;
     }
-    createRoot(root).render(<Panel plugin={plugin} kind={role === 'preview' ? 'preview' : 'side'} />);
+    const kind = role === 'preview' || role === 'editor' ? role : 'side';
+    createRoot(root).render(<Panel plugin={plugin} kind={kind} />);
   },
   (err: Error) => {
     post({ type: 'fatal', error: err.message });

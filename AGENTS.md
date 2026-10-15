@@ -47,6 +47,13 @@ Leia nesta ordem antes de gerar questões:
 9. Não use emojis em enunciados, labels ou dicas.
 10. Ids em `kebab-case` minúsculo, únicos no pack (questões) e na questão (itens).
 
+## Plugins visuais (`answerFormat: "document"`)
+
+Em plugins cujo aluno responde montando algo (topologia de rede, circuito), `starterCode` e `solution` são o documento
+do editor do plugin, serializado como texto (em geral JSON escapado dentro da string). Siga o formato do guia do
+plugin, use só os validadores dele (`pluginRule`) e nunca `contains`/`regex` sobre esse documento.
+Detalhes em `docs/decisoes/0002-respostas-visuais.md`.
+
 ## Regras extras para questões de depuração (`"kind": "debug"`)
 
 Leia `docs/agents/debug-questions.md`. Em resumo:

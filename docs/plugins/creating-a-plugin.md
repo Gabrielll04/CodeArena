@@ -109,6 +109,8 @@ interface QuizPlugin<S = unknown> {
   version: string;
   editorLanguage: string;     // linguagem do Monaco
   editorFileName?: string;    // ex.: "App.tsx", "main.py"
+  answerFormat?: 'code' | 'document'; // "document": resposta desenhada pelo editor do plugin (ver Plugins visuais)
+  answerLabel?: string;       // nome da resposta na interface, ex.: "Topologia" (padrão: "Código")
   getStarterCode(question): string;
   validators?: Record<string, ChecklistValidator<any, S>>;
   createSession?(input): S | Promise<S>;   // estado compartilhado numa rodada de avaliação
@@ -130,6 +132,11 @@ interface ClientQuizPlugin<S> extends QuizPlugin<S> {
   sidePanelTitle?: string;
   renderPreview?(ctx: PluginUIContext): ReactNode;
   renderSidePanel?(ctx: PluginUIContext): ReactNode;
+  renderEditor?(ctx: PluginEditorContext): ReactNode; // editor próprio no lugar do editor de código
+}
+
+interface PluginEditorContext extends PluginUIContext {
+  onChange?: (code: string) => void; // ausente quando a resposta é somente leitura
 }
 
 interface PluginUIContext {
@@ -267,6 +274,47 @@ expect(result.allRequiredDone).toBe(true);
 
 Rode também `pnpm validate:packs` com um pack de exemplo do seu plugin depois de ativá-lo em `codearena.config.json`.
 
+## Plugins visuais (topologias, circuitos, diagramas)
+
+Para matérias em que o aluno responde montando algo (uma rede como no Cisco Packet Tracer, um circuito como no
+Tinkercad), o plugin desenha o próprio editor no lugar do editor de código
+([decisão 0002](../decisoes/0002-respostas-visuais.md)):
+
+```ts
+const redes: ClientQuizPlugin = {
+  ...redesPlugin,              // validadores, getStarterCode etc. (entrada principal)
+  answerFormat: 'document',
+  answerLabel: 'Topologia',
+  editorLanguage: 'json',      // usado só se o app não souber desenhar o editor
+  renderEditor: ({ code, onChange, readOnly, evaluation }) => (
+    <EditorDeTopologia valor={code} aoMudar={onChange} somenteLeitura={readOnly || !onChange} />
+  ),
+};
+```
+
+Como funciona:
+
+- **A resposta é texto.** O plugin guarda o estado do editor como texto, em geral JSON, com até 50 mil caracteres.
+  `starterCode` e `solution` das questões guardam esse mesmo documento. Defina `authoring.defaultStarterCode` com o
+  documento vazio (ex.: `'{"devices":[],"links":[]}'`).
+- **O editor é controlado.** Desenhe sempre o que vem em `code` e chame `onChange` com o documento inteiro em mudanças
+  concluídas (adicionar, soltar depois de arrastar, ligar um cabo, confirmar um campo). Não chame a cada movimento do
+  mouse: cada chamada reavalia a checklist. Sem `onChange`, o editor é somente leitura.
+- **O mesmo editor aparece em todo lugar:** na sala, na pré-visualização, no editor de questões (estado inicial,
+  solução e teste), na comparação das questões de depuração e na solução mostrada no fim. Ocupe a área inteira, funcione
+  em telas pequenas e com teclado (aparelhos focáveis, Enter para selecionar, setas para mover, Delete para remover).
+- **Validadores leem o documento.** Escreva funções puras: leia o JSON em `createSession`, uma vez por rodada, e confira
+  aparelhos, ligações e configurações nos validadores. Uma simulação simples (ex.: ping entre dois PCs) cabe num
+  validador. Assim o resultado é igual no navegador e no servidor e o plugin funciona no modo isolado.
+- **Sem regras de texto.** `contains` e `regex` sobre o JSON geram aviso: o formato é do editor, não do aluno.
+- **Painéis são opcionais.** Sem `renderPreview` e `renderSidePanel`, o editor ganha a largura toda.
+- No modo isolado, o editor roda num iframe sem acesso ao app e só devolve texto (o app confere tamanho e ignora
+  mudanças com a resposta travada).
+
+Referência completa: `e2e/fixtures/plugin-topologia` (PCs, switches, roteadores, cabos, endereços IP e ping simulado),
+com um pack de exemplo que inclui uma questão de depuração. Ela usa `React.createElement` para rodar sem build. No seu
+plugin, use JSX e o gerador normalmente.
+
 ## Validadores dinâmicos (que executam código)
 
 - Execute o código fora da thread da interface (Web Worker) e, no servidor, fora do processo principal
@@ -285,10 +333,12 @@ Node restrito e o navegador, num iframe sem origem (detalhes em
 - publique o pacote compilado (`dist/*.js`), como o gerador já faz;
 - não dependa de `getStarterCode` diferente de `question.starterCode` nem de ajudas de regex (não são usadas no modo isolado);
 - não crie processos, workers nem arquivos no servidor;
-- painéis recebem o contexto (`question`, `code`, `evaluation`, `mode`) por mensagem e rodam sem acesso ao app:
-  não use `window.parent`, cookies nem `localStorage` do app.
+- painéis e o editor recebem o contexto (`question`, `code`, `evaluation`, `mode`) por mensagem e rodam sem acesso ao
+  app: não use `window.parent`, cookies nem `localStorage` do app. O editor devolve a resposta só por `onChange`;
+- o código inicial é sempre o `starterCode` da questão: em plugins visuais, preencha-o com o documento inicial.
 
-O teste E2E "plugin no modo isolado" (`e2e/fixtures/plugin-isolado`) é um exemplo mínimo que funciona isolado.
+Os testes E2E "plugin no modo isolado" (`e2e/fixtures/plugin-isolado`) e "plugin visual no modo isolado"
+(`e2e/fixtures/plugin-topologia`) são exemplos que funcionam isolados.
 
 ## Checklist de publicação
 

@@ -78,6 +78,14 @@ export interface RegexHelper {
   build(input: string): { pattern: string; flags?: string; label: string };
 }
 
+/**
+ * Formato da resposta do aluno. Nos dois casos ela trafega e é validada como texto (até 50 mil caracteres).
+ * - code: código-fonte editado no editor de código do app (padrão).
+ * - document: estado de um editor visual do plugin (topologia de rede, circuito, diagrama), serializado pelo
+ *   próprio plugin, em geral como JSON. O plugin desenha o editor com `renderEditor` (`@codearena/plugin-sdk/ui`).
+ */
+export type AnswerFormat = 'code' | 'document';
+
 export interface PluginAuthoring {
   regexHelpers?: RegexHelper[];
   /** Código inicial sugerido para novas questões. */
@@ -100,6 +108,13 @@ export interface QuizPlugin<S = unknown> {
   editorLanguage: string;
   /** Nome do arquivo do modelo do editor (ex.: "App.tsx"); ajuda o Monaco a habilitar JSX. */
   editorFileName?: string;
+  /** Formato da resposta. Padrão: "code". Plugins visuais usam "document" e desenham o próprio editor. */
+  answerFormat?: AnswerFormat;
+  /**
+   * Nome da resposta na interface (ex.: "Topologia", "Circuito"). Aparece em "Topologia inicial",
+   * "Solução esperada" e nas abas do editor. Padrão: "Código".
+   */
+  answerLabel?: string;
 
   getStarterCode(question: PublicQuestion): string;
 

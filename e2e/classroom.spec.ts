@@ -269,3 +269,57 @@ test('plugin no modo isolado: painel em iframe sem acesso ao app e validação o
   await expect(ana.getByTestId('answer-accepted')).toBeVisible();
   await expect(host.getByTestId('host-answered')).toHaveText('1');
 });
+
+test('plugin visual no modo isolado: aluno monta a topologia no editor do plugin e o servidor valida', async ({ page: host, browser }) => {
+  const code = await createRoom(host, 'pack-exemplo-topologia-teste');
+  const ana = await joinRoom(browser, code, 'Ana');
+  await joinRoom(browser, code, 'Bia', 'cube');
+  await host.getByTestId('start-question').click();
+  await expect(ana.getByTestId('question-prompt')).toContainText('rede local');
+
+  // O editor do plugin substitui o editor de código e roda num iframe sandbox, como os painéis.
+  await expect(ana.locator('.monaco-editor')).toHaveCount(0);
+  const frame = ana.locator('[data-testid="isolated-panel-editor"]');
+  await expect(frame).toHaveAttribute('sandbox', 'allow-scripts');
+  const editor = ana.frameLocator('[data-testid="isolated-panel-editor"]');
+
+  await editor.getByTestId('topo-add-pc').click();
+  await editor.getByTestId('topo-add-pc').click();
+  await editor.getByTestId('topo-add-switch').click();
+  await expect(ana.getByTestId('checklist-item-dois-pcs')).toHaveAttribute('data-status', 'done');
+  await expect(ana.getByTestId('checklist-item-um-switch')).toHaveAttribute('data-status', 'done');
+  await expect(ana.getByTestId('checklist-count')).toHaveText('2/5');
+
+  // O iframe só consegue devolver texto dentro do limite: objetos e textos enormes são ignorados pelo app.
+  const editorFrame = ana.frames().find((f) => f.url().includes('role=editor'))!;
+  await editorFrame.evaluate(() => {
+    window.parent.postMessage({ channel: 'codearena-plugin', type: 'change', value: { devices: [], links: [] } }, '*');
+    window.parent.postMessage({ channel: 'codearena-plugin', type: 'change', value: 'x'.repeat(60_000) }, '*');
+  });
+  await ana.waitForTimeout(800);
+  await expect(ana.getByTestId('checklist-count')).toHaveText('2/5');
+
+  await editor.getByTestId('topo-connect').click();
+  for (const [a, b] of [['pc1', 'sw1'], ['pc2', 'sw1']]) {
+    await editor.getByTestId(`topo-device-${a}`).click();
+    await editor.getByTestId(`topo-device-${b}`).click();
+  }
+  await expect(ana.getByTestId('checklist-item-cabos')).toHaveAttribute('data-status', 'done');
+  await editor.getByTestId('topo-connect').click();
+
+  await editor.getByTestId('topo-device-pc1').click();
+  await editor.getByTestId('topo-ip').fill('192.168.0.10');
+  await editor.getByTestId('topo-ip').press('Enter');
+  await expect(ana.getByTestId('checklist-item-ping')).toContainText('PC2 sem IP');
+  await editor.getByTestId('topo-device-pc2').click();
+  await editor.getByTestId('topo-ip').fill('192.168.0.11');
+  await editor.getByTestId('topo-ip').press('Enter');
+
+  // Checklist completa: a resposta (JSON da topologia) é validada de novo no servidor, com o plugin num processo restrito.
+  await expect(ana.getByTestId('checklist-item-ping')).toHaveAttribute('data-status', 'done');
+  await expect(ana.getByTestId('answer-accepted')).toBeVisible();
+  await expect(host.getByTestId('host-answered')).toHaveText('1');
+  // Resposta travada: o editor do plugin passa a ser somente leitura.
+  await expect(ana.getByTestId('plugin-editor')).toHaveAttribute('data-readonly', 'true');
+  await expect(editor.getByTestId('topo-add-pc')).toHaveCount(0);
+});

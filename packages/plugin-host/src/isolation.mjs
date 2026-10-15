@@ -17,6 +17,8 @@ export function describePlugin(plugin) {
     version: plugin.version,
     editorLanguage: plugin.editorLanguage,
     editorFileName: plugin.editorFileName,
+    answerFormat: plugin.answerFormat === 'document' ? 'document' : 'code',
+    answerLabel: typeof plugin.answerLabel === 'string' ? plugin.answerLabel : undefined,
     validators: Object.fromEntries(
       Object.entries(plugin.validators ?? {}).map(([name, v]) => [
         name,
@@ -104,6 +106,8 @@ export function createPluginProxy(description, call) {
     version: description.version,
     editorLanguage: description.editorLanguage,
     editorFileName: description.editorFileName,
+    answerFormat: description.answerFormat === 'document' ? 'document' : 'code',
+    ...(description.answerLabel && { answerLabel: description.answerLabel }),
     isolated: true,
     getStarterCode: (question) => question.starterCode,
     validators,

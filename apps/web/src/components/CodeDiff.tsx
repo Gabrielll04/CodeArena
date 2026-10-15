@@ -1,7 +1,9 @@
 import { DiffEditor } from '@monaco-editor/react';
 import '../monaco';
 import { Spinner } from './ui';
+import type { PublicQuestion } from '@codearena/schemas';
 import { useClientPlugin } from '../plugins/registry';
+import { AnswerCompare, AnswerEditor, answerLabel, hasPluginEditor } from './AnswerEditor';
 
 export interface CodeDiffProps {
   original: string;
@@ -44,9 +46,29 @@ export function CodeDiff({ original, modified, language, fontSize = 13 }: CodeDi
   );
 }
 
-/** Correção esperada ao fim da questão: texto simples em questões comuns, diff em questões de depuração. */
-export function SolutionView({ solution, starter, debug, pluginId }: { solution: string; starter: string; debug: boolean; pluginId: string }) {
-  const language = useClientPlugin(pluginId).plugin?.editorLanguage ?? 'javascript';
+/**
+ * Correção esperada ao fim da questão: texto simples em questões comuns, diff em questões de depuração.
+ * Plugins visuais mostram a solução no próprio editor, somente leitura (lado a lado com o original na depuração).
+ */
+export function SolutionView({ solution, question }: { solution: string; question: PublicQuestion | undefined }) {
+  const plugin = useClientPlugin(question?.pluginId).plugin;
+  const debug = question?.kind === 'debug';
+  const starter = question?.starterCode ?? '';
+  if (plugin && question && hasPluginEditor(plugin)) {
+    const label = answerLabel(plugin);
+    return (
+      <div className="mt-2 h-80" data-testid={debug ? 'solution-diff' : 'solution-view'}>
+        {debug ? (
+          <AnswerCompare plugin={plugin} question={question} before={starter} after={solution} beforeLabel={`${label} com defeito`} afterLabel="Correção esperada" mode="play" />
+        ) : (
+          <div className="h-full overflow-hidden rounded-xl bg-ink-950/60 ring-1 ring-white/10">
+            <AnswerEditor plugin={plugin} question={question} value={solution} mode="play" path="" />
+          </div>
+        )}
+      </div>
+    );
+  }
+  const language = plugin?.editorLanguage ?? 'javascript';
   if (!debug) {
     return <pre className="mt-2 overflow-auto rounded-xl bg-ink-950/70 p-4 font-mono text-xs leading-relaxed text-white/85">{solution}</pre>;
   }
