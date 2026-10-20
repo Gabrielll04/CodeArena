@@ -1,6 +1,6 @@
 {
   "name": "@codearena/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Motor de checklist, pontuação e ciclo de vida de salas do CodeArena (sem dependência de transporte).",
   "keywords": [
