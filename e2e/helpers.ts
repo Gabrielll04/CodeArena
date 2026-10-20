@@ -13,8 +13,19 @@ export async function setEditorCode(page: Page, code: string) {
   await page.keyboard.press('Delete');
 }
 
+/** Cola o texto no editor Monaco pela área de transferência, como um aluno usando Ctrl+V. */
+export async function pasteIntoEditor(page: Page, text: string) {
+  await page.evaluate((value) => navigator.clipboard.writeText(value), text);
+  const editor = page.locator('.monaco-editor').first();
+  await editor.waitFor();
+  await editor.click();
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.press('ControlOrMeta+V');
+}
+
 export async function newPage(browser: Browser): Promise<Page> {
-  const context = await browser.newContext();
+  // Área de transferência liberada para os testes de colagem.
+  const context = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'] });
   return context.newPage();
 }
 

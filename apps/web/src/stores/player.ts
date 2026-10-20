@@ -34,6 +34,8 @@ interface PlayerStore {
   leave(): void;
   submit(code: string): Promise<PlayerAnswer | { error: string }>;
   reportProgress(done: number, total: number, doneIds: string[]): void;
+  /** Informa uma colagem no editor (só o tamanho) para a linha do tempo do professor. */
+  reportPaste(chars: number, blocked: boolean): void;
 }
 
 let listening = false;
@@ -138,6 +140,9 @@ export const usePlayer = create<PlayerStore>((set, get) => {
 
     reportProgress(done, total, doneIds) {
       getSocket().emit('question:progress', { done, total, doneIds });
+    },
+    reportPaste(chars, blocked) {
+      getSocket().emit('question:paste', { chars, blocked });
     },
   };
 });

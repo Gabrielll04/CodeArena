@@ -31,7 +31,7 @@ Para cada questão:
 
 ## Conduzindo a aula
 
-1. Biblioteca > Abrir sala: escolha as questões e as opções (modo discreto, bônus de sequência).
+1. Biblioteca > Abrir sala: escolha as questões e as opções (modo discreto, bônus de sequência, permitir colar texto).
 2. Projete a tela do lobby: ela mostra o endereço e o código de 6 dígitos.
 3. "Iniciar questão" dispara uma contagem de 3 s para todos.
 4. Durante a questão você vê quantos itens cada aluno concluiu e, em "Itens da checklist, ao vivo", quantos alunos já concluíram cada item. Nunca aparece o código.
@@ -40,6 +40,25 @@ Para cada questão:
 7. "Encerrar sessão" gera o relatório (XP, acertos, tempo médio por aluno e acertos por questão), exportável em CSV e JSON.
 
 **Modo discreto:** alunos veem só o top 3 e a própria posição, sem pódio. Use quando a competição aberta puder constranger.
+
+### Colagens e linha do tempo
+
+Para que a resposta reflita o que o aluno escreveu, e não um bloco trazido de outro lugar (por exemplo, de uma IA):
+
+- **Permitir colar texto** (ao abrir a sala ou em Configurações, durante a aula): desligado, o editor dos alunos recusa
+  colar e arrastar texto e mostra "Colar desativado". Digitar continua normal. As tentativas aparecem para você como
+  "Tentou colar".
+- **Colagens permitidas:** cada colagem aparece para você com o tamanho ("Colou 2x · 420 car."). O aluno é avisado, na
+  primeira colagem, de que elas ficam registradas.
+- **Linha do tempo:** durante a questão, na revisão e no fim da sessão, cada aluno tem uma trilha com o momento em que
+  concluiu cada item, as colagens e a resposta aceita. Quem cola um bloco grande e conclui vários itens logo depois
+  recebe a marca **Revisar**, com a explicação ("Colou 380 caracteres aos 1:12 e concluiu 4 itens logo depois").
+- No fim da sessão, **Colagens (CSV)** exporta as contagens por aluno e questão.
+
+São indícios para conversar com o aluno, não provas: o XP nunca muda por causa deles. O bloqueio de colar acontece no
+navegador; quem quiser burlar pode digitar o que leu em outro aparelho. Para isso, ajudam questões de depuração e
+questões que pedem para modificar o próprio código. O texto colado nunca sai do navegador do aluno: o servidor recebe
+só o tamanho.
 
 ## Telas do fluxo do professor
 

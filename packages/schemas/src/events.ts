@@ -18,6 +18,7 @@ export const ClientEvent = {
   HostUpdateSettings: 'host:update-settings',
   HostKick: 'host:kick',
   QuestionProgress: 'question:progress',
+  QuestionPaste: 'question:paste',
   QuestionSubmit: 'question:submit',
 } as const;
 
@@ -29,6 +30,7 @@ export const ServerEvent = {
   QuestionLoaded: 'question:loaded',
   QuestionStarted: 'question:started',
   QuestionProgress: 'question:progress',
+  QuestionTimeline: 'question:timeline',
   QuestionSubmitted: 'question:submitted',
   QuestionValidated: 'question:validated',
   QuestionFinished: 'question:finished',
@@ -53,6 +55,11 @@ export interface RoomSettings {
   streakMaxSteps: number;
   /** Segundos de contagem regressiva antes de cada questão. */
   countdownSeconds: number;
+  /**
+   * Permite colar e arrastar texto para o editor. Desligado, o editor dos alunos recusa a colagem e o professor vê as
+   * tentativas. É uma barreira do navegador, não uma garantia: a pontuação continua dependendo só do servidor.
+   */
+  allowPaste: boolean;
 }
 
 export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
@@ -61,6 +68,7 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   streakBonus: 50,
   streakMaxSteps: 5,
   countdownSeconds: 3,
+  allowPaste: true,
 };
 
 export interface PlayerPublic {
@@ -137,6 +145,52 @@ export interface ItemInsight {
   medianTimeMs: number | null;
 }
 
+/**
+ * Linha do tempo de um aluno numa questão, só para o professor. Os horários vêm do relógio do servidor, contados
+ * desde o início da questão. Colagens são informadas pelo navegador do aluno (tamanho, nunca o texto): servem de
+ * indício para conversar com o aluno, nunca alteram a pontuação.
+ */
+export type TimelineEvent =
+  | { kind: 'item'; atMs: number; itemId: string }
+  | { kind: 'paste'; atMs: number; chars: number }
+  | { kind: 'paste-blocked'; atMs: number }
+  | { kind: 'accepted'; atMs: number };
+
+export interface PasteStats {
+  /** Colagens aceitas pelo editor e o total de caracteres colados. */
+  count: number;
+  chars: number;
+  largest: number;
+  /** Tentativas recusadas porque a sala não permite colar. */
+  blocked: number;
+}
+
+/** Colagem seguida de vários itens concluídos: o principal indício de resposta trazida de fora. */
+export interface PasteImpact {
+  atMs: number;
+  chars: number;
+  /** Itens obrigatórios concluídos pela primeira vez logo depois da colagem. */
+  items: number;
+}
+
+export interface PlayerTimeline {
+  playerId: string;
+  events: TimelineEvent[];
+  paste: PasteStats;
+  pasteImpact: PasteImpact | null;
+}
+
+export interface QuestionTimeline {
+  questionId: string;
+  index: number;
+  title: string;
+  timeLimitMs: number;
+  requiredTotal: number;
+  /** Configuração de colagem que valia quando a questão começou. */
+  allowPaste: boolean;
+  players: PlayerTimeline[];
+}
+
 export interface QuestionResults {
   questionId: string;
   title: string;
@@ -199,6 +253,8 @@ export interface RoomSnapshot {
   };
   /** Visão do professor: progresso por aluno (sem código). */
   progress?: ProgressEntry[];
+  /** Visão do professor: linha do tempo de cada questão já iniciada, na ordem da sessão. */
+  timelines?: QuestionTimeline[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -221,6 +277,7 @@ export const RoomSettingsPatchSchema = z
     streakBonus: z.number().int().min(0).max(1000),
     streakMaxSteps: z.number().int().min(1).max(20),
     countdownSeconds: z.number().int().min(0).max(10),
+    allowPaste: z.boolean(),
   })
   .partial()
   .strict();
@@ -253,6 +310,12 @@ export const ProgressPayloadSchema = z.object({
   doneIds: z.array(z.string().max(64)).max(12).optional(),
 });
 
+/** Colagem no editor, informada pelo navegador do aluno: só o tamanho do texto, nunca o conteúdo. */
+export const PastePayloadSchema = z.object({
+  chars: z.number().int().min(0).max(MAX_CODE_LENGTH),
+  blocked: z.boolean(),
+});
+
 export const SubmitPayloadSchema = z.object({
   code: z.string().max(MAX_CODE_LENGTH, 'Código muito longo'),
 });
@@ -263,6 +326,7 @@ export type HostAuthPayload = z.infer<typeof HostAuthPayloadSchema>;
 export type HostSettingsPayload = z.infer<typeof HostSettingsPayloadSchema>;
 export type HostKickPayload = z.infer<typeof HostKickPayloadSchema>;
 export type ProgressPayload = z.infer<typeof ProgressPayloadSchema>;
+export type PastePayload = z.infer<typeof PastePayloadSchema>;
 export type SubmitPayload = z.infer<typeof SubmitPayloadSchema>;
 export type RoomSettingsPatch = z.infer<typeof RoomSettingsPatchSchema>;
 
@@ -315,6 +379,8 @@ export interface ServerToClientEvents {
   'question:loaded': (payload: QuestionLoadedEvent) => void;
   'question:started': (payload: { questionId: string; startsAt: number; endsAt: number; serverNow: number }) => void;
   'question:progress': (payload: ProgressEntry) => void;
+  /** Só para o professor: a linha do tempo de um aluno mudou na questão atual. */
+  'question:timeline': (payload: { questionId: string; timeline: PlayerTimeline }) => void;
   'question:submitted': (payload: QuestionSubmittedEvent) => void;
   'question:validated': (payload: QuestionValidatedEvent) => void;
   'question:finished': (payload: QuestionFinishedEvent) => void;
@@ -334,5 +400,6 @@ export interface ClientToServerEvents {
   'host:update-settings': (payload: HostSettingsPayload, ack: (res: Ack) => void) => void;
   'host:kick': (payload: HostKickPayload, ack: (res: Ack) => void) => void;
   'question:progress': (payload: ProgressPayload) => void;
+  'question:paste': (payload: PastePayload) => void;
   'question:submit': (payload: SubmitPayload, ack: (res: Ack<{ answer: PlayerAnswer }>) => void) => void;
 }

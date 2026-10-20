@@ -1,10 +1,10 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ClientQuizPlugin } from '@codearena/plugin-sdk/ui';
 import type { PublicQuestion } from '@codearena/schemas';
 import type { LiveChecklist } from '../hooks/useChecklist';
 import { Checklist } from './Checklist';
 import { DebugBar } from './DebugBar';
-import { CodeEditor } from './CodeEditor';
+import { CodeEditor, type PasteInfo } from './CodeEditor';
 import { PluginPanel, pluginPanelTitle } from './PluginPanel';
 import { Prompt } from './Prompt';
 import { Badge, cx } from './ui';
@@ -25,7 +25,13 @@ export interface QuestionWorkspaceProps {
   heading?: ReactNode;
   /** Volta o editor ao código inicial (usado nas questões de depuração). */
   onRestore?: () => void;
+  /** Configuração da sala: false recusa colar e arrastar texto no editor. Padrão: true. */
+  allowPaste?: boolean;
+  /** Recebe cada colagem (tamanho e se foi recusada) para a linha do tempo do professor. */
+  onPaste?: (paste: PasteInfo) => void;
 }
+
+const PASTE_NOTICE_MS = 3000;
 
 type MobileTab = 'task' | 'code' | 'panel';
 
@@ -42,8 +48,27 @@ export function MissingPlugin({ pluginId }: { pluginId: string }) {
 }
 
 export function QuestionWorkspace(props: QuestionWorkspaceProps) {
-  const { question, plugin, code, onCodeChange, readOnly, live, mode, modelPath, status, editorOverlay, heading, onRestore } = props;
+  const { question, plugin, code, onCodeChange, readOnly, live, mode, modelPath, status, editorOverlay, heading, onRestore, allowPaste = true, onPaste } = props;
   const [tab, setTab] = useState<MobileTab>('code');
+  const [pasteNotice, setPasteNotice] = useState<string | null>(null);
+  const toldAboutPaste = useRef(false);
+
+  useEffect(() => {
+    if (!pasteNotice) return;
+    const timer = setTimeout(() => setPasteNotice(null), PASTE_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [pasteNotice]);
+
+  const handlePaste = (paste: PasteInfo) => {
+    onPaste?.(paste);
+    if (paste.blocked) {
+      setPasteNotice('Colar está desativado nesta sala.');
+    } else if (onPaste && !toldAboutPaste.current) {
+      // Transparência com o aluno: avisa uma vez que colagens aparecem para o professor.
+      toldAboutPaste.current = true;
+      setPasteNotice('Colagens ficam registradas para o professor.');
+    }
+  };
 
   if (!plugin) return <MissingPlugin pluginId={question.pluginId} />;
 
@@ -103,6 +128,11 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
               <span className="lg:hidden" aria-live="polite">
                 {evaluation.requiredDone}/{evaluation.requiredTotal}
               </span>
+              {!allowPaste && !readOnly && (
+                <span className="font-semibold text-amber" data-testid="paste-disabled">
+                  Colar desativado
+                </span>
+              )}
               {readOnly && <span className="font-semibold text-lime">Somente leitura</span>}
             </span>
           </div>
@@ -123,8 +153,17 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
               path={modelPath}
               readOnly={readOnly}
               ariaLabel="Editor de código da resposta"
+              allowPaste={allowPaste}
+              onPaste={handlePaste}
             />
             {editorOverlay}
+            <div role="status" aria-live="polite" className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+              {pasteNotice && (
+                <p className="rounded-lg bg-ink-950/90 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/15" data-testid="paste-notice">
+                  {pasteNotice}
+                </p>
+              )}
+            </div>
           </div>
         </section>
 

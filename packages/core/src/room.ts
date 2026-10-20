@@ -10,7 +10,9 @@ import {
   type PlayerAnswer,
   type PlayerPublic,
   type PlayerReport,
+  type PlayerTimeline,
   type ProgressEntry,
+  type QuestionTimeline,
   type QuestionResults,
   type ResolvedQuestion,
   type RoomPhase,
@@ -21,6 +23,7 @@ import {
   type SessionReport,
 } from '@codearena/schemas';
 import { calculateStreakBonus, calculateXP, rankPlayers } from './scoring';
+import { buildPlayerTimeline, createPasteLog, recordPaste, type PasteLog } from './timeline';
 
 export class RoomError extends Error {
   constructor(
@@ -90,6 +93,10 @@ interface QuestionRecord {
   progress: Map<string, { done: number; total: number }>;
   /** Por aluno e item: se está concluído agora e quando foi concluído pela primeira vez (relógio do servidor). */
   itemState: Map<string, Map<string, { done: boolean; firstAt: number }>>;
+  /** Colagens informadas pelo navegador de cada aluno (tamanho, nunca o texto). */
+  pastes: Map<string, PasteLog>;
+  /** Configuração de colagem no início da questão (a linha do tempo explica o que valia). */
+  allowPaste: boolean;
   pending: Map<string, Promise<void>>;
   lastSubmitAt: Map<string, number>;
   results: QuestionResults | null;
@@ -301,6 +308,8 @@ export class Room {
       answers: new Map(),
       progress: new Map(),
       itemState: new Map(),
+      pastes: new Map(),
+      allowPaste: this.settings.allowPaste,
       pending: new Map(),
       lastSubmitAt: new Map(),
       results: null,
@@ -343,9 +352,10 @@ export class Room {
     const record = this.current;
     if (!record || record.finishedAt !== null || !this.players.has(playerId)) return;
     const required = record.question.checklist.filter((i) => !i.optional);
+    let firstCompletion = false;
     if (doneIds) {
       const valid = new Set(record.question.checklist.map((i) => i.id));
-      this.markItems(record, playerId, new Set(doneIds.filter((id) => valid.has(id))), 'replace', this.clock.now());
+      firstCompletion = this.markItems(record, playerId, new Set(doneIds.filter((id) => valid.has(id))), 'replace', this.clock.now());
       done = required.filter((i) => record.itemState.get(playerId)?.get(i.id)?.done).length;
     }
     const entry = { done: Math.min(done, required.length), total: required.length };
@@ -356,21 +366,48 @@ export class Room {
       answered: record.answers.get(playerId)?.status === 'accepted',
       doneIds: this.doneIdsOf(record, playerId),
     });
+    if (firstCompletion) this.emitTimeline(record, playerId);
   }
 
-  /** Atualiza o estado por item. `replace` define o conjunto atual; `add` só acrescenta itens concluídos. */
-  private markItems(record: QuestionRecord, playerId: string, ids: Set<string>, mode: 'replace' | 'add', now: number): void {
+  /**
+   * Colagem no editor, informada pelo navegador do aluno. Entra só na linha do tempo do professor, como indício;
+   * a pontuação nunca depende dela. Ignorada fora do tempo da questão e depois da resposta aceita.
+   */
+  reportPaste(playerId: string, chars: number, blocked: boolean): void {
+    const record = this.current;
+    const now = this.clock.now();
+    if (!record || record.finishedAt !== null || this.phase !== 'question' || !this.players.has(playerId)) return;
+    if (now < record.startsAt || now > record.endsAt || record.answers.get(playerId)?.status === 'accepted') return;
+    let log = record.pastes.get(playerId);
+    if (!log) record.pastes.set(playerId, (log = createPasteLog()));
+    recordPaste(log, { at: now, chars, blocked });
+    this.emitTimeline(record, playerId);
+  }
+
+  private emitTimeline(record: QuestionRecord, playerId: string): void {
+    this.sink.emit({ kind: 'host' }, 'question:timeline', { questionId: record.question.id, timeline: this.timelineOf(record, playerId) });
+  }
+
+  /**
+   * Atualiza o estado por item. `replace` define o conjunto atual; `add` só acrescenta itens concluídos.
+   * Devolve true quando algum item foi concluído pela primeira vez (a linha do tempo mudou).
+   */
+  private markItems(record: QuestionRecord, playerId: string, ids: Set<string>, mode: 'replace' | 'add', now: number): boolean {
     let state = record.itemState.get(playerId);
     if (!state) record.itemState.set(playerId, (state = new Map()));
+    let first = false;
     for (const item of record.question.checklist) {
       const entry = state.get(item.id);
       if (ids.has(item.id)) {
-        if (!entry) state.set(item.id, { done: true, firstAt: now });
-        else entry.done = true;
+        if (!entry) {
+          state.set(item.id, { done: true, firstAt: now });
+          first = true;
+        } else entry.done = true;
       } else if (mode === 'replace' && entry) {
         entry.done = false;
       }
     }
+    return first;
   }
 
   private doneIdsOf(record: QuestionRecord, playerId: string): string[] {
@@ -466,6 +503,7 @@ export class Room {
           ? new Set(record.question.checklist.map((i) => i.id))
           : new Set(verdict.items.filter((i) => i.passed).map((i) => i.id));
         this.markItems(record, playerId, confirmed, 'add', receivedAt);
+        if (answer.status === 'accepted') this.emitTimeline(record, playerId);
       }
       return answer;
     })();
@@ -562,7 +600,11 @@ export class Room {
   /* ---------------------------------------------------------------- */
 
   snapshotForHost(): RoomSnapshot {
-    return { ...this.baseSnapshot(this.leaderboard()), progress: this.progressEntries() };
+    return {
+      ...this.baseSnapshot(this.leaderboard()),
+      progress: this.progressEntries(),
+      timelines: this.history.map((record) => this.questionTimeline(record)),
+    };
   }
 
   snapshotForPlayer(playerId: string): RoomSnapshot {
@@ -665,6 +707,32 @@ export class Room {
         doneIds: record ? this.doneIdsOf(record, player.id) : [],
       };
     });
+  }
+
+  private timelineOf(record: QuestionRecord, playerId: string): PlayerTimeline {
+    const firstAt = new Map<string, number>();
+    record.itemState.get(playerId)?.forEach((state, id) => firstAt.set(id, state.firstAt));
+    const answer = record.answers.get(playerId);
+    return buildPlayerTimeline({
+      playerId,
+      startsAt: record.startsAt,
+      checklist: record.question.checklist,
+      itemFirstAt: firstAt,
+      pastes: record.pastes.get(playerId),
+      acceptedAt: answer?.status === 'accepted' ? answer.receivedAt : null,
+    });
+  }
+
+  private questionTimeline(record: QuestionRecord): QuestionTimeline {
+    return {
+      questionId: record.question.id,
+      index: record.index,
+      title: record.question.title ?? record.question.prompt.slice(0, 60),
+      timeLimitMs: record.question.timeLimitSeconds * 1000,
+      requiredTotal: record.question.checklist.filter((i) => !i.optional).length,
+      allowPaste: record.allowPaste,
+      players: [...this.players.keys()].map((id) => this.timelineOf(record, id)),
+    };
   }
 
   private connectedPlayers(): PlayerState[] {
