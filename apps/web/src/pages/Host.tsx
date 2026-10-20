@@ -1,17 +1,18 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import type { QuestionResults, RoomSnapshot, SessionReport } from '@codearena/schemas';
+import type { PlayerPublic, QuestionResults, QuestionTimeline, RoomSnapshot, SessionReport } from '@codearena/schemas';
 import { Avatar } from '../components/Avatar';
 import { SolutionView } from '../components/CodeDiff';
 import { Countdown } from '../components/Countdown';
 import { hardestAcrossSession, hardestRow, ItemInsights, rowsFromResults, type InsightRow } from '../components/ItemInsights';
 import { Leaderboard, Podium } from '../components/Leaderboard';
 import { Prompt } from '../components/Prompt';
+import { describePasteImpact, PasteChips, TimelinePanel } from '../components/Timeline';
 import { Timer } from '../components/Timer';
 import { ConnectionBanner, TopBar } from '../components/TopBar';
 import { Badge, Button, cx, Dialog, EmptyState, Icon, Panel, Spinner, Toggle } from '../components/ui';
-import { downloadFile, formatDuration, formatXP } from '../lib/format';
+import { downloadFile, formatDuration, formatXP, plural } from '../lib/format';
 import { useHost } from '../stores/host';
 
 export function HostPage() {
@@ -181,10 +182,11 @@ function HostLobby({ snapshot }: { snapshot: RoomSnapshot }) {
 }
 
 function HostQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
-  const { progress, feed, finishQuestion } = useHost();
+  const { progress, feed, finishQuestion, timelines } = useHost();
   const { busy, error, run } = useAction();
   const active = snapshot.question!;
   const total = active.question.checklist.filter((i) => !i.optional).length;
+  const timeline = timelines[active.question.id];
   const liveRows: InsightRow[] = active.question.checklist.map((item) => ({
     id: item.id,
     label: item.label,
@@ -239,6 +241,7 @@ function HostQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
                 <li key={player.id} className={cx('flex items-center gap-3', !player.connected && 'opacity-40')}>
                   <Avatar id={player.avatar} size={28} />
                   <span className="w-28 truncate text-sm">{player.name}</span>
+                  <PasteChips timeline={timeline?.players.find((t) => t.playerId === player.id)} />
                   <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
                     <motion.div
                       className={cx('h-full rounded-full', answered ? 'bg-lime' : 'bg-violet')}
@@ -254,6 +257,12 @@ function HostQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
             })}
           </ul>
         </Panel>
+        {timeline && (
+          <Panel className="p-5">
+            <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-white/50">Linha do tempo, ao vivo</h3>
+            <TimelinePanel timeline={timeline} players={snapshot.players} checklist={active.question.checklist} />
+          </Panel>
+        )}
         <Panel className="p-5">
           <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-white/50">Respostas</h3>
           {feed.length === 0 ? (
@@ -277,11 +286,12 @@ function HostQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
 }
 
 function HostReview({ snapshot }: { snapshot: RoomSnapshot }) {
-  const { startQuestion, endSession, lastFinished } = useHost();
+  const { startQuestion, endSession, lastFinished, timelines } = useHost();
   const { busy, error, run } = useAction();
   const results = snapshot.lastResults;
   const isLast = snapshot.questionIndex + 1 >= snapshot.questionCount;
   const [showSolution, setShowSolution] = useState(false);
+  const timeline = results ? timelines[results.questionId] : undefined;
 
   return (
     <div className="mx-auto grid max-w-6xl gap-6 px-5 py-6 lg:grid-cols-[1.4fr_1fr]" data-testid="host-review">
@@ -330,6 +340,12 @@ function HostReview({ snapshot }: { snapshot: RoomSnapshot }) {
           Encerrar sessão e ver relatório
         </Button>
       </div>
+      {timeline && results && (
+        <Panel className="p-6 lg:col-span-2">
+          <h3 className="mb-4 text-xs font-bold uppercase tracking-[0.14em] text-white/50">Linha do tempo da questão</h3>
+          <TimelinePanel timeline={timeline} players={snapshot.players} checklist={results.items} />
+        </Panel>
+      )}
     </div>
   );
 }
@@ -415,6 +431,8 @@ function HostEnded({ snapshot }: { snapshot: RoomSnapshot }) {
       )}
 
       <SessionInsights report={report} />
+
+      <SessionTimelines report={report} players={snapshot.players} />
 
       <Panel className="overflow-x-auto p-2">
         <table className="w-full min-w-[640px] text-left text-sm" data-testid="report-table">
@@ -534,6 +552,69 @@ function SessionInsights({ report }: { report: SessionReport }) {
   );
 }
 
+function timelinesToCsv(report: SessionReport, timelines: Record<string, QuestionTimeline>, players: PlayerPublic[]): string {
+  const names = new Map(players.map((p) => [p.id, p.name]));
+  const header = ['questao', 'aluno', 'colar_permitido', 'colagens', 'caracteres_colados', 'maior_colagem', 'tentativas_bloqueadas', 'revisar', 'detalhe'];
+  const rows = report.questions.flatMap((q) => {
+    const timeline = timelines[q.questionId];
+    return (timeline?.players ?? []).map((t) => [
+      q.index + 1,
+      `"${(names.get(t.playerId) ?? t.playerId).replace(/"/g, '""')}"`,
+      timeline!.allowPaste ? 'sim' : 'nao',
+      t.paste.count,
+      t.paste.chars,
+      t.paste.largest,
+      t.paste.blocked,
+      t.pasteImpact ? 'sim' : 'nao',
+      `"${(describePasteImpact(t) ?? '').replace(/"/g, '""')}"`,
+    ]);
+  });
+  return [header, ...rows].map((row) => row.join(',')).join('\n');
+}
+
+/** Linha do tempo de cada questão da sessão, com exportação das colagens. Só para o professor. */
+function SessionTimelines({ report, players }: { report: SessionReport; players: PlayerPublic[] }) {
+  const { timelines } = useHost();
+  const questions = report.questions.filter((q) => timelines[q.questionId]);
+  const [selected, setSelected] = useState(questions[0]?.questionId);
+  if (!questions.length) return null;
+  const current = questions.find((q) => q.questionId === selected) ?? questions[0]!;
+  const flagged = questions.reduce((sum, q) => sum + timelines[q.questionId]!.players.filter((t) => t.pasteImpact).length, 0);
+
+  return (
+    <section className="space-y-4" aria-label="Linha do tempo da sessão" data-testid="session-timelines">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 className="font-display text-2xl font-bold">Linha do tempo</h3>
+          {flagged > 0 && <p className="text-sm text-white/50">{plural(flagged, 'resposta', 'respostas')} para revisar.</p>}
+        </div>
+        <Button variant="secondary" size="sm" onClick={() => downloadFile(`colagens-${report.roomCode}.csv`, timelinesToCsv(report, timelines, players), 'text/csv')}>
+          <Icon name="download" /> Colagens (CSV)
+        </Button>
+      </div>
+      <Panel className="space-y-4 p-5">
+        {questions.length > 1 && (
+          <div className="flex flex-wrap gap-1" role="tablist" aria-label="Questão">
+            {questions.map((q) => (
+              <button
+                key={q.questionId}
+                type="button"
+                role="tab"
+                aria-selected={q.questionId === current.questionId}
+                onClick={() => setSelected(q.questionId)}
+                className={cx('rounded-lg px-3 py-1 text-xs font-semibold', q.questionId === current.questionId ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white')}
+              >
+                Q{q.index + 1}
+              </button>
+            ))}
+          </div>
+        )}
+        <TimelinePanel timeline={timelines[current.questionId]!} players={players} checklist={current.items} />
+      </Panel>
+    </section>
+  );
+}
+
 function SettingsButton({ snapshot }: { snapshot: RoomSnapshot }) {
   const { updateSettings } = useHost();
   const [open, setOpen] = useState(false);
@@ -556,6 +637,12 @@ function SettingsButton({ snapshot }: { snapshot: RoomSnapshot }) {
             description={`+${s.streakBonus} XP por acerto consecutivo a partir do segundo (até ${s.streakMaxSteps}x).`}
             checked={s.streakEnabled}
             onChange={(v) => void updateSettings({ streakEnabled: v })}
+          />
+          <Toggle
+            label="Permitir colar texto"
+            description="Desligado, os alunos só podem digitar."
+            checked={s.allowPaste}
+            onChange={(v) => void updateSettings({ allowPaste: v })}
           />
           <div className="text-xs text-white/40">As mudanças valem a partir da próxima resposta.</div>
         </div>

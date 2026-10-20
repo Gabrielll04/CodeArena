@@ -275,6 +275,7 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
   const create = useHost((s) => s.create);
   const [selected, setSelected] = useState<Set<string>>(() => new Set(stored.pack.questions.map((q) => q.id)));
   const [discreetMode, setDiscreet] = useState(false);
+  const [allowPaste, setAllowPaste] = useState(true);
   const [streakEnabled, setStreak] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -283,7 +284,7 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
     setCreating(true);
     setError(null);
     const questionIds = stored.pack.questions.filter((q) => selected.has(q.id)).map((q) => q.id);
-    const res = await create({ packId: pack.id, questionIds, settings: { discreetMode, streakEnabled } });
+    const res = await create({ packId: pack.id, questionIds, settings: { discreetMode, streakEnabled, allowPaste } });
     setCreating(false);
     if (!res.ok) return setError(res.error);
     navigate(`/host/${res.code}`);
@@ -356,6 +357,12 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
           <div className="space-y-4 rounded-2xl bg-white/[0.03] p-4">
             <Toggle label="Modo discreto" description="Alunos veem só o top 3 e a própria posição; sem pódio." checked={discreetMode} onChange={setDiscreet} />
             <Toggle label="Bônus de sequência" description="XP extra para acertos consecutivos." checked={streakEnabled} onChange={setStreak} />
+            <Toggle
+              label="Permitir colar texto"
+              description="Desligado, os alunos só podem digitar."
+              checked={allowPaste}
+              onChange={setAllowPaste}
+            />
           </div>
           {error && <p className="text-sm text-coral">{error}</p>}
       </div>

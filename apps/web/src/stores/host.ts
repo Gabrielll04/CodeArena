@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type {
   ProgressEntry,
   QuestionFinishedEvent,
+  QuestionTimeline,
   QuestionSubmittedEvent,
   RoomSettingsPatch,
   RoomSnapshot,
@@ -23,6 +24,8 @@ interface HostStore {
   hostToken: string | null;
   snapshot: RoomSnapshot | null;
   progress: Record<string, ProgressEntry>;
+  /** Linha do tempo por questão (id da questão), só do professor. */
+  timelines: Record<string, QuestionTimeline>;
   feed: FeedEntry[];
   lastFinished: QuestionFinishedEvent | null;
   report: SessionReport | null;
@@ -44,7 +47,9 @@ export const useHost = create<HostStore>((set, get) => {
     syncServerClock(snapshot.serverNow);
     const progress: Record<string, ProgressEntry> = {};
     snapshot.progress.forEach((entry) => (progress[entry.playerId] = entry));
-    set({ snapshot, progress, report: snapshot.report ?? get().report });
+    const timelines: Record<string, QuestionTimeline> = {};
+    snapshot.timelines?.forEach((timeline) => (timelines[timeline.questionId] = timeline));
+    set({ snapshot, progress, timelines, report: snapshot.report ?? get().report });
   };
 
   const listen = () => {
@@ -65,6 +70,15 @@ export const useHost = create<HostStore>((set, get) => {
     socket.on('player:joined', () => playCue('join'));
     socket.on('question:progress', (entry) => {
       set({ progress: { ...get().progress, [entry.playerId]: entry } });
+    });
+    socket.on('question:timeline', ({ questionId, timeline }) => {
+      const question = get().timelines[questionId];
+      if (!question) return;
+      const exists = question.players.some((p) => p.playerId === timeline.playerId);
+      const players = exists
+        ? question.players.map((p) => (p.playerId === timeline.playerId ? timeline : p))
+        : [...question.players, timeline];
+      set({ timelines: { ...get().timelines, [questionId]: { ...question, players } } });
     });
     socket.on('question:submitted', (event) => {
       set({ feed: [{ ...event, at: Date.now() }, ...get().feed].slice(0, 30) });
@@ -93,6 +107,7 @@ export const useHost = create<HostStore>((set, get) => {
     hostToken: null,
     snapshot: null,
     progress: {},
+    timelines: {},
     feed: [],
     lastFinished: null,
     report: null,

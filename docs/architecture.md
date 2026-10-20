@@ -284,6 +284,7 @@ Cliente -> servidor (todos com ack `{ ok: true, ... } | { ok: false, error, code
 | `host:update-settings` | professor | `{ code, hostToken, settings }` |
 | `host:kick` | professor | `{ code, hostToken, playerId }` |
 | `question:progress` | aluno | `{ done, total, doneIds? }` (contagem e ids dos itens concluídos, sem código; informativo) |
+| `question:paste` | aluno | `{ chars, blocked }` (tamanho da colagem e se foi recusada, nunca o texto; informativo) |
 | `question:submit` | aluno | `{ code }` -> `{ answer }` |
 
 Servidor -> cliente:
@@ -295,6 +296,7 @@ Servidor -> cliente:
 | `question:loaded` | todos | questão pública (sem `solution`), `startsAt`, `endsAt` |
 | `question:started` | todos | início efetivo (fim da contagem) |
 | `question:progress` | professor | `{ playerId, done, total, answered, doneIds }` |
+| `question:timeline` | professor | `{ questionId, timeline }`: itens concluídos, colagens e resposta aceita de um aluno, em horários do servidor. O snapshot do professor traz `timelines` de todas as questões; o dos alunos, não |
 | `question:submitted` | professor | quem enviou e se foi aceito |
 | `question:validated` | o aluno | resultado da validação oficial por item |
 | `question:finished` | todos | resultados (incluindo `items`: conclusão e tempo mediano por item), placar e `solution` |

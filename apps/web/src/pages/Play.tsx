@@ -163,7 +163,7 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
   // Cada room:update traz um objeto novo; a questão não muda durante a rodada, então fixamos pela id.
   const question: PublicQuestion = useMemo(() => active.question, [active.question.id]);
   const answer = snapshot.me!.answer;
-  const { submit, reportProgress } = usePlayer();
+  const { submit, reportProgress, reportPaste } = usePlayer();
   const storageKey = draftKey(snapshot.code, question.id);
   const [code, setCode] = useState(
     () => answer?.code ?? sessionStore.get<string>(storageKey) ?? plugin?.getStarterCode(question) ?? question.starterCode,
@@ -290,6 +290,8 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
           modelPath={`file:///${snapshot.code}/${question.id}/${plugin?.editorFileName ?? 'code.js'}`}
           status={status}
           editorOverlay={accepted ? <AcceptedOverlay xp={answer!.xp} /> : null}
+          allowPaste={snapshot.settings.allowPaste}
+          onPaste={(paste) => reportPaste(paste.chars, paste.blocked)}
           onRestore={() => {
             const original = plugin?.getStarterCode(question) ?? question.starterCode;
             setCode(original);

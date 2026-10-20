@@ -8,6 +8,7 @@ import {
   HostKickPayloadSchema,
   HostSettingsPayloadSchema,
   JoinRoomPayloadSchema,
+  PastePayloadSchema,
   ProgressPayloadSchema,
   resolveQuestions,
   SubmitPayloadSchema,
@@ -234,6 +235,13 @@ export function attachRealtime({ io, rooms, packs, plugins, validator }: Realtim
       const parsed = parse(ProgressPayloadSchema, payload);
       if (!current || !parsed.ok) return;
       current.room.reportProgress(current.playerId, parsed.data.done, parsed.data.total, parsed.data.doneIds);
+    });
+
+    socket.on('question:paste', (payload) => {
+      const current = currentPlayer(socket);
+      const parsed = parse(PastePayloadSchema, payload);
+      if (!current || !parsed.ok) return;
+      current.room.reportPaste(current.playerId, parsed.data.chars, parsed.data.blocked);
     });
 
     socket.on('question:submit', async (payload, rawAck) => {

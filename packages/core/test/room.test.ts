@@ -335,6 +335,93 @@ describe('Room: revisão da turma por item', () => {
   });
 });
 
+describe('Room: colagens e linha do tempo (só para o professor)', () => {
+  const threeItems: ResolvedQuestion = {
+    ...QuestionSchema.parse({
+      id: 'tres-itens',
+      prompt: 'Escreva ok, go e js',
+      timeLimitSeconds: 100,
+      baseXP: 500,
+      speedBonusMax: 500,
+      solution: 'ok go js',
+      checklist: [
+        { id: 'a', label: 'Escrever ok', rule: { type: 'contains', value: 'ok' } },
+        { id: 'b', label: 'Escrever go', rule: { type: 'contains', value: 'go' } },
+        { id: 'c', label: 'Escrever js', rule: { type: 'contains', value: 'js' } },
+      ],
+    }),
+    pluginId: 'test',
+  };
+  const allItems: SubmissionValidator = async (code) => {
+    const items = ['ok', 'go', 'js'].map((word, i) => ({ id: 'abc'[i]!, passed: code.includes(word) }));
+    return { passed: items.every((i) => i.passed), items };
+  };
+
+  it('colar é permitido por padrão e a configuração vale para as próximas questões', () => {
+    const { room } = setup();
+    expect(room.snapshotForHost().settings.allowPaste).toBe(true);
+    room.updateSettings({ allowPaste: false });
+    expect(room.snapshotForHost().settings.allowPaste).toBe(false);
+  });
+
+  it('monta a linha do tempo com os horários do servidor e aponta a colagem que concluiu a checklist', async () => {
+    const { room, clock, events } = setup({ countdownSeconds: 0, questions: [threeItems], validator: allItems });
+    const ana = room.join({ name: 'Ana', avatar: 'bolt' });
+    const bia = room.join({ name: 'Bia', avatar: 'prism' });
+    room.startNextQuestion();
+
+    // Ana digita aos poucos; Bia cola um bloco grande e conclui tudo em seguida.
+    await clock.advance(20_000);
+    room.reportProgress(ana.playerId, 1, 3, ['a']);
+    room.reportPaste(bia.playerId, 5, false);
+    await clock.advance(20_000);
+    room.reportProgress(ana.playerId, 2, 3, ['a', 'b']);
+    room.reportPaste(bia.playerId, 380, false);
+    await clock.advance(1_000);
+    room.reportProgress(bia.playerId, 3, 3, ['a', 'b', 'c']);
+    await room.submit(bia.playerId, 'ok go js');
+
+    const timelines = room.snapshotForHost().timelines!;
+    expect(timelines).toHaveLength(1);
+    expect(timelines[0]).toMatchObject({ questionId: 'tres-itens', timeLimitMs: 100_000, requiredTotal: 3, allowPaste: true });
+    const of = (id: string) => timelines[0]!.players.find((p) => p.playerId === id)!;
+
+    expect(of(ana.playerId).events).toEqual([
+      { kind: 'item', atMs: 20_000, itemId: 'a' },
+      { kind: 'item', atMs: 40_000, itemId: 'b' },
+    ]);
+    expect(of(ana.playerId).pasteImpact).toBeNull();
+
+    expect(of(bia.playerId).paste).toEqual({ count: 2, chars: 385, largest: 380, blocked: 0 });
+    expect(of(bia.playerId).events.map((e) => e.kind)).toEqual(['paste', 'paste', 'item', 'item', 'item', 'accepted']);
+    expect(of(bia.playerId).pasteImpact).toEqual({ atMs: 40_000, chars: 380, items: 3 });
+
+    // O professor recebe cada mudança; os alunos não recebem linha do tempo nem colagens de ninguém.
+    expect(events.filter((e) => e.event === 'question:timeline').every((e) => e.target.kind === 'host')).toBe(true);
+    expect(room.snapshotForPlayer(ana.playerId).timelines).toBeUndefined();
+  });
+
+  it('registra tentativas bloqueadas e ignora colagens fora do tempo da questão ou depois da resposta aceita', async () => {
+    const { room, clock } = setup({ countdownSeconds: 3, questions: [threeItems], validator: allItems });
+    const ana = room.join({ name: 'Ana', avatar: 'bolt' });
+    room.join({ name: 'Bia', avatar: 'prism' });
+    room.updateSettings({ allowPaste: false });
+    room.startNextQuestion();
+    room.reportPaste(ana.playerId, 200, true); // contagem regressiva: ignorada
+    await clock.advance(5_000);
+    room.reportPaste(ana.playerId, 200, true);
+    room.reportPaste('desconhecido', 200, true);
+    await room.submit(ana.playerId, 'ok go js');
+    room.reportPaste(ana.playerId, 200, true); // depois de aceita: ignorada
+
+    const timeline = room.snapshotForHost().timelines![0]!;
+    expect(timeline.allowPaste).toBe(false);
+    const anaTimeline = timeline.players.find((p) => p.playerId === ana.playerId)!;
+    expect(anaTimeline.paste).toEqual({ count: 0, chars: 0, largest: 0, blocked: 1 });
+    expect(anaTimeline.events[0]).toEqual({ kind: 'paste-blocked', atMs: 2_000 });
+  });
+});
+
 describe('RoomManager', () => {
   it('gera códigos de 6 dígitos únicos e remove salas inativas', () => {
     let n = 0;

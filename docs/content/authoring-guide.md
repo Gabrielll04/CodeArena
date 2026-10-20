@@ -31,7 +31,7 @@ Para cada questão:
 
 ## Conduzindo a aula
 
-1. Biblioteca > Abrir sala: escolha as questões e as opções (modo discreto, bônus de sequência).
+1. Biblioteca > Abrir sala: escolha as questões e as opções (modo discreto, bônus de sequência, permitir colar texto).
 2. Projete a tela do lobby: ela mostra o endereço e o código de 6 dígitos.
 3. "Iniciar questão" dispara uma contagem de 3 s para todos.
 4. Durante a questão você vê quantos itens cada aluno concluiu e, em "Itens da checklist, ao vivo", quantos alunos já concluíram cada item. Nunca aparece o código.
@@ -40,6 +40,14 @@ Para cada questão:
 7. "Encerrar sessão" gera o relatório (XP, acertos, tempo médio por aluno e acertos por questão), exportável em CSV e JSON.
 
 **Modo discreto:** alunos veem só o top 3 e a própria posição, sem pódio. Use quando a competição aberta puder constranger.
+
+### Colar texto e linha do tempo
+
+- **Permitir colar texto:** desligado, os alunos só podem digitar. Dá para mudar durante a aula, em Configurações.
+- **Linha do tempo:** mostra quando cada aluno concluiu cada item e quando colou código. Quem colou e completou vários
+  itens logo depois aparece com **Revisar**.
+
+Esses sinais não mudam o XP. Use-os para conversar com o aluno.
 
 ## Telas do fluxo do professor
 

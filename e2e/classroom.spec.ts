@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createRoom, joinRoom, setEditorCode } from './helpers';
+import { createRoom, joinRoom, pasteIntoEditor, setEditorCode } from './helpers';
 
 const SOLUTION = 'export default function App() {\n  return <Button title="Clique aqui" />;\n}';
 
@@ -268,4 +268,55 @@ test('plugin no modo isolado: painel em iframe sem acesso ao app e validação o
   await expect(ana.getByTestId('checklist-item-unidade')).toHaveAttribute('data-status', 'done');
   await expect(ana.getByTestId('answer-accepted')).toBeVisible();
   await expect(host.getByTestId('host-answered')).toHaveText('1');
+});
+
+test('sala sem colar: o editor recusa a colagem, avisa o aluno e o professor vê a tentativa', async ({ page: host, browser }) => {
+  const code = await createRoom(host, 'pack-exemplo-react-native-fundamentos');
+  await host.getByRole('button', { name: 'Configurações' }).click();
+  const settings = host.getByRole('dialog');
+  await settings.getByText('Permitir colar texto').click();
+  await expect(settings.getByRole('switch', { name: /Permitir colar texto/ })).not.toBeChecked();
+  await host.keyboard.press('Escape');
+
+  const ana = await joinRoom(browser, code, 'Ana');
+  await joinRoom(browser, code, 'Bia', 'cube');
+  await host.getByTestId('start-question').click();
+  await expect(ana.getByTestId('question-prompt')).toContainText('Clique aqui');
+  await expect(ana.getByTestId('paste-disabled')).toBeVisible();
+
+  await pasteIntoEditor(ana, SOLUTION);
+  await expect(ana.getByTestId('paste-notice')).toHaveText('Colar está desativado nesta sala.');
+  // Nada entrou no editor: o item que a colagem concluiria continua pendente.
+  await ana.waitForTimeout(500);
+  await expect(ana.getByTestId('checklist-item-componente-app')).toHaveAttribute('data-status', 'pending');
+  await expect(host.getByTestId('host-progress')).toContainText('Tentou colar 1x');
+
+  // Digitar continua funcionando normalmente.
+  await setEditorCode(ana, SOLUTION);
+  await expect(ana.getByTestId('answer-accepted')).toBeVisible();
+});
+
+test('sala com colar: a colagem que conclui a checklist aparece na linha do tempo do professor, sem mudar o XP', async ({ page: host, browser }) => {
+  const code = await createRoom(host, 'pack-exemplo-react-native-fundamentos');
+  const ana = await joinRoom(browser, code, 'Ana');
+  const bia = await joinRoom(browser, code, 'Bia', 'cube');
+  await host.getByTestId('start-question').click();
+  await expect(ana.getByTestId('question-prompt')).toContainText('Clique aqui');
+
+  await pasteIntoEditor(ana, SOLUTION);
+  await expect(ana.getByTestId('paste-notice')).toHaveText('O professor vê quando você cola código.');
+  await expect(ana.getByTestId('answer-accepted')).toBeVisible();
+  await expect(host.getByTestId('host-progress')).toContainText('Revisar');
+
+  // Bia digita aos poucos: sem indício.
+  await setEditorCode(bia, 'export default function App() {');
+  await expect(bia.getByTestId('checklist-count')).toHaveText('1/4');
+  await host.getByTestId('finish-question').click();
+
+  const panel = host.getByTestId('host-review').getByTestId('timeline-panel');
+  await expect(panel.getByTestId('timeline-flagged')).toHaveText('1 aluno para revisar.');
+  await expect(panel.locator('[data-testid="timeline-row"][data-player="Ana"]')).toHaveAttribute('data-flagged', 'true');
+  await expect(panel.locator('[data-testid="timeline-row"][data-player="Bia"]')).toHaveAttribute('data-flagged', 'false');
+  // A colagem não altera a pontuação: Ana segue em 1º com XP normal.
+  await expect(host.getByTestId('leaderboard-row').first()).toHaveAttribute('data-player', 'Ana');
 });
