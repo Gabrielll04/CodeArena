@@ -11,11 +11,11 @@ import { cx } from './ui';
 export function describePasteImpact(timeline: PlayerTimeline): string | null {
   const impact = timeline.pasteImpact;
   if (!impact) return null;
-  return `Colou ${impact.chars} caracteres aos ${formatSeconds(impact.atMs)} e concluiu ${plural(impact.items, 'item', 'itens')} logo depois.`;
+  return `Colou código aos ${formatSeconds(impact.atMs)} e completou ${plural(impact.items, 'item', 'itens')} logo depois.`;
 }
 
 /** Contagens de colagem do aluno na questão (indícios, nunca punição automática). */
-export function PasteChips({ timeline, compact = false }: { timeline: PlayerTimeline | undefined; compact?: boolean }) {
+export function PasteChips({ timeline }: { timeline: PlayerTimeline | undefined }) {
   if (!timeline) return null;
   const { count, chars, blocked } = timeline.paste;
   if (!count && !blocked) return null;
@@ -27,8 +27,8 @@ export function PasteChips({ timeline, compact = false }: { timeline: PlayerTime
         </span>
       )}
       {count > 0 && (
-        <span className="rounded-md bg-amber/15 px-1.5 py-0.5 text-[11px] font-semibold text-amber ring-1 ring-amber/30" title={`${chars} caracteres colados no total`}>
-          {compact ? `Colou ${count}x` : `Colou ${count}x · ${chars} car.`}
+        <span className="rounded-md bg-amber/15 px-1.5 py-0.5 text-[11px] font-semibold text-amber ring-1 ring-amber/30" title={`${chars} caracteres colados`}>
+          Colou {count}x
         </span>
       )}
       {blocked > 0 && (
@@ -121,7 +121,7 @@ const TimelineRow = memo(function TimelineRow({
           <div className="min-w-0 flex-1">
             <TimelineTrack timeline={timeline} limitMs={limitMs} items={items} />
           </div>
-          <PasteChips timeline={timeline} compact />
+          <PasteChips timeline={timeline} />
         </div>
         {impact && <p className="text-xs text-coral">{impact}</p>}
       </div>
@@ -160,12 +160,11 @@ export function TimelinePanel({ timeline, players, checklist }: TimelinePanelPro
         </span>
         <span className="font-mono" data-testid="timeline-scale">
           0:00 a {formatSeconds(scaleMs)}
-          {scaleMs < timeline.timeLimitMs && <span className="font-sans"> (tempo total {formatSeconds(timeline.timeLimitMs)})</span>}
         </span>
       </div>
       {flagged > 0 && (
         <p className="text-sm text-coral" data-testid="timeline-flagged">
-          {flagged === 1 ? '1 aluno colou um bloco e concluiu vários itens logo depois.' : `${flagged} alunos colaram um bloco e concluíram vários itens logo depois.`} Vale conversar antes de considerar o resultado.
+          {flagged === 1 ? '1 aluno para revisar.' : `${flagged} alunos para revisar.`}
         </p>
       )}
       <ol className="space-y-2.5">
@@ -173,9 +172,6 @@ export function TimelinePanel({ timeline, players, checklist }: TimelinePanelPro
           <TimelineRow key={t.playerId} timeline={t} player={byId.get(t.playerId)} limitMs={scaleMs} items={items} />
         ))}
       </ol>
-      <p className="text-[11px] text-white/35">
-        Horários do servidor desde o início da questão. As colagens são informadas pelo navegador do aluno (só o tamanho, nunca o texto) e não mudam o XP.
-      </p>
     </section>
   );
 }

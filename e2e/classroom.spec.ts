@@ -304,7 +304,7 @@ test('sala com colar: a colagem que conclui a checklist aparece na linha do temp
   await expect(ana.getByTestId('question-prompt')).toContainText('Clique aqui');
 
   await pasteIntoEditor(ana, SOLUTION);
-  await expect(ana.getByTestId('paste-notice')).toHaveText('Colagens ficam registradas para o professor.');
+  await expect(ana.getByTestId('paste-notice')).toHaveText('O professor vê quando você cola código.');
   await expect(ana.getByTestId('answer-accepted')).toBeVisible();
   await expect(host.getByTestId('host-progress')).toContainText('Revisar');
 
@@ -314,7 +314,7 @@ test('sala com colar: a colagem que conclui a checklist aparece na linha do temp
   await host.getByTestId('finish-question').click();
 
   const panel = host.getByTestId('host-review').getByTestId('timeline-panel');
-  await expect(panel.getByTestId('timeline-flagged')).toContainText('1 aluno colou um bloco');
+  await expect(panel.getByTestId('timeline-flagged')).toHaveText('1 aluno para revisar.');
   await expect(panel.locator('[data-testid="timeline-row"][data-player="Ana"]')).toHaveAttribute('data-flagged', 'true');
   await expect(panel.locator('[data-testid="timeline-row"][data-player="Bia"]')).toHaveAttribute('data-flagged', 'false');
   // A colagem não altera a pontuação: Ana segue em 1º com XP normal.

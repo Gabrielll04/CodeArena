@@ -41,24 +41,13 @@ Para cada questão:
 
 **Modo discreto:** alunos veem só o top 3 e a própria posição, sem pódio. Use quando a competição aberta puder constranger.
 
-### Colagens e linha do tempo
+### Colar texto e linha do tempo
 
-Para que a resposta reflita o que o aluno escreveu, e não um bloco trazido de outro lugar (por exemplo, de uma IA):
+- **Permitir colar texto:** desligado, os alunos só podem digitar. Dá para mudar durante a aula, em Configurações.
+- **Linha do tempo:** mostra quando cada aluno concluiu cada item e quando colou código. Quem colou e completou vários
+  itens logo depois aparece com **Revisar**.
 
-- **Permitir colar texto** (ao abrir a sala ou em Configurações, durante a aula): desligado, o editor dos alunos recusa
-  colar e arrastar texto e mostra "Colar desativado". Digitar continua normal. As tentativas aparecem para você como
-  "Tentou colar".
-- **Colagens permitidas:** cada colagem aparece para você com o tamanho ("Colou 2x · 420 car."). O aluno é avisado, na
-  primeira colagem, de que elas ficam registradas.
-- **Linha do tempo:** durante a questão, na revisão e no fim da sessão, cada aluno tem uma trilha com o momento em que
-  concluiu cada item, as colagens e a resposta aceita. Quem cola um bloco grande e conclui vários itens logo depois
-  recebe a marca **Revisar**, com a explicação ("Colou 380 caracteres aos 1:12 e concluiu 4 itens logo depois").
-- No fim da sessão, **Colagens (CSV)** exporta as contagens por aluno e questão.
-
-São indícios para conversar com o aluno, não provas: o XP nunca muda por causa deles. O bloqueio de colar acontece no
-navegador; quem quiser burlar pode digitar o que leu em outro aparelho. Para isso, ajudam questões de depuração e
-questões que pedem para modificar o próprio código. O texto colado nunca sai do navegador do aluno: o servidor recebe
-só o tamanho.
+Esses sinais não mudam o XP. Use-os para conversar com o aluno.
 
 ## Telas do fluxo do professor
 

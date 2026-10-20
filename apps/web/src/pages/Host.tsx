@@ -241,7 +241,7 @@ function HostQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
                 <li key={player.id} className={cx('flex items-center gap-3', !player.connected && 'opacity-40')}>
                   <Avatar id={player.avatar} size={28} />
                   <span className="w-28 truncate text-sm">{player.name}</span>
-                  <PasteChips timeline={timeline?.players.find((t) => t.playerId === player.id)} compact />
+                  <PasteChips timeline={timeline?.players.find((t) => t.playerId === player.id)} />
                   <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
                     <motion.div
                       className={cx('h-full rounded-full', answered ? 'bg-lime' : 'bg-violet')}
@@ -586,11 +586,7 @@ function SessionTimelines({ report, players }: { report: SessionReport; players:
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h3 className="font-display text-2xl font-bold">Linha do tempo</h3>
-          <p className="text-sm text-white/50">
-            {flagged === 0
-              ? 'Nenhuma colagem seguida de vários itens concluídos nesta sessão.'
-              : `${plural(flagged, 'ocorrência', 'ocorrências')} de colagem seguida de vários itens concluídos. Indícios para conversar com o aluno, não provas.`}
-          </p>
+          {flagged > 0 && <p className="text-sm text-white/50">{plural(flagged, 'resposta', 'respostas')} para revisar.</p>}
         </div>
         <Button variant="secondary" size="sm" onClick={() => downloadFile(`colagens-${report.roomCode}.csv`, timelinesToCsv(report, timelines, players), 'text/csv')}>
           <Icon name="download" /> Colagens (CSV)
@@ -644,11 +640,11 @@ function SettingsButton({ snapshot }: { snapshot: RoomSnapshot }) {
           />
           <Toggle
             label="Permitir colar texto"
-            description="Desligado, o editor dos alunos recusa colar e arrastar texto, e as tentativas aparecem para você. Ligado, as colagens aparecem na linha do tempo."
+            description="Desligado, os alunos só podem digitar."
             checked={s.allowPaste}
             onChange={(v) => void updateSettings({ allowPaste: v })}
           />
-          <div className="text-xs text-white/40">Colar muda na hora. As outras mudanças valem a partir da próxima resposta.</div>
+          <div className="text-xs text-white/40">As mudanças valem a partir da próxima resposta.</div>
         </div>
       </Dialog>
     </>

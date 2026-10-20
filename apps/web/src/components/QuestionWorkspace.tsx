@@ -66,7 +66,7 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
     } else if (onPaste && !toldAboutPaste.current) {
       // Transparência com o aluno: avisa uma vez que colagens aparecem para o professor.
       toldAboutPaste.current = true;
-      setPasteNotice('Colagens ficam registradas para o professor.');
+      setPasteNotice('O professor vê quando você cola código.');
     }
   };
 

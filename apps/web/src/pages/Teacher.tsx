@@ -359,7 +359,7 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
             <Toggle label="Bônus de sequência" description="XP extra para acertos consecutivos." checked={streakEnabled} onChange={setStreak} />
             <Toggle
               label="Permitir colar texto"
-              description="Desligado, o editor dos alunos recusa colar e arrastar texto. Ligado, as colagens aparecem na linha do tempo da questão."
+              description="Desligado, os alunos só podem digitar."
               checked={allowPaste}
               onChange={setAllowPaste}
             />
