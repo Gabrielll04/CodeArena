@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type {
+  AssessmentGradeRow,
   ProgressEntry,
   QuestionFinishedEvent,
   QuestionTimeline,
@@ -26,6 +27,8 @@ interface HostStore {
   progress: Record<string, ProgressEntry>;
   /** Linha do tempo por questão (id da questão), só do professor. */
   timelines: Record<string, QuestionTimeline>;
+  /** Atividade avaliativa: nota e progresso de cada aluno (id do aluno). */
+  grades: Record<string, AssessmentGradeRow>;
   feed: FeedEntry[];
   lastFinished: QuestionFinishedEvent | null;
   report: SessionReport | null;
@@ -49,7 +52,9 @@ export const useHost = create<HostStore>((set, get) => {
     snapshot.progress.forEach((entry) => (progress[entry.playerId] = entry));
     const timelines: Record<string, QuestionTimeline> = {};
     snapshot.timelines?.forEach((timeline) => (timelines[timeline.questionId] = timeline));
-    set({ snapshot, progress, timelines, report: snapshot.report ?? get().report });
+    const grades: Record<string, AssessmentGradeRow> = {};
+    snapshot.grades?.forEach((row) => (grades[row.playerId] = row));
+    set({ snapshot, progress, timelines, grades, report: snapshot.report ?? get().report });
   };
 
   const listen = () => {
@@ -80,6 +85,12 @@ export const useHost = create<HostStore>((set, get) => {
         : [...question.players, timeline];
       set({ timelines: { ...get().timelines, [questionId]: { ...question, players } } });
     });
+    socket.on('assessment:row', (row) => {
+      const before = get().grades[row.playerId];
+      const completed = (r?: AssessmentGradeRow) => r?.questions.filter((q) => q.status === 'complete').length ?? 0;
+      if (completed(row) > completed(before)) playCue('check');
+      set({ grades: { ...get().grades, [row.playerId]: row } });
+    });
     socket.on('question:submitted', (event) => {
       set({ feed: [{ ...event, at: Date.now() }, ...get().feed].slice(0, 30) });
       if (event.accepted) playCue('check');
@@ -108,6 +119,7 @@ export const useHost = create<HostStore>((set, get) => {
     snapshot: null,
     progress: {},
     timelines: {},
+    grades: {},
     feed: [],
     lastFinished: null,
     report: null,

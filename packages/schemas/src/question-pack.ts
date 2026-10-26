@@ -71,6 +71,8 @@ export const ChecklistItemSchema = z
     rule: ChecklistRuleSchema,
     optional: z.boolean().default(false),
     hint: z.string().max(280).optional(),
+    /** Peso do item na nota das atividades avaliativas. Padrão: 1. */
+    weight: z.number().min(0.1, 'weight mínimo é 0.1').max(10, 'weight máximo é 10').optional(),
   })
   .strict()
   .superRefine((item, ctx) => {
@@ -91,8 +93,16 @@ export const QuestionSchema = z
     /**
      * build: o aluno escreve a solução a partir de pouco ou nada.
      * debug: o `starterCode` é um código com bug e a checklist verifica o comportamento corrigido.
+     * guided: projeto guiado; a checklist é uma sequência de passos, cada um com a sua instrução (`hint`).
      */
-    kind: z.enum(['build', 'debug']).default('build'),
+    kind: z.enum(['build', 'debug', 'guided']).default('build'),
+    /** Imagem do resultado esperado (link http ou https), mostrada junto do enunciado. */
+    goalImage: z
+      .string()
+      .url('goalImage deve ser um link')
+      .max(500)
+      .regex(/^https?:\/\//, 'goalImage deve começar com http:// ou https://')
+      .optional(),
     timeLimitSeconds: z
       .number({ invalid_type_error: 'timeLimitSeconds deve ser um número' })
       .int('timeLimitSeconds deve ser inteiro')

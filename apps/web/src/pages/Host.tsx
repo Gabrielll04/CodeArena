@@ -1,7 +1,16 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import type { PlayerPublic, QuestionResults, QuestionTimeline, RoomSnapshot, SessionReport } from '@codearena/schemas';
+import { formatGrade } from '@codearena/core';
+import type {
+  AssessmentGradeRow,
+  AssessmentQuestionProgress,
+  PlayerPublic,
+  QuestionResults,
+  QuestionTimeline,
+  RoomSnapshot,
+  SessionReport,
+} from '@codearena/schemas';
 import { Avatar } from '../components/Avatar';
 import { SolutionView } from '../components/CodeDiff';
 import { Countdown } from '../components/Countdown';
@@ -76,6 +85,9 @@ function useAction() {
 }
 
 function HostPhase({ snapshot }: { snapshot: RoomSnapshot }) {
+  const assessment = snapshot.settings.mode === 'assessment';
+  if (assessment && snapshot.phase === 'question') return <HostAssessment snapshot={snapshot} />;
+  if (assessment && snapshot.phase === 'ended') return <HostAssessmentEnded snapshot={snapshot} />;
   switch (snapshot.phase) {
     case 'lobby':
       return <HostLobby snapshot={snapshot} />;
@@ -86,7 +98,7 @@ function HostPhase({ snapshot }: { snapshot: RoomSnapshot }) {
             startsAt={snapshot.question.startsAt}
             index={snapshot.question.index}
             total={snapshot.question.total}
-            title={snapshot.question.question.title ?? snapshot.question.question.prompt}
+            title={assessment ? snapshot.packTitle : (snapshot.question.question.title ?? snapshot.question.question.prompt)}
           />
         </div>
       ) : null;
@@ -128,7 +140,10 @@ function HostLobby({ snapshot }: { snapshot: RoomSnapshot }) {
 
       <Panel className="flex min-h-[360px] flex-col p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-xl font-bold">Alunos</h2>
+          <h2 className="flex items-center gap-2 font-display text-xl font-bold">
+            Alunos
+            {snapshot.settings.mode === 'assessment' && <Badge tone="violet">Atividade avaliativa</Badge>}
+          </h2>
           <Badge tone={snapshot.players.length ? 'lime' : 'neutral'}>
             <span data-testid="host-player-count">{snapshot.players.length}</span> na sala
           </Badge>
@@ -173,7 +188,10 @@ function HostLobby({ snapshot }: { snapshot: RoomSnapshot }) {
           onClick={() => void run(startQuestion)}
           data-testid="start-question"
         >
-          <Icon name="play" /> Iniciar questão 1 de {snapshot.questionCount}
+          <Icon name="play" />{' '}
+          {snapshot.settings.mode === 'assessment'
+            ? `Iniciar atividade (${snapshot.settings.assessmentMinutes} min)`
+            : `Iniciar questão 1 de ${snapshot.questionCount}`}
         </Button>
         {snapshot.players.length === 0 && <p className="mt-2 text-center text-xs text-white/40">Disponível quando o primeiro aluno entrar.</p>}
       </Panel>
@@ -615,10 +633,220 @@ function SessionTimelines({ report, players }: { report: SessionReport; players:
   );
 }
 
+const CELL_TONE: Record<AssessmentQuestionProgress['status'], string> = {
+  empty: 'bg-white/[0.04] text-white/35',
+  partial: 'bg-violet/20 text-white',
+  complete: 'bg-lime/90 text-ink-950',
+};
+
+/** Atividade avaliativa em andamento: cada aluno em cada questão, com a nota parcial. */
+function HostAssessment({ snapshot }: { snapshot: RoomSnapshot }) {
+  const { grades, timelines, endSession } = useHost();
+  const { busy, error, run } = useAction();
+  const [confirming, setConfirming] = useState(false);
+  const period = snapshot.assessment!;
+  const titles = snapshot.timelines?.map((t) => t.title) ?? [];
+  const finished = snapshot.players.filter((p) => grades[p.id]?.questions.every((q) => q.status === 'complete')).length;
+
+  return (
+    <div className="mx-auto max-w-7xl space-y-5 px-5 py-6" data-testid="host-assessment">
+      <Panel className="space-y-4 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="flex items-center gap-2">
+            <Badge tone="violet">Atividade avaliativa</Badge>
+            <span className="text-sm text-white/60">{plural(snapshot.questionCount, 'questão', 'questões')}</span>
+          </span>
+          <span className="text-sm text-white/60">
+            <strong className="font-mono text-lg text-lime" data-testid="host-answered">
+              {finished}
+            </strong>{' '}
+            de {snapshot.players.length} concluíram tudo
+          </span>
+        </div>
+        <Timer startsAt={period.startsAt} endsAt={period.endsAt} finishedAt={null} size="lg" />
+      </Panel>
+
+      <Panel className="overflow-x-auto p-2">
+        <table className="w-full min-w-[560px] text-left text-sm" data-testid="assessment-grid">
+          <thead className="text-xs uppercase tracking-wider text-white/40">
+            <tr>
+              <th className="px-3 py-2">Aluno</th>
+              {titles.map((title, i) => (
+                <th key={i} className="px-2 py-2 text-center" title={title}>
+                  Q{i + 1}
+                </th>
+              ))}
+              <th className="px-3 py-2 text-right">Nota</th>
+            </tr>
+          </thead>
+          <tbody>
+            {snapshot.players.map((player) => {
+              const row = grades[player.id];
+              return (
+                <tr key={player.id} className={cx('border-t border-white/[0.05]', !player.connected && 'opacity-45')} data-testid={`assessment-row-${player.name}`}>
+                  <td className="px-3 py-2">
+                    <span className="flex items-center gap-2">
+                      <Avatar id={player.avatar} size={24} />
+                      <span className="max-w-[160px] truncate">{player.name}</span>
+                    </span>
+                  </td>
+                  {row?.questions.map((q, i) => {
+                    const flagged = timelines[q.questionId]?.players.find((t) => t.playerId === player.id)?.pasteImpact;
+                    return (
+                      <td key={q.questionId} className="px-1 py-1.5 text-center">
+                        <span
+                          className={cx(
+                            'relative mx-auto flex h-8 min-w-[52px] items-center justify-center rounded-lg font-mono text-xs font-semibold',
+                            CELL_TONE[q.status],
+                            row.index === i && 'ring-2 ring-white/70',
+                          )}
+                          title={`${q.title}: ${q.done}/${q.total}${row.index === i ? ' (está nesta questão)' : ''}`}
+                        >
+                          {q.done}/{q.total}
+                          {flagged && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-coral ring-2 ring-ink-900" title="Colagem para revisar" />}
+                        </span>
+                      </td>
+                    );
+                  })}
+                  <td className="px-3 py-2 text-right font-mono font-bold" data-testid="assessment-grade">
+                    {row ? formatGrade(row.grade) : '-'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {snapshot.players.length === 0 && <p className="p-4 text-sm text-white/40">Nenhum aluno na sala.</p>}
+      </Panel>
+      <p className="text-xs text-white/40">A nota parcial conta os itens confirmados pelo servidor na melhor versão de cada questão.</p>
+
+      {error && <p className="text-sm text-coral">{error}</p>}
+      <Button variant="danger" onClick={() => setConfirming(true)} data-testid="end-assessment">
+        <Icon name="stop" /> Encerrar atividade
+      </Button>
+      <Dialog
+        open={confirming}
+        onClose={() => setConfirming(false)}
+        title="Encerrar a atividade?"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirming(false)}>
+              Continuar a atividade
+            </Button>
+            <Button variant="danger" loading={busy} onClick={() => void run(endSession)} data-testid="confirm-end-assessment">
+              Encerrar
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-white/70">Os alunos não poderão mais responder. As notas ficam como estão agora.</p>
+      </Dialog>
+    </div>
+  );
+}
+
+/** Notas em CSV para diário ou Classroom: separador ";" e vírgula decimal, como as planilhas em português esperam. */
+function gradesToCsv(rows: AssessmentGradeRow[], players: PlayerPublic[], questionCount: number): string {
+  const names = new Map(players.map((p) => [p.id, p.name]));
+  const header = ['aluno', ...Array.from({ length: questionCount }, (_, i) => `q${i + 1}`), 'nota'];
+  const lines = rows.map((row) => [
+    `"${(names.get(row.playerId) ?? row.playerId).replace(/"/g, '""')}"`,
+    ...row.questions.map((q) => formatGrade(q.grade)),
+    formatGrade(row.grade),
+  ]);
+  return '\uFEFF' + [header, ...lines].map((line) => line.join(';')).join('\n');
+}
+
+function HostAssessmentEnded({ snapshot }: { snapshot: RoomSnapshot }) {
+  const { grades } = useHost();
+  const report = snapshot.report;
+  if (!report) return null;
+  const names = new Map(snapshot.players.map((p) => [p.id, p]));
+  // Em ordem alfabética, como no diário.
+  const rows = [...snapshot.players]
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+    .map((p) => grades[p.id])
+    .filter((row): row is AssessmentGradeRow => row !== undefined);
+  const average = rows.length ? rows.reduce((sum, row) => sum + row.grade, 0) / rows.length : null;
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-6 px-5 py-8" data-testid="host-ended">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/50">Atividade encerrada</p>
+          <h2 className="font-display text-3xl font-bold">{report.packTitle}</h2>
+          {average !== null && <p className="mt-1 text-sm text-white/60">Média da turma: {formatGrade(Math.round(average * 10) / 10)}</p>}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => downloadFile(`notas-${report.roomCode}.csv`, gradesToCsv(rows, snapshot.players, snapshot.questionCount), 'text/csv')}
+            data-testid="download-grades"
+          >
+            <Icon name="download" /> Notas (CSV)
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => downloadFile(`relatorio-${report.roomCode}.json`, JSON.stringify({ ...report, grades: rows }, null, 2))}>
+            <Icon name="download" /> JSON
+          </Button>
+          <Link to="/teacher">
+            <Button variant="secondary" size="sm">
+              Voltar à biblioteca
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      <Panel className="overflow-x-auto p-2">
+        <table className="w-full min-w-[560px] text-left text-sm" data-testid="grades-table">
+          <thead className="text-xs uppercase tracking-wider text-white/40">
+            <tr>
+              <th className="px-3 py-2">Aluno</th>
+              {report.questions.map((q, i) => (
+                <th key={q.questionId} className="px-3 py-2 text-center" title={q.title}>
+                  Q{i + 1}
+                </th>
+              ))}
+              <th className="px-3 py-2 text-right">Nota</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const player = names.get(row.playerId);
+              return (
+                <tr key={row.playerId} className="border-t border-white/[0.05]">
+                  <td className="px-3 py-2">
+                    <span className="flex items-center gap-2">
+                      {player && <Avatar id={player.avatar} size={24} />} {player?.name}
+                    </span>
+                  </td>
+                  {row.questions.map((q) => (
+                    <td key={q.questionId} className={cx('px-3 py-2 text-center font-mono text-xs', q.status === 'complete' ? 'text-lime' : q.status === 'partial' ? 'text-white/80' : 'text-white/30')}>
+                      {formatGrade(q.grade)}
+                    </td>
+                  ))}
+                  <td className="px-3 py-2 text-right font-mono text-base font-bold" data-testid="final-grade">
+                    {formatGrade(row.grade)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Panel>
+
+      <SessionInsights report={report} />
+
+      <SessionTimelines report={report} players={snapshot.players} />
+    </div>
+  );
+}
+
 function SettingsButton({ snapshot }: { snapshot: RoomSnapshot }) {
   const { updateSettings } = useHost();
   const [open, setOpen] = useState(false);
   const s = snapshot.settings;
+  const competition = s.mode !== 'assessment';
   return (
     <>
       <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
@@ -626,18 +854,22 @@ function SettingsButton({ snapshot }: { snapshot: RoomSnapshot }) {
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} title="Configurações da sala">
         <div className="space-y-5">
-          <Toggle
-            label="Modo discreto"
-            description="Alunos veem só o top 3 e a própria posição; sem pódio ao final."
-            checked={s.discreetMode}
-            onChange={(v) => void updateSettings({ discreetMode: v })}
-          />
-          <Toggle
-            label="Bônus de sequência"
-            description={`+${s.streakBonus} XP por acerto consecutivo a partir do segundo (até ${s.streakMaxSteps}x).`}
-            checked={s.streakEnabled}
-            onChange={(v) => void updateSettings({ streakEnabled: v })}
-          />
+          {competition && (
+            <>
+              <Toggle
+                label="Modo discreto"
+                description="Alunos veem só o top 3 e a própria posição; sem pódio ao final."
+                checked={s.discreetMode}
+                onChange={(v) => void updateSettings({ discreetMode: v })}
+              />
+              <Toggle
+                label="Bônus de sequência"
+                description={`+${s.streakBonus} XP por acerto consecutivo a partir do segundo (até ${s.streakMaxSteps}x).`}
+                checked={s.streakEnabled}
+                onChange={(v) => void updateSettings({ streakEnabled: v })}
+              />
+            </>
+          )}
           <Toggle
             label="Permitir colar texto"
             description="Desligado, os alunos só podem digitar."

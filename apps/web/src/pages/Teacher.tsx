@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { parseQuestionPackJson, resolveQuestions, type QuestionPack, type ValidationIssue } from '@codearena/schemas';
+import { parseQuestionPackJson, resolveQuestions, type QuestionPack, type RoomMode, type ValidationIssue } from '@codearena/schemas';
 import { IssueList } from '../components/IssueList';
 import { TopBar } from '../components/TopBar';
-import { Badge, Button, Dialog, EmptyState, Icon, Panel, Spinner, Textarea, Toggle } from '../components/ui';
+import { Badge, Button, cx, Dialog, EmptyState, Field, Icon, Input, Panel, Spinner, Textarea, Toggle } from '../components/ui';
 import { api, ApiError, type PackSummary, type StoredPack } from '../lib/api';
 import { downloadFile, plural } from '../lib/format';
 import { isPluginInstalled, pluginInfo } from '../plugins/registry';
@@ -270,6 +270,11 @@ function ImportDialog({ open, onClose, onImported }: { open: boolean; onClose: (
   );
 }
 
+const ROOM_MODES: { id: RoomMode; label: string; description: string }[] = [
+  { id: 'competition', label: 'Competição', description: 'Todos na mesma questão, com placar e XP.' },
+  { id: 'assessment', label: 'Atividade avaliativa', description: 'Cada aluno no seu ritmo, sem placar. Você recebe as notas de 0 a 10.' },
+];
+
 function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored: StoredPack; onClose: () => void }) {
   const navigate = useNavigate();
   const create = useHost((s) => s.create);
@@ -277,6 +282,8 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
   const [discreetMode, setDiscreet] = useState(false);
   const [allowPaste, setAllowPaste] = useState(true);
   const [streakEnabled, setStreak] = useState(false);
+  const [mode, setMode] = useState<RoomMode>('competition');
+  const [minutes, setMinutes] = useState(50);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -284,7 +291,11 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
     setCreating(true);
     setError(null);
     const questionIds = stored.pack.questions.filter((q) => selected.has(q.id)).map((q) => q.id);
-    const res = await create({ packId: pack.id, questionIds, settings: { discreetMode, streakEnabled, allowPaste } });
+    const settings =
+      mode === 'assessment'
+        ? { mode, assessmentMinutes: Math.min(240, Math.max(5, Math.round(minutes) || 50)), allowPaste }
+        : { mode, discreetMode, streakEnabled, allowPaste };
+    const res = await create({ packId: pack.id, questionIds, settings });
     setCreating(false);
     if (!res.ok) return setError(res.error);
     navigate(`/host/${res.code}`);
@@ -302,12 +313,38 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
             Cancelar
           </Button>
           <Button variant="primary" loading={creating} disabled={!selected.size} onClick={() => void submit()} data-testid="create-room">
-            Criar sala com {plural(selected.size, 'questão', 'questões')}
+            {mode === 'assessment' ? 'Criar atividade' : 'Criar sala'} com {plural(selected.size, 'questão', 'questões')}
           </Button>
         </>
       }
     >
       <div className="space-y-5">
+          <fieldset>
+            <legend className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/55">Tipo de sala</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {ROOM_MODES.map((option) => (
+                <label
+                  key={option.id}
+                  className={cx(
+                    'cursor-pointer rounded-xl p-3 ring-1 transition',
+                    mode === option.id ? 'bg-white/[0.07] ring-lime/60' : 'bg-white/[0.03] ring-white/10 hover:bg-white/[0.06]',
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="room-mode"
+                    value={option.id}
+                    checked={mode === option.id}
+                    onChange={() => setMode(option.id)}
+                    className="sr-only"
+                    data-testid={`mode-${option.id}`}
+                  />
+                  <span className="block text-sm font-semibold">{option.label}</span>
+                  <span className="mt-0.5 block text-xs text-white/50">{option.description}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <div>
             <div className="mb-2 flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wider text-white/55">Questões</p>
@@ -344,9 +381,16 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
                             Depuração
                           </Badge>
                         )}
+                        {q.kind === 'guided' && (
+                          <Badge tone="violet" className="ml-2 align-middle">
+                            Projeto guiado
+                          </Badge>
+                        )}
                       </span>
                       <span className="text-xs text-white/40">
-                        {q.timeLimitSeconds} s · {q.baseXP} + até {q.speedBonusMax} XP · {plural(q.checklist.length, 'item', 'itens')}
+                        {mode === 'assessment'
+                          ? plural(q.checklist.length, 'item', 'itens')
+                          : `${q.timeLimitSeconds} s · ${q.baseXP} + até ${q.speedBonusMax} XP · ${plural(q.checklist.length, 'item', 'itens')}`}
                       </span>
                     </span>
                   </label>
@@ -355,8 +399,25 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
             </ul>
           </div>
           <div className="space-y-4 rounded-2xl bg-white/[0.03] p-4">
-            <Toggle label="Modo discreto" description="Alunos veem só o top 3 e a própria posição; sem pódio." checked={discreetMode} onChange={setDiscreet} />
-            <Toggle label="Bônus de sequência" description="XP extra para acertos consecutivos." checked={streakEnabled} onChange={setStreak} />
+            {mode === 'assessment' ? (
+              <Field label="Duração (minutos)" htmlFor="assessment-minutes" hint="Ao fim do tempo, a atividade é encerrada e as notas ficam prontas.">
+                <Input
+                  id="assessment-minutes"
+                  type="number"
+                  min={5}
+                  max={240}
+                  value={minutes}
+                  onChange={(e) => setMinutes(Number(e.target.value))}
+                  className="w-32"
+                  data-testid="assessment-minutes"
+                />
+              </Field>
+            ) : (
+              <>
+                <Toggle label="Modo discreto" description="Alunos veem só o top 3 e a própria posição; sem pódio." checked={discreetMode} onChange={setDiscreet} />
+                <Toggle label="Bônus de sequência" description="XP extra para acertos consecutivos." checked={streakEnabled} onChange={setStreak} />
+              </>
+            )}
             <Toggle
               label="Permitir colar texto"
               description="Desligado, os alunos só podem digitar."

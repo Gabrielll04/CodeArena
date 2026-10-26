@@ -46,6 +46,8 @@ aceita aspas simples e duplas, executa o servidor de verdade) e gera menos falso
 - `build` (padrão): o aluno constrói a solução.
 - `debug`: o aluno recebe um código com bug e o corrige; a checklist verifica o comportamento corrigido.
   Veja `debug-questions.md`.
+- `guided`: projeto guiado; cada item da checklist é um passo, na ordem, com a instrução no `hint`.
+  Veja `guided-questions.md`.
 
 ## O que torna uma questão boa
 

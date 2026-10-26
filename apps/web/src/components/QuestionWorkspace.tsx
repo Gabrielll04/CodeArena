@@ -110,10 +110,22 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
                 Depuração
               </Badge>
             )}
+            {question.kind === 'guided' && (
+              <Badge tone="violet" className="mb-2">
+                Projeto guiado
+              </Badge>
+            )}
             {question.title && <h2 className="mb-1.5 font-display text-lg font-bold leading-tight">{question.title}</h2>}
             <Prompt text={question.prompt} />
+            {question.goalImage && <GoalImage src={question.goalImage} />}
           </div>
-          <Checklist items={question.checklist} evaluation={evaluation} checking={live.checking} announce={mode !== 'authoring'} />
+          <Checklist
+            items={question.checklist}
+            evaluation={evaluation}
+            checking={live.checking}
+            announce={mode !== 'authoring'}
+            guided={question.kind === 'guided'}
+          />
           {status ?? (
             <p className="text-sm text-white/50" aria-live="polite">
               {evaluation.allRequiredDone ? 'Checklist completa.' : `Faltam ${remaining} ${remaining === 1 ? 'item' : 'itens'}.`}
@@ -172,5 +184,22 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
         </aside>
       </div>
     </div>
+  );
+}
+
+/** Imagem do resultado esperado; abre em tamanho real numa nova aba. */
+function GoalImage({ src }: { src: string }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <figure className="mt-3" data-testid="goal-image">
+      <figcaption className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white/50">Resultado esperado</figcaption>
+      {failed ? (
+        <p className="text-xs text-white/50">Não foi possível carregar a imagem.</p>
+      ) : (
+        <a href={src} target="_blank" rel="noreferrer noopener" className="block overflow-hidden rounded-xl ring-1 ring-white/10 hover:ring-white/25">
+          <img src={src} alt="Resultado esperado" loading="lazy" referrerPolicy="no-referrer" className="max-h-64 w-full bg-ink-950 object-contain" onError={() => setFailed(true)} />
+        </a>
+      )}
+    </figure>
   );
 }

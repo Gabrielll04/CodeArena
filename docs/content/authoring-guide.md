@@ -31,7 +31,8 @@ Para cada questão:
 
 ## Conduzindo a aula
 
-1. Biblioteca > Abrir sala: escolha as questões e as opções (modo discreto, bônus de sequência, permitir colar texto).
+1. Biblioteca > Abrir sala: escolha o tipo de sala (competição ou [atividade avaliativa](#atividade-avaliativa)), as
+   questões e as opções (modo discreto, bônus de sequência, permitir colar texto).
 2. Projete a tela do lobby: ela mostra o endereço e o código de 6 dígitos.
 3. "Iniciar questão" dispara uma contagem de 3 s para todos.
 4. Durante a questão você vê quantos itens cada aluno concluiu e, em "Itens da checklist, ao vivo", quantos alunos já concluíram cada item. Nunca aparece o código.
@@ -48,6 +49,28 @@ Para cada questão:
   itens logo depois aparece com **Revisar**.
 
 Esses sinais não mudam o XP. Use-os para conversar com o aluno.
+
+## Atividade avaliativa
+
+Para atividades que valem nota, feitas em aula. Ao abrir a sala, escolha **Atividade avaliativa** e a duração em minutos.
+
+- Todas as questões abrem juntas. Cada aluno vai e volta entre elas no próprio ritmo.
+- Sem placar, sem XP e sem pódio. O aluno vê os passos concluídos e quais questões terminou.
+- O progresso é salvo sozinho. Vale a melhor versão de cada questão.
+- Você acompanha cada aluno em cada questão e encerra quando quiser; no fim do tempo, encerra sozinha.
+- **Nota de 0 a 10** (ex.: 7,5): a parte da checklist que o aluno concluiu em cada questão; a nota final é a média
+  das questões. Itens podem ter peso diferente (campo **Peso** no editor). Só você vê as notas.
+- **Notas (CSV)** abre direto no Excel e no Google Planilhas, pronto para o diário ou o Classroom.
+
+## Projeto guiado
+
+Tipo de questão para construir algo maior passo a passo ("Crie uma página..."). No editor, escolha **Guiado**:
+
+- cada item da checklist vira um passo, na ordem, e o campo **Instrução do passo** diz o que fazer;
+- o aluno vê o passo atual em destaque e os próximos esmaecidos;
+- em **Imagem do resultado esperado**, cole o link de uma imagem do que deve ser construído.
+
+Funciona nos dois tipos de sala e com todos os plugins.
 
 ## Telas do fluxo do professor
 
