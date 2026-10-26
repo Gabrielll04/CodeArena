@@ -283,9 +283,12 @@ Cliente -> servidor (todos com ack `{ ok: true, ... } | { ok: false, error, code
 | `host:start-question` / `host:finish-question` / `host:end-session` | professor | `{ code, hostToken }` |
 | `host:update-settings` | professor | `{ code, hostToken, settings }` |
 | `host:kick` | professor | `{ code, hostToken, playerId }` |
-| `question:progress` | aluno | `{ done, total, doneIds? }` (contagem e ids dos itens concluídos, sem código; informativo) |
-| `question:paste` | aluno | `{ chars, blocked }` (tamanho da colagem e se foi recusada, nunca o texto; informativo) |
-| `question:submit` | aluno | `{ code }` -> `{ answer }` |
+| `question:progress` | aluno | `{ done, total, doneIds?, questionId? }` (contagem e ids dos itens concluídos, sem código; informativo) |
+| `question:paste` | aluno | `{ chars, blocked, questionId? }` (tamanho da colagem e se foi recusada, nunca o texto; informativo) |
+| `question:submit` | aluno | `{ code, questionId? }` -> `{ answer }` |
+| `assessment:goto` | aluno | `{ index }` -> `{ snapshot }` (atividade avaliativa: muda de questão) |
+
+`questionId` só é usado na atividade avaliativa, em que cada aluno está numa questão.
 
 Servidor -> cliente:
 
@@ -298,13 +301,29 @@ Servidor -> cliente:
 | `question:progress` | professor | `{ playerId, done, total, answered, doneIds }` |
 | `question:timeline` | professor | `{ questionId, timeline }`: itens concluídos, colagens e resposta aceita de um aluno, em horários do servidor. O snapshot do professor traz `timelines` de todas as questões; o dos alunos, não |
 | `question:submitted` | professor | quem enviou e se foi aceito |
+| `assessment:row` | professor | atividade avaliativa: `{ playerId, index, grade, questions }` (questão atual, nota de cada questão e da atividade) |
 | `question:validated` | o aluno | resultado da validação oficial por item |
 | `question:finished` | todos | resultados (incluindo `items`: conclusão e tempo mediano por item), placar e `solution` |
 | `leaderboard:update` | todos | placar |
-| `session:ended` | todos | relatório final |
+| `session:ended` | todos | relatório final (na atividade avaliativa, cada aluno recebe só a própria linha) |
 | `room:closed` | aluno removido | motivo |
 
 Canais Socket.IO: `room:<code>` (todos), `host:<code>`, `player:<code>:<playerId>`.
+
+## Atividade avaliativa
+
+Com `settings.mode = "assessment"` ([decisão 0003](decisoes/0003-atividades-avaliativas.md)), `host:start-question`
+abre todas as questões de uma vez, com o mesmo início e prazo (`settings.assessmentMinutes`). Cada aluno tem uma posição
+própria; `submit`, `progress` e `paste` usam a questão informada em `questionId`.
+
+- Sem XP: respostas aceitas valem 0 XP e não há placar para os alunos (`leaderboard: []`).
+- O cliente envia a resposta sempre que um item novo da checklist é concluído. O servidor valida e guarda, por aluno e
+  questão, a melhor versão (`questionGrade` em `packages/core/src/grading.ts`: itens obrigatórios confirmados pelo
+  servidor, ponderados por `weight`). A nota da atividade é a média das questões, com uma casa decimal.
+- Notas só no snapshot do professor (`grades`) e em `assessment:row`; o aluno recebe `me.assessment` (questão atual e
+  situação de cada questão, sem nota).
+- Cada envio atualiza só o aluno (`room:update` direcionado) e a linha dele no professor, sem sincronizar a sala inteira.
+- O prazo, `host:finish-question` e `host:end-session` encerram a atividade.
 
 ## Reconexão
 

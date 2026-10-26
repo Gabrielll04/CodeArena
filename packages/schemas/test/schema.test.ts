@@ -39,6 +39,26 @@ describe('QuestionPackSchema', () => {
     if (!result.ok) expect(result.issues.some((i) => i.path === 'questions[0].kind')).toBe(true);
   });
 
+  it('aceita projeto guiado com peso por item e imagem do resultado', () => {
+    const input = minimalPack() as any;
+    input.questions[0].kind = 'guided';
+    input.questions[0].goalImage = 'https://exemplo.com/tela.png';
+    input.questions[0].checklist[0].weight = 2.5;
+    const result = parseQuestionPack(input) as any;
+    expect(result.ok).toBe(true);
+    expect(result.value.questions[0]).toMatchObject({ kind: 'guided', goalImage: 'https://exemplo.com/tela.png' });
+    expect(result.value.questions[0].checklist[0].weight).toBe(2.5);
+
+    input.questions[0].goalImage = 'javascript:alert(1)';
+    input.questions[0].checklist[0].weight = 0;
+    const invalid = parseQuestionPack(input);
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) {
+      expect(invalid.issues.some((i) => i.path === 'questions[0].goalImage')).toBe(true);
+      expect(invalid.issues.some((i) => i.path === 'questions[0].checklist[0].weight')).toBe(true);
+    }
+  });
+
   it('resolve o plugin da questão a partir do pack e remove a solução da versão pública', () => {
     const input = minimalPack();
     (input.questions[0] as Record<string, unknown>).solution = 'segredo';

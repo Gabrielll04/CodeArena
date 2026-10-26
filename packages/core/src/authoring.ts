@@ -89,6 +89,18 @@ export async function lintQuestion(
     }
   }
 
+  if (question.kind === 'guided') {
+    // No projeto guiado, a instrução de cada passo é o que guia o aluno.
+    for (const item of question.checklist) {
+      if (!item.optional && !item.hint?.trim()) {
+        warnings.push({ level: 'warning', itemId: item.id, message: 'Passo sem instrução: escreva no campo hint o que o aluno faz neste passo.' });
+      }
+    }
+    if (question.checklist.filter((item) => !item.optional).length < 3) {
+      warnings.push({ level: 'warning', message: 'Projeto guiado com menos de 3 passos: prefira o tipo "build".' });
+    }
+  }
+
   // Avalia o código inicial inteiro (inclusive regras que executam o código): é isso que o aluno recebe.
   const starter = await evaluateChecklist(question.starterCode, publicQuestion, { plugin });
   if (starter.allRequiredDone) {

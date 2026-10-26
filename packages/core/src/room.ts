@@ -2,6 +2,9 @@ import {
   DEFAULT_ROOM_SETTINGS,
   toPublicQuestion,
   type ActiveQuestion,
+  type AssessmentGradeRow,
+  type AssessmentQuestionProgress,
+  type AssessmentStudentView,
   type AvatarId,
   type ErrorCode,
   type ItemCheck,
@@ -22,6 +25,7 @@ import {
   type ServerToClientEvents,
   type SessionReport,
 } from '@codearena/schemas';
+import { activityGrade, questionGrade } from './grading';
 import { calculateStreakBonus, calculateXP, rankPlayers } from './scoring';
 import { buildPlayerTimeline, createPasteLog, recordPaste, type PasteLog } from './timeline';
 
@@ -81,6 +85,8 @@ interface PlayerState {
   rank: number | null;
   previousRank: number | null;
   lastQuestionXP: number;
+  /** Atividade avaliativa: índice da questão em que o aluno está. */
+  position: number;
 }
 
 interface QuestionRecord {
@@ -99,6 +105,8 @@ interface QuestionRecord {
   allowPaste: boolean;
   pending: Map<string, Promise<void>>;
   lastSubmitAt: Map<string, number>;
+  /** Atividade avaliativa: a melhor versão de cada aluno, pelos itens que o servidor confirmou. */
+  best: Map<string, { grade: number; passed: Set<string> }>;
   results: QuestionResults | null;
 }
 
@@ -137,8 +145,11 @@ export class Room {
   private current: QuestionRecord | null = null;
   private timers: unknown[] = [];
   private finishing: Promise<void> | null = null;
+  private ending: Promise<SessionReport> | null = null;
   private report: SessionReport | null = null;
   private startedAt: number | null = null;
+  /** Atividade avaliativa: começo e prazo, iguais para todas as questões. */
+  private window: { startsAt: number; endsAt: number } | null = null;
   lastActivityAt: number;
 
   constructor(options: RoomOptions) {
@@ -225,6 +236,7 @@ export class Room {
       rank: null,
       previousRank: null,
       lastQuestionXP: 0,
+      position: 0,
     };
     this.players.set(player.id, player);
     this.sink.emit({ kind: 'all' }, 'player:joined', this.publicPlayer(player));
@@ -267,15 +279,23 @@ export class Room {
     const player = this.players.get(playerId);
     if (!player) throw new RoomError('not_in_room', 'Aluno não encontrado');
     this.players.delete(playerId);
-    this.current?.answers.delete(playerId);
-    this.current?.progress.delete(playerId);
-    this.current?.itemState.delete(playerId);
+    for (const record of this.isAssessment ? this.history : this.current ? [this.current] : []) {
+      record.answers.delete(playerId);
+      record.progress.delete(playerId);
+      record.itemState.delete(playerId);
+      record.best.delete(playerId);
+    }
     this.sink.emit({ kind: 'all' }, 'player:left', { playerId, name: player.name });
     this.sink.sync();
     this.maybeFinishWhenAllAnswered();
   }
 
   updateSettings(patch: RoomSettingsPatch): void {
+    // O modo e a duração só mudam antes de começar.
+    if (this.phase !== 'lobby') {
+      const { mode: _mode, assessmentMinutes: _minutes, ...rest } = patch;
+      patch = rest;
+    }
     this.settings = { ...this.settings, ...patch };
     this.touch();
     this.sink.sync();
@@ -286,6 +306,7 @@ export class Room {
   /* ---------------------------------------------------------------- */
 
   startNextQuestion(): ActiveQuestion {
+    if (this.isAssessment) return this.startAssessment();
     if (this.phase !== 'lobby' && this.phase !== 'review') {
       throw new RoomError('invalid_state', 'Só é possível iniciar uma questão no lobby ou após o placar');
     }
@@ -299,26 +320,12 @@ export class Room {
     const countdownMs = this.settings.countdownSeconds * 1000;
     const startsAt = now + countdownMs;
     const endsAt = startsAt + question.timeLimitSeconds * 1000;
-    const record: QuestionRecord = {
-      question,
-      index,
-      startsAt,
-      endsAt,
-      finishedAt: null,
-      answers: new Map(),
-      progress: new Map(),
-      itemState: new Map(),
-      pastes: new Map(),
-      allowPaste: this.settings.allowPaste,
-      pending: new Map(),
-      lastSubmitAt: new Map(),
-      results: null,
-    };
+    const record = this.createRecord(question, index, startsAt, endsAt);
     this.current = record;
     this.history.push(record);
     this.phase = countdownMs > 0 ? 'countdown' : 'question';
 
-    const active = this.activeQuestion()!;
+    const active = this.activeQuestion(record)!;
     this.sink.emit({ kind: 'all' }, 'question:loaded', { question: active, serverNow: now });
 
     const begin = () => {
@@ -345,11 +352,94 @@ export class Room {
   }
 
   /**
+   * Atividade avaliativa: todas as questões abrem juntas, com o mesmo prazo, e cada aluno navega no próprio ritmo.
+   * Ao fim do prazo a sessão é encerrada.
+   */
+  private startAssessment(): ActiveQuestion {
+    if (this.phase !== 'lobby') throw new RoomError('invalid_state', 'A atividade já começou');
+    this.touch();
+    const now = this.clock.now();
+    this.startedAt = now;
+    const countdownMs = this.settings.countdownSeconds * 1000;
+    const startsAt = now + countdownMs;
+    const endsAt = startsAt + this.settings.assessmentMinutes * 60_000;
+    this.window = { startsAt, endsAt };
+    this.history = this.questions.map((question, index) => this.createRecord(question, index, startsAt, endsAt));
+    this.current = this.history[0]!;
+    for (const player of this.players.values()) player.position = 0;
+    this.phase = countdownMs > 0 ? 'countdown' : 'question';
+
+    const active = this.activeQuestion(this.current)!;
+    this.sink.emit({ kind: 'all' }, 'question:loaded', { question: active, serverNow: now });
+    const started = () => ({ questionId: active.question.id, startsAt, endsAt, serverNow: this.clock.now() });
+    if (countdownMs > 0) {
+      this.schedule(() => {
+        if (this.phase !== 'countdown') return;
+        this.phase = 'question';
+        this.sink.emit({ kind: 'all' }, 'question:started', started());
+        this.sink.sync();
+      }, countdownMs);
+    } else {
+      this.sink.emit({ kind: 'all' }, 'question:started', started());
+    }
+    this.schedule(() => void this.endSession(), endsAt - now);
+    this.sink.sync();
+    return active;
+  }
+
+  /** Atividade avaliativa: o aluno vai para outra questão. Devolve o snapshot dele. */
+  goTo(playerId: string, index: number): RoomSnapshot {
+    const player = this.players.get(playerId);
+    if (!player) throw new RoomError('not_in_room', 'Você não está nesta sala');
+    if (!this.isAssessment || !this.window) throw new RoomError('invalid_state', 'Disponível só em atividades avaliativas');
+    if (this.phase === 'ended') throw new RoomError('room_ended', 'A atividade foi encerrada');
+    if (!this.history[index]) throw new RoomError('invalid_state', 'Questão não encontrada');
+    this.touch();
+    player.position = index;
+    this.sink.emit({ kind: 'host' }, 'assessment:row', this.gradeRow(player));
+    return this.snapshotForPlayer(playerId);
+  }
+
+  private createRecord(question: ResolvedQuestion, index: number, startsAt: number, endsAt: number): QuestionRecord {
+    return {
+      question,
+      index,
+      startsAt,
+      endsAt,
+      finishedAt: null,
+      answers: new Map(),
+      progress: new Map(),
+      itemState: new Map(),
+      pastes: new Map(),
+      allowPaste: this.settings.allowPaste,
+      pending: new Map(),
+      lastSubmitAt: new Map(),
+      best: new Map(),
+      results: null,
+    };
+  }
+
+  private get isAssessment(): boolean {
+    return this.settings.mode === 'assessment';
+  }
+
+  /**
+   * A questão em que o aluno está trabalhando: a atual da sala ou, na atividade avaliativa, a que ele informou
+   * (ou a posição dele).
+   */
+  private recordFor(playerId: string, questionId?: string): QuestionRecord | null {
+    if (!this.isAssessment) return this.current;
+    if (questionId) return this.history.find((r) => r.question.id === questionId) ?? null;
+    const player = this.players.get(playerId);
+    return player ? (this.history[player.position] ?? null) : null;
+  }
+
+  /**
    * Progresso informado pelo cliente (contagem e ids dos itens concluídos, nunca o código).
    * É apenas informativo, para o painel do professor e a revisão da turma; a pontuação não depende dele.
    */
-  reportProgress(playerId: string, done: number, total: number, doneIds?: string[]): void {
-    const record = this.current;
+  reportProgress(playerId: string, done: number, total: number, doneIds?: string[], questionId?: string): void {
+    const record = this.recordFor(playerId, questionId);
     if (!record || record.finishedAt !== null || !this.players.has(playerId)) return;
     const required = record.question.checklist.filter((i) => !i.optional);
     let firstCompletion = false;
@@ -360,7 +450,8 @@ export class Room {
     }
     const entry = { done: Math.min(done, required.length), total: required.length };
     record.progress.set(playerId, entry);
-    this.sink.emit({ kind: 'host' }, 'question:progress', {
+    // Na atividade avaliativa, o professor acompanha pelo que o servidor confirmou (assessment:row).
+    if (!this.isAssessment) this.sink.emit({ kind: 'host' }, 'question:progress', {
       playerId,
       ...entry,
       answered: record.answers.get(playerId)?.status === 'accepted',
@@ -373,8 +464,8 @@ export class Room {
    * Colagem no editor, informada pelo navegador do aluno. Entra só na linha do tempo do professor, como indício;
    * a pontuação nunca depende dela. Ignorada fora do tempo da questão e depois da resposta aceita.
    */
-  reportPaste(playerId: string, chars: number, blocked: boolean): void {
-    const record = this.current;
+  reportPaste(playerId: string, chars: number, blocked: boolean, questionId?: string): void {
+    const record = this.recordFor(playerId, questionId);
     const now = this.clock.now();
     if (!record || record.finishedAt !== null || this.phase !== 'question' || !this.players.has(playerId)) return;
     if (now < record.startsAt || now > record.endsAt || record.answers.get(playerId)?.status === 'accepted') return;
@@ -420,10 +511,10 @@ export class Room {
    * Recebe uma resposta. O horário usado para pontuação é o de chegada no servidor,
    * registrado antes da validação (o tempo de validação não penaliza o aluno).
    */
-  async submit(playerId: string, code: string): Promise<PlayerAnswer> {
+  async submit(playerId: string, code: string, questionId?: string): Promise<PlayerAnswer> {
     const player = this.players.get(playerId);
     if (!player) throw new RoomError('not_in_room', 'Você não está nesta sala');
-    const record = this.current;
+    const record = this.recordFor(playerId, questionId);
     const receivedAt = this.clock.now();
     this.touch();
 
@@ -469,7 +560,9 @@ export class Room {
         verdict = { passed: false, items: [], message: `Falha na validação: ${err instanceof Error ? err.message : String(err)}` };
       }
       let answer: PlayerAnswer;
-      if (verdict.passed) {
+      if (verdict.passed && this.isAssessment) {
+        answer = { status: 'accepted', xp: 0, receivedAt, remainingMs, items: verdict.items, code };
+      } else if (verdict.passed) {
         const xp = calculateXP({
           baseXP: record.question.baseXP,
           speedBonusMax: record.question.speedBonusMax,
@@ -504,6 +597,13 @@ export class Room {
           : new Set(verdict.items.filter((i) => i.passed).map((i) => i.id));
         this.markItems(record, playerId, confirmed, 'add', receivedAt);
         if (answer.status === 'accepted') this.emitTimeline(record, playerId);
+        if (this.isAssessment) {
+          const grade = questionGrade(record.question.checklist, confirmed);
+          const best = record.best.get(playerId);
+          if (!best || grade > best.grade || (grade === best.grade && confirmed.size > best.passed.size)) {
+            record.best.set(playerId, { grade, passed: confirmed });
+          }
+        }
       }
       return answer;
     })();
@@ -514,6 +614,14 @@ export class Room {
     record.pending.delete(playerId);
 
     this.sink.emit({ kind: 'player', playerId }, 'question:validated', { questionId: record.question.id, answer });
+    if (this.isAssessment) {
+      // Sem sincronizar a sala inteira a cada envio: só o aluno e a linha dele no painel do professor.
+      if (this.players.has(playerId)) {
+        this.sink.emit({ kind: 'player', playerId }, 'room:update', this.snapshotForPlayer(playerId));
+        this.sink.emit({ kind: 'host' }, 'assessment:row', this.gradeRow(player));
+      }
+      return answer;
+    }
     this.sink.emit({ kind: 'host' }, 'question:submitted', {
       playerId,
       name: player.name,
@@ -528,6 +636,7 @@ export class Room {
 
   /** Encerra a questão atual (tempo esgotado, todos responderam ou ação do professor). */
   finishQuestion(): Promise<void> {
+    if (this.isAssessment) return this.endSession().then(() => undefined);
     if (this.finishing) return this.finishing;
     const record = this.current;
     if (!record || record.finishedAt !== null) return Promise.resolve();
@@ -579,16 +688,43 @@ export class Room {
     return this.finishing;
   }
 
-  async endSession(): Promise<SessionReport> {
-    if (this.report) return this.report;
-    if (this.phase === 'question' || this.phase === 'countdown') await this.finishQuestion();
-    this.clearTimers();
-    this.phase = 'ended';
-    this.touch();
-    this.report = this.buildReport();
-    this.sink.emit({ kind: 'all' }, 'session:ended', this.report);
-    this.sink.sync();
-    return this.report;
+  endSession(): Promise<SessionReport> {
+    if (this.report) return Promise.resolve(this.report);
+    this.ending ??= (async () => {
+      if (this.isAssessment) await this.finishAssessment();
+      else if (this.phase === 'question' || this.phase === 'countdown') await this.finishQuestion();
+      this.clearTimers();
+      this.phase = 'ended';
+      this.touch();
+      const report = this.buildReport();
+      this.report = report;
+      if (this.isAssessment) {
+        // Na atividade avaliativa, cada aluno recebe só o próprio resultado.
+        this.sink.emit({ kind: 'host' }, 'session:ended', report);
+        for (const player of this.players.values()) {
+          this.sink.emit({ kind: 'player', playerId: player.id }, 'session:ended', this.reportFor(player.id)!);
+        }
+      } else {
+        this.sink.emit({ kind: 'all' }, 'session:ended', report);
+      }
+      this.sink.sync();
+      return report;
+    })();
+    return this.ending;
+  }
+
+  /** Fecha todas as questões da atividade: espera as validações em andamento e calcula os resultados. */
+  private async finishAssessment(): Promise<void> {
+    if (!this.window) return;
+    await Promise.allSettled(this.history.flatMap((record) => [...record.pending.values()]));
+    const finishedAt = Math.min(this.clock.now(), this.window.endsAt);
+    for (const record of this.history) {
+      record.finishedAt = finishedAt;
+      record.results = this.computeResults(record);
+    }
+    for (const player of this.players.values()) {
+      player.correctCount = this.history.filter((r) => r.answers.get(player.id)?.status === 'accepted').length;
+    }
   }
 
   dispose(): void {
@@ -600,62 +736,125 @@ export class Room {
   /* ---------------------------------------------------------------- */
 
   snapshotForHost(): RoomSnapshot {
-    return {
-      ...this.baseSnapshot(this.leaderboard()),
+    const snapshot: RoomSnapshot = {
+      ...this.baseSnapshot(this.leaderboard(), this.current),
       progress: this.progressEntries(),
       timelines: this.history.map((record) => this.questionTimeline(record)),
     };
+    if (this.isAssessment && this.window) {
+      const grades = [...this.players.values()].map((player) => this.gradeRow(player));
+      return { ...snapshot, grades, answeredCount: grades.filter((row) => isComplete(row.questions)).length };
+    }
+    return snapshot;
   }
 
   snapshotForPlayer(playerId: string): RoomSnapshot {
     const player = this.players.get(playerId);
+    if (this.isAssessment) {
+      // Sem placar: o aluno vê só a própria atividade.
+      const record = this.recordFor(playerId);
+      const snapshot = { ...this.baseSnapshot([], record), report: this.report && this.reportFor(playerId) };
+      if (!player) return snapshot;
+      return {
+        ...snapshot,
+        me: { ...this.me(player, record), ...(this.window ? { assessment: this.studentView(player) } : {}) },
+      };
+    }
     const full = this.leaderboard();
     const leaderboard = this.settings.discreetMode
       ? full.filter((entry) => entry.rank <= 3 || entry.playerId === playerId)
       : full;
-    const snapshot = this.baseSnapshot(leaderboard);
+    const snapshot = this.baseSnapshot(leaderboard, this.current);
     if (!player) return snapshot;
-    const answer = this.current?.answers.get(playerId) ?? null;
+    return { ...snapshot, me: this.me(player, this.current) };
+  }
+
+  private me(player: PlayerState, record: QuestionRecord | null): NonNullable<RoomSnapshot['me']> {
     return {
-      ...snapshot,
-      me: {
-        playerId: player.id,
-        name: player.name,
-        avatar: player.avatar,
-        totalXP: player.totalXP,
-        rank: player.rank,
-        streak: player.streak,
-        answer,
-      },
+      playerId: player.id,
+      name: player.name,
+      avatar: player.avatar,
+      totalXP: player.totalXP,
+      rank: player.rank,
+      streak: player.streak,
+      answer: record?.answers.get(player.id) ?? null,
     };
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Atividade avaliativa                                              */
+  /* ---------------------------------------------------------------- */
+
+  private questionProgress(record: QuestionRecord, playerId: string): AssessmentQuestionProgress & { grade: number } {
+    const required = record.question.checklist.filter((i) => !i.optional);
+    const best = record.best.get(playerId);
+    const done = best ? required.filter((i) => best.passed.has(i.id)).length : 0;
+    const complete = record.answers.get(playerId)?.status === 'accepted';
+    return {
+      questionId: record.question.id,
+      title: record.question.title ?? record.question.prompt.slice(0, 60),
+      kind: record.question.kind,
+      done: complete ? required.length : done,
+      total: required.length,
+      status: complete ? 'complete' : done > 0 ? 'partial' : 'empty',
+      grade: complete ? questionGrade(record.question.checklist, new Set(required.map((i) => i.id))) : (best?.grade ?? 0),
+    };
+  }
+
+  /** Linha do professor: nota de cada questão (melhor versão) e média da atividade. */
+  private gradeRow(player: PlayerState): AssessmentGradeRow {
+    const questions = this.history.map((record) => this.questionProgress(record, player.id));
+    return {
+      playerId: player.id,
+      index: player.position,
+      grade: activityGrade(questions.map((q) => q.grade)),
+      questions,
+    };
+  }
+
+  /** O que o aluno vê: as mesmas situações, sem nota. */
+  private studentView(player: PlayerState): AssessmentStudentView {
+    return {
+      index: player.position,
+      questions: this.history.map((record) => {
+        const { grade: _grade, ...progress } = this.questionProgress(record, player.id);
+        return progress;
+      }),
+    };
+  }
+
+  /** O relatório com só o próprio aluno (atividade avaliativa). */
+  private reportFor(playerId: string): SessionReport | null {
+    if (!this.report) return null;
+    return { ...this.report, players: this.report.players.filter((p) => p.playerId === playerId) };
   }
 
   /* ---------------------------------------------------------------- */
   /* Internos                                                          */
   /* ---------------------------------------------------------------- */
 
-  private baseSnapshot(leaderboard: LeaderboardEntry[]): RoomSnapshot {
+  private baseSnapshot(leaderboard: LeaderboardEntry[], record: QuestionRecord | null): RoomSnapshot {
     return {
       code: this.code,
       phase: this.phase,
       packTitle: this.packTitle,
       pluginIds: [...new Set(this.questions.map((q) => q.pluginId))],
       questionCount: this.questions.length,
-      questionIndex: this.current?.index ?? -1,
+      questionIndex: record?.index ?? -1,
       settings: this.settings,
       players: [...this.players.values()].sort((a, b) => a.joinedAt - b.joinedAt).map((p) => this.publicPlayer(p)),
       leaderboard,
-      question: this.activeQuestion(),
+      question: this.activeQuestion(record),
       answeredCount: this.current ? this.acceptedCount(this.current) : 0,
       connectedCount: this.connectedPlayers().length,
       lastResults: this.current?.results ?? null,
       report: this.report,
       serverNow: this.clock.now(),
+      ...(this.isAssessment && this.window ? { assessment: { ...this.window } } : {}),
     };
   }
 
-  private activeQuestion(): ActiveQuestion | null {
-    const record = this.current;
+  private activeQuestion(record: QuestionRecord | null): ActiveQuestion | null {
     if (!record) return null;
     return {
       index: record.index,
@@ -747,16 +946,15 @@ export class Room {
 
   private maybeFinishWhenAllAnswered(): void {
     const record = this.current;
-    if (!record || record.finishedAt !== null || this.phase !== 'question') return;
+    if (this.isAssessment || !record || record.finishedAt !== null || this.phase !== 'question') return;
     const connected = this.connectedPlayers();
     if (connected.length === 0) return;
     if (connected.every((p) => record.answers.get(p.id)?.status === 'accepted')) void this.finishQuestion();
   }
 
   private computeResults(record: QuestionRecord): QuestionResults {
-    const timeLimitMs = record.question.timeLimitSeconds * 1000;
     const correct = [...record.answers.entries()].filter(([, a]) => a.status === 'accepted');
-    const times = correct.map(([id, a]) => ({ id, timeMs: timeLimitMs - a.remainingMs }));
+    const times = correct.map(([id, a]) => ({ id, timeMs: Math.max(0, a.receivedAt - record.startsAt) }));
     const fastest = times.reduce<{ id: string; timeMs: number } | null>(
       (best, t) => (!best || t.timeMs < best.timeMs ? t : best),
       null,
@@ -801,7 +999,7 @@ export class Room {
           questionId: record.question.id,
           correct,
           xp: correct ? answer!.xp : 0,
-          timeMs: correct ? record.question.timeLimitSeconds * 1000 - answer!.remainingMs : null,
+          timeMs: correct ? Math.max(0, answer!.receivedAt - record.startsAt) : null,
         };
       });
       const times = perQuestion.map((q) => q.timeMs).filter((t): t is number => t !== null);
@@ -839,6 +1037,10 @@ export class Room {
   private touch(): void {
     this.lastActivityAt = this.clock.now();
   }
+}
+
+function isComplete(questions: AssessmentQuestionProgress[]): boolean {
+  return questions.length > 0 && questions.every((q) => q.status === 'complete');
 }
 
 function median(values: number[]): number | null {

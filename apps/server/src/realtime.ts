@@ -3,6 +3,7 @@ import type { ZodType } from 'zod';
 import { RoomError, RoomManager, type Room, type RoomSink, type SubmissionValidator } from '@codearena/core';
 import type { PluginRegistry, QuizPlugin } from '@codearena/plugin-sdk';
 import {
+  AssessmentGotoPayloadSchema,
   CreateRoomPayloadSchema,
   HostAuthPayloadSchema,
   HostKickPayloadSchema,
@@ -234,14 +235,28 @@ export function attachRealtime({ io, rooms, packs, plugins, validator }: Realtim
       const current = currentPlayer(socket);
       const parsed = parse(ProgressPayloadSchema, payload);
       if (!current || !parsed.ok) return;
-      current.room.reportProgress(current.playerId, parsed.data.done, parsed.data.total, parsed.data.doneIds);
+      const { done, total, doneIds, questionId } = parsed.data;
+      current.room.reportProgress(current.playerId, done, total, doneIds, questionId);
     });
 
     socket.on('question:paste', (payload) => {
       const current = currentPlayer(socket);
       const parsed = parse(PastePayloadSchema, payload);
       if (!current || !parsed.ok) return;
-      current.room.reportPaste(current.playerId, parsed.data.chars, parsed.data.blocked);
+      current.room.reportPaste(current.playerId, parsed.data.chars, parsed.data.blocked, parsed.data.questionId);
+    });
+
+    socket.on('assessment:goto', (payload, rawAck) => {
+      const ack = safeAck<Parameters<Parameters<ClientToServerEvents['assessment:goto']>[1]>[0]>(rawAck);
+      const current = currentPlayer(socket);
+      if (!current) return ack(invalid('Entre em uma sala antes de responder', 'not_in_room'));
+      const parsed = parse(AssessmentGotoPayloadSchema, payload);
+      if (!parsed.ok) return ack(invalid(parsed.error));
+      try {
+        ack({ ok: true, snapshot: current.room.goTo(current.playerId, parsed.data.index) });
+      } catch (err) {
+        ack(failure(err));
+      }
     });
 
     socket.on('question:submit', async (payload, rawAck) => {
@@ -251,7 +266,7 @@ export function attachRealtime({ io, rooms, packs, plugins, validator }: Realtim
       const parsed = parse(SubmitPayloadSchema, payload);
       if (!parsed.ok) return ack(invalid(parsed.error));
       try {
-        const answer = await current.room.submit(current.playerId, parsed.data.code);
+        const answer = await current.room.submit(current.playerId, parsed.data.code, parsed.data.questionId);
         ack({ ok: true, answer });
       } catch (err) {
         ack(failure(err));

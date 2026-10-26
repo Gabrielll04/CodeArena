@@ -51,3 +51,11 @@ describe('lintQuestion: questões de depuração', () => {
     expect(result).toContain('warning:O código inicial já satisfaz este item.');
   });
 });
+
+describe('lintQuestion: projetos guiados', () => {
+  it('pede instrução em cada passo e pelo menos 3 passos', async () => {
+    const warnings = await levels({ kind: 'guided', solution: 'function somar(a, b) { return a + b; }' });
+    expect(warnings).toContain('warning:Passo sem instrução: escreva no campo hint o que o aluno faz neste passo.');
+    expect(warnings).toContain('warning:Projeto guiado com menos de 3 passos: prefira o tipo "build".');
+  });
+});

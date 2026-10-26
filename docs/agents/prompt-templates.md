@@ -122,7 +122,31 @@ Regras:
 
 Depois rode `pnpm validate:packs arquivo.json`: cada questão deve mostrar `INFO ... O bug é detectado por N de M itens`.
 
-## 7. Criar um plugin novo
+## 7. Gerar um projeto guiado
+
+Contexto: `AGENTS.md`, `docs/agents/question-pack-schema.md`, `docs/agents/checklist-rules.md`,
+`docs/agents/guided-questions.md` e o guia do plugin escolhido.
+
+```text
+Você é um autor de projetos guiados para o CodeArena.
+
+Gere um arquivo JSON válido compatível com o schema do CodeArena.
+
+Regras:
+- Use pluginId "<react-native ou backend-http>" e "kind": "guided" em todas as questões.
+- Crie <2> projetos para estudantes de nível <iniciante>: <o que construir, ex.: tela de perfil, lista de tarefas>.
+- Cada projeto tem entre 4 e 8 passos obrigatórios, na ordem em que o aluno deve fazer.
+- Todo passo tem "hint" com uma instrução curta do que fazer agora; o "label" é o resultado verificável, no imperativo.
+- Cada passo depende só dos anteriores e é verificável por máquina (prefira pluginRule quando existir).
+- Use "weight" 2 nos passos centrais do projeto; os demais ficam com o padrão.
+- Não inclua "goalImage" a menos que eu forneça o link da imagem.
+- "solution" completa todos os passos; "starterCode" vazio ou com o mínimo, sem completar nenhum passo.
+- Use timeLimitSeconds entre 600 e 1200, baseXP 500 e speedBonusMax 300.
+- Não use emojis. Não inclua comentários dentro do JSON.
+- Responda apenas com JSON válido.
+```
+
+## 8. Criar um plugin novo
 
 Contexto: `docs/plugins/creating-a-plugin.md`, `packages/plugin-sdk/src/types.ts`, [`src/index.ts` do plugin react-native](https://github.com/Gabrielll04/codearena-plugin-react-native/blob/HEAD/src/index.ts).
 

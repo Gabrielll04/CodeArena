@@ -20,6 +20,7 @@ export const ClientEvent = {
   QuestionProgress: 'question:progress',
   QuestionPaste: 'question:paste',
   QuestionSubmit: 'question:submit',
+  AssessmentGoto: 'assessment:goto',
 } as const;
 
 /** Eventos enviados pelo servidor aos clientes. */
@@ -31,6 +32,7 @@ export const ServerEvent = {
   QuestionStarted: 'question:started',
   QuestionProgress: 'question:progress',
   QuestionTimeline: 'question:timeline',
+  AssessmentRow: 'assessment:row',
   QuestionSubmitted: 'question:submitted',
   QuestionValidated: 'question:validated',
   QuestionFinished: 'question:finished',
@@ -60,7 +62,16 @@ export interface RoomSettings {
    * tentativas. É uma barreira do navegador, não uma garantia: a pontuação continua dependendo só do servidor.
    */
   allowPaste: boolean;
+  /**
+   * competition: todos na mesma questão, com placar e XP.
+   * assessment: atividade avaliativa; cada aluno no seu ritmo, sem placar, com nota de 0 a 10 para o professor.
+   */
+  mode: RoomMode;
+  /** Duração da atividade avaliativa, em minutos. */
+  assessmentMinutes: number;
 }
+
+export type RoomMode = 'competition' | 'assessment';
 
 export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   discreetMode: false,
@@ -69,6 +80,8 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   streakMaxSteps: 5,
   countdownSeconds: 3,
   allowPaste: true,
+  mode: 'competition',
+  assessmentMinutes: 50,
 };
 
 export interface PlayerPublic {
@@ -191,6 +204,38 @@ export interface QuestionTimeline {
   players: PlayerTimeline[];
 }
 
+/** Situação de uma questão numa atividade avaliativa, pela melhor versão confirmada pelo servidor. */
+export type AssessmentQuestionStatus = 'empty' | 'partial' | 'complete';
+
+export interface AssessmentQuestionProgress {
+  questionId: string;
+  title: string;
+  kind: 'build' | 'debug' | 'guided';
+  /** Itens obrigatórios confirmados pelo servidor e total de itens obrigatórios. */
+  done: number;
+  total: number;
+  status: AssessmentQuestionStatus;
+}
+
+/** O que o aluno vê da própria atividade: em que questão está e quais concluiu (sem nota). */
+export interface AssessmentStudentView {
+  index: number;
+  questions: AssessmentQuestionProgress[];
+}
+
+/** Linha do professor: posição do aluno, nota de cada questão e nota da atividade (0 a 10, uma casa decimal). */
+export interface AssessmentGradeRow {
+  playerId: string;
+  index: number;
+  grade: number;
+  questions: (AssessmentQuestionProgress & { grade: number })[];
+}
+
+export interface AssessmentWindow {
+  startsAt: number;
+  endsAt: number;
+}
+
 export interface QuestionResults {
   questionId: string;
   title: string;
@@ -241,6 +286,8 @@ export interface RoomSnapshot {
   lastResults: QuestionResults | null;
   report: SessionReport | null;
   serverNow: number;
+  /** Atividade avaliativa em andamento ou encerrada: começo e prazo (relógio do servidor). */
+  assessment?: AssessmentWindow;
   /** Visão do aluno. */
   me?: {
     playerId: string;
@@ -250,11 +297,15 @@ export interface RoomSnapshot {
     rank: number | null;
     streak: number;
     answer: PlayerAnswer | null;
+    /** Atividade avaliativa: questão atual e situação de cada questão. */
+    assessment?: AssessmentStudentView;
   };
   /** Visão do professor: progresso por aluno (sem código). */
   progress?: ProgressEntry[];
   /** Visão do professor: linha do tempo de cada questão já iniciada, na ordem da sessão. */
   timelines?: QuestionTimeline[];
+  /** Visão do professor, só em atividades avaliativas: nota e progresso de cada aluno. */
+  grades?: AssessmentGradeRow[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -278,6 +329,8 @@ export const RoomSettingsPatchSchema = z
     streakMaxSteps: z.number().int().min(1).max(20),
     countdownSeconds: z.number().int().min(0).max(10),
     allowPaste: z.boolean(),
+    mode: z.enum(['competition', 'assessment']),
+    assessmentMinutes: z.number().int().min(5).max(240),
   })
   .partial()
   .strict();
@@ -308,16 +361,24 @@ export const ProgressPayloadSchema = z.object({
   total: z.number().int().min(0).max(100),
   /** Itens concluídos no cliente. Informativo (painel do professor); a pontuação nunca depende disso. */
   doneIds: z.array(z.string().max(64)).max(12).optional(),
+  /** Atividade avaliativa: a questão a que o progresso se refere. */
+  questionId: z.string().max(64).optional(),
 });
 
 /** Colagem no editor, informada pelo navegador do aluno: só o tamanho do texto, nunca o conteúdo. */
 export const PastePayloadSchema = z.object({
   chars: z.number().int().min(0).max(MAX_CODE_LENGTH),
   blocked: z.boolean(),
+  /** Atividade avaliativa: a questão em que a colagem aconteceu. */
+  questionId: z.string().max(64).optional(),
 });
+
+export const AssessmentGotoPayloadSchema = z.object({ index: z.number().int().min(0).max(100) });
 
 export const SubmitPayloadSchema = z.object({
   code: z.string().max(MAX_CODE_LENGTH, 'Código muito longo'),
+  /** Atividade avaliativa: a questão a que a resposta se refere (o aluno pode ter mudado de questão). */
+  questionId: z.string().max(64).optional(),
 });
 
 export type CreateRoomPayload = z.infer<typeof CreateRoomPayloadSchema>;
@@ -327,6 +388,7 @@ export type HostSettingsPayload = z.infer<typeof HostSettingsPayloadSchema>;
 export type HostKickPayload = z.infer<typeof HostKickPayloadSchema>;
 export type ProgressPayload = z.infer<typeof ProgressPayloadSchema>;
 export type PastePayload = z.infer<typeof PastePayloadSchema>;
+export type AssessmentGotoPayload = z.infer<typeof AssessmentGotoPayloadSchema>;
 export type SubmitPayload = z.infer<typeof SubmitPayloadSchema>;
 export type RoomSettingsPatch = z.infer<typeof RoomSettingsPatchSchema>;
 
@@ -381,6 +443,8 @@ export interface ServerToClientEvents {
   'question:progress': (payload: ProgressEntry) => void;
   /** Só para o professor: a linha do tempo de um aluno mudou na questão atual. */
   'question:timeline': (payload: { questionId: string; timeline: PlayerTimeline }) => void;
+  /** Só para o professor, em atividades avaliativas: a linha de um aluno mudou. */
+  'assessment:row': (row: AssessmentGradeRow) => void;
   'question:submitted': (payload: QuestionSubmittedEvent) => void;
   'question:validated': (payload: QuestionValidatedEvent) => void;
   'question:finished': (payload: QuestionFinishedEvent) => void;
@@ -401,5 +465,7 @@ export interface ClientToServerEvents {
   'host:kick': (payload: HostKickPayload, ack: (res: Ack) => void) => void;
   'question:progress': (payload: ProgressPayload) => void;
   'question:paste': (payload: PastePayload) => void;
+  /** Atividade avaliativa: o aluno vai para outra questão. Devolve o snapshot dele. */
+  'assessment:goto': (payload: AssessmentGotoPayload, ack: (res: Ack<{ snapshot: RoomSnapshot }>) => void) => void;
   'question:submit': (payload: SubmitPayload, ack: (res: Ack<{ answer: PlayerAnswer }>) => void) => void;
 }

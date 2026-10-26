@@ -404,6 +404,7 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
               [
                 ['build', 'Construir', 'O aluno escreve a solução.'],
                 ['debug', 'Depurar', 'O aluno corrige um código com bug.'],
+                ['guided', 'Guiado', 'O aluno constrói seguindo passos.'],
               ] as const
             ).map(([value, label, hint]) => (
               <button
@@ -416,7 +417,7 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
                 onClick={() => set('kind', value)}
                 className={cx(
                   'rounded-lg px-4 py-1.5 text-sm font-semibold transition',
-                  question.kind === value ? (value === 'debug' ? 'bg-coral/20 text-coral' : 'bg-white/10 text-white') : 'text-white/50 hover:text-white',
+                  question.kind === value ? KIND_TONE[value] : 'text-white/50 hover:text-white',
                 )}
               >
                 {label}
@@ -426,11 +427,16 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
           <p className="text-xs text-white/40">
             {question.kind === 'debug'
               ? 'O código inicial é o código com bug. Descreva o sintoma no enunciado e verifique o comportamento corrigido na checklist.'
-              : 'O código inicial é o ponto de partida (pode ficar vazio).'}
+              : question.kind === 'guided'
+                ? 'Cada item da checklist é um passo, na ordem. Escreva no campo de instrução o que o aluno faz nesse passo.'
+                : 'O código inicial é o ponto de partida (pode ficar vazio).'}
           </p>
         </div>
         <Field label="Enunciado" htmlFor="q-prompt" hint="Curto e objetivo. Use `crases` para destacar código.">
           <Textarea id="q-prompt" value={question.prompt} onChange={(e) => set('prompt', e.target.value)} placeholder='Ex.: Faça um app com um botão escrito "Clique aqui" em React Native.' />
+        </Field>
+        <Field label="Imagem do resultado esperado (opcional)" htmlFor="q-goal" hint="Link de uma imagem (http ou https). Aparece junto do enunciado.">
+          <Input id="q-goal" type="url" value={question.goalImage ?? ''} onChange={(e) => set('goalImage', e.target.value.trim() || undefined)} placeholder="https://..." />
         </Field>
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Tempo (segundos)" htmlFor="q-time">
@@ -487,6 +493,7 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
               key={index}
               index={index}
               item={item}
+              guided={question.kind === 'guided'}
               plugin={plugin}
               helpers={helpers}
               status={live.evaluation.items.find((r) => r.id === item.id)?.status}
@@ -549,6 +556,12 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
   );
 }
 
+const KIND_TONE = {
+  build: 'bg-white/10 text-white',
+  debug: 'bg-coral/20 text-coral',
+  guided: 'bg-violet/25 text-[#C3ADFF]',
+} as const;
+
 function ItemEditor({
   item,
   index,
@@ -558,9 +571,11 @@ function ItemEditor({
   onChange,
   onRemove,
   onMove,
+  guided,
 }: {
   item: ChecklistItem;
   index: number;
+  guided: boolean;
   plugin: ClientQuizPlugin<any>;
   helpers: RegexHelper[];
   status?: string;
@@ -721,7 +736,29 @@ function ItemEditor({
 
         <div className="flex flex-wrap items-center gap-3">
           <Input aria-label="Id do item" value={item.id} onChange={(e) => onChange({ ...item, id: slugify(e.target.value, '') })} className="w-44 font-mono text-xs" />
-          <Input aria-label="Dica (opcional)" value={item.hint ?? ''} onChange={(e) => onChange({ ...item, hint: e.target.value || undefined })} placeholder="Dica exibida enquanto pendente (opcional)" className="min-w-[200px] flex-1 text-xs" />
+          <Input
+            aria-label={guided ? 'Instrução do passo' : 'Dica (opcional)'}
+            value={item.hint ?? ''}
+            onChange={(e) => onChange({ ...item, hint: e.target.value || undefined })}
+            placeholder={guided ? 'Instrução do passo: o que o aluno faz agora' : 'Dica exibida enquanto pendente (opcional)'}
+            className="min-w-[200px] flex-1 text-xs"
+          />
+          <label className="flex items-center gap-1.5 text-xs text-white/60" title="Peso na nota das atividades avaliativas">
+            Peso
+            <Input
+              aria-label="Peso na nota"
+              type="number"
+              min={0.1}
+              max={10}
+              step={0.5}
+              value={item.weight ?? 1}
+              onChange={(e) => {
+                const weight = Number(e.target.value);
+                onChange({ ...item, weight: weight === 1 || !Number.isFinite(weight) ? undefined : weight });
+              }}
+              className="w-16 py-1 text-xs"
+            />
+          </label>
           <label className="flex items-center gap-1.5 text-xs text-white/60">
             <input type="checkbox" className="accent-[#B9FF3B]" checked={item.optional} onChange={(e) => onChange({ ...item, optional: e.target.checked })} />
             Opcional

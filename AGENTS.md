@@ -21,6 +21,8 @@ o servidor valida de novo e concede XP (base + bônus por velocidade).
 | `packages/plugin-sdk/src/types.ts` | Contrato de plugins (`QuizPlugin`, `ChecklistValidator`) |
 | `codearena.config.json` | Plugins ativos na instalação (lidos por `packages/plugin-host`) |
 | `docs/agents/debug-questions.md` | Como criar questões de depuração (`kind: "debug"`) |
+| `docs/agents/guided-questions.md` | Como criar projetos guiados (`kind: "guided"`) |
+| `packages/core/src/grading.ts` | Nota de 0 a 10 das atividades avaliativas (pesos dos itens) |
 | `node_modules/@codearena/plugin-*/packs/*.json` | Packs de exemplo válidos de cada plugin (inclui `depuracao-*.json`) |
 | `docs/agents/` | Instruções detalhadas para gerar conteúdo |
 | `scripts/validate-packs.ts` | Validador de packs (schema + checklist contra a solução) |
@@ -55,6 +57,13 @@ Leia `docs/agents/debug-questions.md`. Em resumo:
 12. O enunciado descreve o **sintoma**, nunca a causa.
 13. Pelo menos um item obrigatório **falha** no código com bug; os demais devem ser itens de proteção que já passam.
 14. Labels descrevem o comportamento esperado, não o conserto.
+
+## Regras extras para projetos guiados (`"kind": "guided"`)
+
+Leia `docs/agents/guided-questions.md`. Em resumo:
+
+15. Cada item da checklist é um passo, na ordem; todo passo obrigatório tem `hint` com a instrução do passo.
+16. Cada passo depende só dos anteriores. `goalImage` só com um link real fornecido pelo professor.
 
 ## Como verificar o que você gerou
 

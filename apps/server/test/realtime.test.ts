@@ -196,6 +196,39 @@ describe('sala em tempo real', () => {
     expect(ok.answer.status).toBe('accepted');
   });
 
+  it('atividade avaliativa: cada aluno no seu ritmo, nota só para o professor', async () => {
+    const host = await client();
+    const created = await emit<{ ok: true; code: string; hostToken: string }>(host, 'room:create', {
+      packId: 'exemplo-react-native-fundamentos',
+      questionIds: ['botao-clique-aqui', 'texto-ola'],
+      settings: { countdownSeconds: 0, mode: 'assessment', assessmentMinutes: 10 },
+    });
+    const auth = { code: created.code, hostToken: created.hostToken };
+    const ana = await client();
+    await emit(ana, 'room:join', { code: created.code, name: 'Ana', avatar: 'bolt' });
+    expect(await emit(host, 'host:start-question', auth)).toEqual({ ok: true });
+
+    const row = nextEvent(host, 'assessment:row', (r) => r.questions[0]!.status === 'complete');
+    const solution = 'export default function App() {\n  return <Button title="Clique aqui" />;\n}';
+    const answer = await emit<{ ok: true; answer: { status: string; xp: number } }>(ana, 'question:submit', {
+      code: solution,
+      questionId: 'botao-clique-aqui',
+    });
+    expect(answer.answer).toMatchObject({ status: 'accepted', xp: 0 });
+    expect((await row).questions.map((q) => q.grade)).toEqual([10, 0]);
+    expect((await row).grade).toBe(5);
+
+    const moved = await emit<{ ok: true; snapshot: RoomSnapshot }>(ana, 'assessment:goto', { index: 1 });
+    expect(moved.snapshot.question?.question.id).toBe('texto-ola');
+    expect(moved.snapshot.me?.assessment?.questions.map((q) => q.status)).toEqual(['complete', 'empty']);
+    expect(moved.snapshot.grades).toBeUndefined();
+    expect(await emit(ana, 'assessment:goto', { index: 9 })).toMatchObject({ ok: false });
+
+    const ended = nextEvent(ana, 'session:ended');
+    expect(await emit(host, 'host:end-session', auth)).toEqual({ ok: true });
+    expect((await ended).players.map((p) => p.name)).toEqual(['Ana']);
+  });
+
   it('recusa sala de pack inexistente e entrada em sala inexistente', async () => {
     const socket = await client();
     expect(await emit(socket, 'room:create', { packId: 'nao-existe' })).toMatchObject({ ok: false, code: 'pack_not_found' });

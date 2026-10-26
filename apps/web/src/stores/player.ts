@@ -32,10 +32,13 @@ interface PlayerStore {
   join(input: { code: string; name: string; avatar: AvatarId }): Promise<{ ok: true } | { ok: false; error: string }>;
   resume(code: string): Promise<boolean>;
   leave(): void;
-  submit(code: string): Promise<PlayerAnswer | { error: string }>;
-  reportProgress(done: number, total: number, doneIds: string[]): void;
+  /** `questionId` só nas atividades avaliativas, em que cada aluno está numa questão. */
+  submit(code: string, questionId?: string): Promise<PlayerAnswer | { error: string }>;
+  reportProgress(done: number, total: number, doneIds: string[], questionId?: string): void;
   /** Informa uma colagem no editor (só o tamanho) para a linha do tempo do professor. */
-  reportPaste(chars: number, blocked: boolean): void;
+  reportPaste(chars: number, blocked: boolean, questionId?: string): void;
+  /** Atividade avaliativa: vai para outra questão. */
+  goTo(index: number): Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 let listening = false;
@@ -133,16 +136,23 @@ export const usePlayer = create<PlayerStore>((set, get) => {
       set({ status: 'idle', session: null, snapshot: null, playerId: null, lastFinished: null, report: null });
     },
 
-    async submit(code) {
-      const res = await request('question:submit', { code }, 20000);
+    async submit(code, questionId) {
+      const res = await request('question:submit', { code, questionId }, 20000);
       return res.ok ? res.answer : { error: res.error };
     },
 
-    reportProgress(done, total, doneIds) {
-      getSocket().emit('question:progress', { done, total, doneIds });
+    reportProgress(done, total, doneIds, questionId) {
+      getSocket().emit('question:progress', { done, total, doneIds, questionId });
     },
-    reportPaste(chars, blocked) {
-      getSocket().emit('question:paste', { chars, blocked });
+    reportPaste(chars, blocked, questionId) {
+      getSocket().emit('question:paste', { chars, blocked, questionId });
+    },
+
+    async goTo(index) {
+      const res = await request('assessment:goto', { index });
+      if (!res.ok) return { ok: false, error: res.error };
+      accept(res.snapshot);
+      return { ok: true };
     },
   };
 });
