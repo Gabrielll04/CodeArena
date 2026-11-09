@@ -122,25 +122,26 @@ Regras:
 
 Depois rode `pnpm validate:packs arquivo.json`: cada questão deve mostrar `INFO ... O bug é detectado por N de M itens`.
 
-## 7. Gerar um projeto guiado
+## 7. Gerar uma atividade com critérios MSEP
 
 Contexto: `AGENTS.md`, `docs/agents/question-pack-schema.md`, `docs/agents/checklist-rules.md`,
-`docs/agents/guided-questions.md` e o guia do plugin escolhido.
+`docs/agents/activity-criteria.md` e o guia do plugin escolhido.
 
 ```text
-Você é um autor de projetos guiados para o CodeArena.
+Você é um autor de atividades avaliativas para o CodeArena, seguindo a Metodologia SENAI de Educação Profissional (MSEP).
 
 Gere um arquivo JSON válido compatível com o schema do CodeArena.
 
 Regras:
-- Use pluginId "<react-native ou backend-http>" e "kind": "guided" em todas as questões.
-- Crie <2> projetos para estudantes de nível <iniciante>: <o que construir, ex.: tela de perfil, lista de tarefas>.
-- Cada projeto tem entre 4 e 8 passos obrigatórios, na ordem em que o aluno deve fazer.
-- Todo passo tem "hint" com uma instrução curta do que fazer agora; o "label" é o resultado verificável, no imperativo.
-- Cada passo depende só dos anteriores e é verificável por máquina (prefira pluginRule quando existir).
-- Use "weight" 2 nos passos centrais do projeto; os demais ficam com o padrão.
-- Não inclua "goalImage" a menos que eu forneça o link da imagem.
-- "solution" completa todos os passos; "starterCode" vazio ou com o mínimo, sem completar nenhum passo.
+- Use pluginId "<react-native ou backend-http>" em todas as questões.
+- Crie <3> questões para estudantes de nível <iniciante> sobre <tema>, avaliando estas capacidades e conhecimentos:
+  <lista, ex.: capacidade técnica "Utilizar componentes de interface"; conhecimento "Estado de componentes">.
+- Cada questão tem de 2 a 4 critérios críticos (itens obrigatórios) e de 1 a 4 desejáveis ("optional": true).
+- Todo critério tem "capability" com "type" (capacidade-tecnica, capacidade-socioemocional ou conhecimento) e "name".
+- Critérios descrevem resultados observáveis no código. Prefira regras verificáveis (pluginRule quando existir);
+  use { "type": "manual" } só quando o código não basta para verificar.
+- O enunciado diz o que construir, sem listar os critérios.
+- "solution" atende a todos os critérios verificáveis; "starterCode" vazio ou com o mínimo.
 - Use timeLimitSeconds entre 600 e 1200, baseXP 500 e speedBonusMax 300.
 - Não use emojis. Não inclua comentários dentro do JSON.
 - Responda apenas com JSON válido.

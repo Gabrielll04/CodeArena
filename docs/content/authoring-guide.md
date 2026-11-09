@@ -31,7 +31,7 @@ Para cada questão:
 
 ## Conduzindo a aula
 
-1. Biblioteca > Abrir sala: escolha o tipo de sala (competição ou [atividade avaliativa](#atividade-avaliativa)), as
+1. Biblioteca > Abrir sala: escolha o tipo de sala (competição ou [atividade](#atividade)), as
    questões e as opções (modo discreto, bônus de sequência, permitir colar texto).
 2. Projete a tela do lobby: ela mostra o endereço e o código de 6 dígitos.
 3. "Iniciar questão" dispara uma contagem de 3 s para todos.
@@ -50,27 +50,47 @@ Para cada questão:
 
 Esses sinais não mudam o XP. Use-os para conversar com o aluno.
 
-## Atividade avaliativa
+## Atividade
 
-Para atividades que valem nota, feitas em aula. Ao abrir a sala, escolha **Atividade avaliativa** e a duração em minutos.
+Para atividades que valem nota, feitas em aula. Ao abrir a sala, escolha **Atividade** e a duração em minutos.
 
-- Todas as questões abrem juntas. Cada aluno vai e volta entre elas no próprio ritmo.
-- Sem placar, sem XP e sem pódio. O aluno vê os passos concluídos e quais questões terminou.
-- O progresso é salvo sozinho. Vale a melhor versão de cada questão.
-- Você acompanha cada aluno em cada questão e encerra quando quiser; no fim do tempo, encerra sozinha.
-- **Nota de 0 a 10** (ex.: 7,5): a parte da checklist que o aluno concluiu em cada questão; a nota final é a média
-  das questões. Itens podem ter peso diferente (campo **Peso** no editor). Só você vê as notas.
-- **Notas (CSV)** abre direto no Excel e no Google Planilhas, pronto para o diário ou o Classroom.
+- Todas as questões abrem juntas. Cada aluno vai e volta entre elas no próprio ritmo e entrega quando terminar.
+- Sem placar, sem XP e sem checklist automática: o aluno vê o problema e os critérios de avaliação, e resolve.
+- A resposta é salva enquanto o aluno escreve. No fim do tempo, a atividade encerra sozinha.
+- Você acompanha quem já respondeu cada questão e quem entregou. As colagens aparecem em cada questão.
 
-## Projeto guiado
+### Critérios críticos e desejáveis (MSEP)
 
-Tipo de questão para construir algo maior passo a passo ("Crie uma página..."). No editor, escolha **Guiado**:
+Cada item da checklist é um critério de avaliação:
 
-- cada item da checklist vira um passo, na ordem, e o campo **Instrução do passo** diz o que fazer;
-- o aluno vê o passo atual em destaque e os próximos esmaecidos;
-- em **Imagem do resultado esperado**, cole o link de uma imagem do que deve ser construído.
+- **Crítico:** item obrigatório. **Desejável:** item marcado como opcional.
+- **O que avalia:** capacidade técnica, capacidade socioemocional ou conhecimento, com o nome (ex.: "Utilizar
+  componentes de interface").
+- **Avaliado pelo professor:** tipo de regra para critérios que só uma pessoa decide. Os demais tipos também rodam como
+  teste automático, que serve só de sugestão.
 
-Funciona nos dois tipos de sala e com todos os plugins.
+### Avaliar
+
+Depois de encerrar, clique em **Avaliar respostas** (ou abra a sessão em **Histórico**). Para cada aluno e questão, veja o
+código e marque cada critério como **Atendido** ou **Não atendido**. Você pode:
+
+- marcar tudo à mão;
+- usar os testes automáticos nos critérios ainda sem marca e revisar;
+- baixar o **Arquivo para IA** (da turma ou de um aluno), enviar para a IA que preferir e colar a resposta em
+  **Importar avaliação da IA**. Os alunos aparecem no arquivo só como aluno-01, aluno-02. Tudo continua editável.
+
+**Nota de 0 a 100:**
+
+- todos os críticos atendidos: de 50 a 100, conforme os desejáveis atendidos;
+- faltou algum crítico: no máximo 50;
+- nota da atividade: média das questões, e no máximo 50 se faltou crítico em alguma questão.
+
+**Notas (CSV)** abre direto no Excel e no Google Planilhas, pronto para o diário ou o Classroom.
+
+## Histórico
+
+Em **Histórico** ficam todas as sessões encerradas: placar, respostas de cada aluno e avaliações. O histórico fica ligado a
+este navegador; para ver em outro, use **Copiar minha chave** e cole no outro navegador.
 
 ## Telas do fluxo do professor
 

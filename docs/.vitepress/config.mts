@@ -49,7 +49,7 @@ export default defineConfig({
           { text: 'Schema do question pack', link: '/agents/question-pack-schema' },
           { text: 'Regras de checklist', link: '/agents/checklist-rules' },
           { text: 'Questões de depuração', link: '/agents/debug-questions' },
-          { text: 'Projetos guiados', link: '/agents/guided-questions' },
+          { text: 'Critérios de atividades (MSEP)', link: '/agents/activity-criteria' },
           { text: 'Plugin react-native', link: '/agents/plugin-react-native' },
           { text: 'Plugin backend-http', link: '/agents/plugin-backend-http' },
           { text: 'Prompts prontos', link: '/agents/prompt-templates' },

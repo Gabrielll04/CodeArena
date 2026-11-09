@@ -41,7 +41,7 @@ Entre 1 e 100 questões. Cada questão:
 | `title` | string | não | título curto exibido acima do enunciado, até 80 caracteres |
 | `prompt` | string | sim | enunciado, 1 a 2000 caracteres; trechos entre crases aparecem como código |
 | `pluginId` | string | não | sobrescreve `pack.pluginId` para esta questão |
-| `kind` | `"build"`, `"debug"` ou `"guided"` | não (padrão `"build"`) | `debug`: o `starterCode` é um código com bug e a checklist verifica o comportamento corrigido (ver `debug-questions.md`). `guided`: projeto guiado; a checklist é uma sequência de passos, na ordem, cada um com `hint` |
+| `kind` | `"build"` ou `"debug"` | não (padrão `"build"`) | `debug`: o `starterCode` é um código com bug e a checklist verifica o comportamento corrigido (ver `debug-questions.md`). O antigo `"guided"` é lido como `"build"` |
 | `goalImage` | string | não | link `http(s)` de uma imagem do resultado esperado, até 500 caracteres |
 | `timeLimitSeconds` | inteiro | sim | 10 a 3600 |
 | `baseXP` | inteiro | sim | 0 a 10000; XP por acertar |
@@ -60,9 +60,10 @@ Entre 1 e 100 questões. Cada questão:
 | `id` | string | sim | `kebab-case`, único na questão |
 | `label` | string | sim | 1 a 140 caracteres, no imperativo |
 | `rule` | objeto | sim | ver `checklist-rules.md` |
-| `optional` | boolean | não (padrão `false`) | itens opcionais não bloqueiam a resposta |
-| `hint` | string | não | dica exibida enquanto o item está pendente, até 280 caracteres; em `guided`, a instrução do passo |
-| `weight` | número | não (padrão `1`) | 0.1 a 10; peso do item na nota das atividades avaliativas |
+| `optional` | boolean | não (padrão `false`) | itens opcionais não bloqueiam a resposta; nas atividades, opcional é critério desejável e obrigatório é crítico |
+| `hint` | string | não | dica exibida enquanto o item está pendente, até 280 caracteres |
+| `capability` | objeto | não | o que o critério avalia: `{ "type": "capacidade-tecnica" \| "capacidade-socioemocional" \| "conhecimento", "name": "..." }` (ver `activity-criteria.md`) |
+| `weight` | número | não | obsoleto e ignorado |
 
 ### Formas de `rule`
 
@@ -71,6 +72,7 @@ Entre 1 e 100 questões. Cada questão:
 { "type": "notContains", "value": "texto", "caseSensitive": true, "ignoreComments": false }
 { "type": "regex",       "pattern": "padrão", "flags": "m", "ignoreComments": false }
 { "type": "pluginRule",  "validator": "nomeDoValidador", "params": { } }
+{ "type": "manual" }
 ```
 
 - `flags` aceita apenas `i`, `m`, `s`, `u`.
@@ -116,6 +118,7 @@ Exemplos completos: [`react-native-fundamentos.json`](https://github.com/Gabriel
 | dois itens com `"id": "a"` | `questions[0].checklist[1].id` | id de item duplicado: "a" |
 | todos os itens `optional` | `questions[0].checklist` | a checklist precisa de pelo menos 1 item obrigatório |
 | `"kind": "quiz"` | `questions[0].kind` | Invalid enum value. Expected 'build' \| 'debug' \| 'guided' |
+| `"capability": { "type": "atitude" }` | `questions[0].checklist[0].capability.type` | capability.type deve ser um de: capacidade-tecnica, capacidade-socioemocional, conhecimento |
 | campo extra `"answer"` | `questions[0]` | campos não reconhecidos: answer |
 | `checklist: []` | `questions[0].checklist` | checklist precisa de pelo menos 1 item |
 
@@ -126,7 +129,7 @@ Além do schema, o comando `pnpm validate:packs` e o editor do app avisam quando
 - uma regex aceita texto vazio (**erro**);
 - um validador de plugin não existe (**erro**);
 - em `kind: "debug"`: o código com bug já cumpre todos os itens, falta código inicial ou a solução é igual ao código com bug (**erro**); a lista de itens que detectam o bug é informada como `INFO`;
-- em `kind: "guided"`: um passo obrigatório sem `hint` ou menos de 3 passos (**aviso**);
+- nenhum critério crítico é verificado pelo código, só critérios `manual` (**aviso**: a questão serve só para atividades);
 - um texto de `contains` é curto demais, há espaço literal junto de pontuação numa regex, ou o `starterCode` já satisfaz um item (**aviso**).
 
 ## Versionamento de packs
