@@ -26,6 +26,8 @@ export interface ChecklistEvaluationResult {
   requiredTotal: number;
   requiredDone: number;
   allRequiredDone: boolean;
+  /** O código tem erro de sintaxe: nenhum item foi concluído. Mensagem do plugin, com a linha quando possível. */
+  syntaxError?: string;
 }
 
 /**
@@ -107,6 +109,12 @@ export interface QuizPlugin<S = unknown> {
 
   /** Validadores usados por regras `{ "type": "pluginRule", "validator": "<nome>" }`. */
   validators?: Record<string, ChecklistValidator<any, S>>;
+
+  /**
+   * Validador estático (de `validators`) que confere a sintaxe. Com ele, código com erro de sintaxe não conclui nenhum
+   * item da checklist. Sem declarar, vale um validador estático terminado em "Compiles"; `false` desliga.
+   */
+  syntaxValidator?: string | false;
 
   /** Cria estado compartilhado por todos os validadores numa rodada de avaliação. */
   createSession?(input: SessionInput): MaybePromise<S>;
