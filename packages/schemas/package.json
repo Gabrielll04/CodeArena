@@ -1,6 +1,6 @@
 {
   "name": "@codearena/schemas",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Schemas Zod e contratos compartilhados do CodeArena (question packs, eventos multiplayer).",
   "keywords": [

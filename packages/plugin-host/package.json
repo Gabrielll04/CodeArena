@@ -1,6 +1,6 @@
 {
   "name": "@codearena/plugin-host",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Lê codearena.config.json, resolve os pacotes de plugin e gera o carregamento sob demanda no Vite.",
   "keywords": [
