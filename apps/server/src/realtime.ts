@@ -4,6 +4,7 @@ import { RoomError, RoomManager, type Room, type RoomSink, type SubmissionValida
 import type { PluginRegistry, QuizPlugin } from '@codearena/plugin-sdk';
 import {
   AssessmentGotoPayloadSchema,
+  AssessmentSavePayloadSchema,
   CreateRoomPayloadSchema,
   HostAuthPayloadSchema,
   HostKickPayloadSchema,
@@ -18,6 +19,7 @@ import {
   type ErrorCode,
   type ServerToClientEvents,
 } from '@codearena/schemas';
+import { hashTeacherKey, type HistoryStore } from './historyStore';
 import type { PackStore } from './packStore';
 
 interface SocketData {
@@ -60,9 +62,10 @@ export interface RealtimeDeps {
   packs: PackStore;
   plugins: PluginRegistry<QuizPlugin<any>>;
   validator: SubmissionValidator;
+  history: HistoryStore;
 }
 
-export function attachRealtime({ io, rooms, packs, plugins, validator }: RealtimeDeps): void {
+export function attachRealtime({ io, rooms, packs, plugins, validator, history }: RealtimeDeps): void {
   const sinkFor = (getRoom: () => Room | undefined): RoomSink => ({
     emit(target, event, payload) {
       const room = getRoom();
@@ -125,6 +128,8 @@ export function attachRealtime({ io, rooms, packs, plugins, validator }: Realtim
       if (missing.length) return ack(invalid(`Plugin não instalado no servidor: ${missing.join(', ')}`, 'plugin_missing'));
 
       let room: Room | undefined;
+      const historyId = history.newId();
+      const owner = parsed.data.teacherKey ? hashTeacherKey(parsed.data.teacherKey) : null;
       try {
         room = rooms.create({
           packTitle: stored.pack.pack.title,
@@ -132,6 +137,8 @@ export function attachRealtime({ io, rooms, packs, plugins, validator }: Realtim
           settings: parsed.data.settings,
           validator,
           sink: sinkFor(() => room),
+          historyId,
+          onEnded: (ended) => void history.saveRoom({ id: historyId, owner, packId: stored.id, room: ended }),
         });
       } catch (err) {
         return ack(failure(err));
@@ -244,6 +251,31 @@ export function attachRealtime({ io, rooms, packs, plugins, validator }: Realtim
       const parsed = parse(PastePayloadSchema, payload);
       if (!current || !parsed.ok) return;
       current.room.reportPaste(current.playerId, parsed.data.chars, parsed.data.blocked, parsed.data.questionId);
+    });
+
+    socket.on('assessment:save', (payload, rawAck) => {
+      const ack = safeAck<Parameters<Parameters<ClientToServerEvents['assessment:save']>[1]>[0]>(rawAck);
+      const current = currentPlayer(socket);
+      if (!current) return ack(invalid('Entre em uma sala antes de responder', 'not_in_room'));
+      const parsed = parse(AssessmentSavePayloadSchema, payload);
+      if (!parsed.ok) return ack(invalid(parsed.error));
+      try {
+        ack({ ok: true, savedAt: current.room.saveAnswer(current.playerId, parsed.data.questionId, parsed.data.code) });
+      } catch (err) {
+        ack(failure(err));
+      }
+    });
+
+    socket.on('assessment:deliver', (...args: unknown[]) => {
+      // Sem payload: o ack é o último argumento (alguns clientes enviam um payload vazio antes dele).
+      const ack = safeAck<Parameters<Parameters<ClientToServerEvents['assessment:deliver']>[0]>[0]>(args.at(-1));
+      const current = currentPlayer(socket);
+      if (!current) return ack(invalid('Entre em uma sala antes de responder', 'not_in_room'));
+      try {
+        ack({ ok: true, snapshot: current.room.deliver(current.playerId) });
+      } catch (err) {
+        ack(failure(err));
+      }
     });
 
     socket.on('assessment:goto', (payload, rawAck) => {

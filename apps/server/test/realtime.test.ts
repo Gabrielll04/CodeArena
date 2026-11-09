@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { io as connect, type Socket } from 'socket.io-client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { ClientToServerEvents, RoomSnapshot, ServerToClientEvents } from '@codearena/schemas';
+import type { ClientToServerEvents, RoomSnapshot, ServerToClientEvents, SessionHistory } from '@codearena/schemas';
 import { buildServer } from '../src/app';
 
 type ClientSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -196,37 +196,83 @@ describe('sala em tempo real', () => {
     expect(ok.answer.status).toBe('accepted');
   });
 
-  it('atividade avaliativa: cada aluno no seu ritmo, nota só para o professor', async () => {
+  it('atividade: respostas salvas sem validar, entrega e histórico só para o professor dono', async () => {
+    const teacherKey = 'chave-do-professor-de-teste-123456';
     const host = await client();
     const created = await emit<{ ok: true; code: string; hostToken: string }>(host, 'room:create', {
       packId: 'exemplo-react-native-fundamentos',
       questionIds: ['botao-clique-aqui', 'texto-ola'],
       settings: { countdownSeconds: 0, mode: 'assessment', assessmentMinutes: 10 },
+      teacherKey,
     });
     const auth = { code: created.code, hostToken: created.hostToken };
     const ana = await client();
     await emit(ana, 'room:join', { code: created.code, name: 'Ana', avatar: 'bolt' });
     expect(await emit(host, 'host:start-question', auth)).toEqual({ ok: true });
 
-    const row = nextEvent(host, 'assessment:row', (r) => r.questions[0]!.status === 'complete');
+    const row = nextEvent(host, 'assessment:row', (r) => r.questions[0]!.status === 'started');
     const solution = 'export default function App() {\n  return <Button title="Clique aqui" />;\n}';
-    const answer = await emit<{ ok: true; answer: { status: string; xp: number } }>(ana, 'question:submit', {
-      code: solution,
-      questionId: 'botao-clique-aqui',
-    });
-    expect(answer.answer).toMatchObject({ status: 'accepted', xp: 0 });
-    expect((await row).questions.map((q) => q.grade)).toEqual([10, 0]);
-    expect((await row).grade).toBe(5);
+    const saved = await emit<{ ok: true; savedAt: number }>(ana, 'assessment:save', { questionId: 'botao-clique-aqui', code: solution });
+    expect(saved.ok).toBe(true);
+    expect((await row).questions.map((q) => q.status)).toEqual(['started', 'empty']);
+    expect(await emit(ana, 'question:submit', { code: solution })).toMatchObject({ ok: false });
 
     const moved = await emit<{ ok: true; snapshot: RoomSnapshot }>(ana, 'assessment:goto', { index: 1 });
     expect(moved.snapshot.question?.question.id).toBe('texto-ola');
-    expect(moved.snapshot.me?.assessment?.questions.map((q) => q.status)).toEqual(['complete', 'empty']);
-    expect(moved.snapshot.grades).toBeUndefined();
+    expect(moved.snapshot.assessmentRows).toBeUndefined();
     expect(await emit(ana, 'assessment:goto', { index: 9 })).toMatchObject({ ok: false });
 
+    const delivered = await emit<{ ok: true; snapshot: RoomSnapshot }>(ana, 'assessment:deliver');
+    expect(delivered.snapshot.me?.assessment?.delivered).toBe(true);
+    expect(await emit(ana, 'assessment:save', { questionId: 'texto-ola', code: 'x' })).toMatchObject({ ok: false });
+
     const ended = nextEvent(ana, 'session:ended');
+    const hostUpdate = nextEvent(host, 'room:update', (snapshot) => snapshot.phase === 'ended');
     expect(await emit(host, 'host:end-session', auth)).toEqual({ ok: true });
     expect((await ended).players.map((p) => p.name)).toEqual(['Ana']);
+    const historyId = (await hostUpdate).historyId!;
+    expect(historyId).toMatch(/^[0-9a-f-]{36}$/);
+
+    // Só a chave que criou a sala abre o histórico.
+    expect((await server.app.inject({ method: 'GET', url: '/api/history' })).statusCode).toBe(401);
+    const otherKey = { 'x-teacher-key': 'outra-chave-de-professor-1234567890' };
+    expect((await server.app.inject({ method: 'GET', url: `/api/history/${historyId}`, headers: otherKey })).statusCode).toBe(404);
+    const headers = { 'x-teacher-key': teacherKey };
+    const list = (await server.app.inject({ method: 'GET', url: '/api/history', headers })).json() as { id: string; mode: string }[];
+    expect(list.find((s) => s.id === historyId)?.mode).toBe('assessment');
+
+    // A verificação automática roda em segundo plano e vira uma sugestão por critério.
+    let record: SessionHistory | undefined;
+    for (let attempt = 0; attempt < 100; attempt++) {
+      record = (await server.app.inject({ method: 'GET', url: `/api/history/${historyId}`, headers })).json() as SessionHistory;
+      if (record.autoCheck === 'done') break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    expect(record!.autoCheck).toBe('done');
+    const answer = record!.answers.find((a) => a.questionId === 'botao-clique-aqui')!;
+    expect(answer).toMatchObject({ code: solution, status: 'started' });
+    expect(Object.values(answer.auto!).every(Boolean)).toBe(true);
+    expect(record!.players[0]).toMatchObject({ name: 'Ana', delivered: true });
+    expect(JSON.stringify(record)).not.toContain(created.hostToken);
+
+    const playerId = record!.players[0]!.id;
+    const question = record!.questions.find((q) => q.id === 'botao-clique-aqui')!;
+    const marks = Object.fromEntries(question.checklist.map((item) => [item.id, { met: true, source: 'professor' }]));
+    const updated = await server.app.inject({
+      method: 'PUT',
+      url: `/api/history/${historyId}/evaluations`,
+      headers,
+      payload: { entries: [{ playerId, questionId: question.id, marks, comment: 'Bom trabalho' }] },
+    });
+    expect(updated.statusCode).toBe(200);
+    expect((updated.json() as SessionHistory).evaluations[0]).toMatchObject({ playerId, comment: 'Bom trabalho' });
+    const badItem = await server.app.inject({
+      method: 'PUT',
+      url: `/api/history/${historyId}/evaluations`,
+      headers,
+      payload: { entries: [{ playerId, questionId: question.id, marks: { inexistente: { met: true, source: 'ia' } } }] },
+    });
+    expect(badItem.statusCode).toBe(422);
   });
 
   it('recusa sala de pack inexistente e entrada em sala inexistente', async () => {

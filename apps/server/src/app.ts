@@ -6,6 +6,7 @@ import { Server } from 'socket.io';
 import { RoomManager } from '@codearena/core';
 import type { ClientToServerEvents, ServerToClientEvents } from '@codearena/schemas';
 import type { ServerConfig } from './config';
+import { HistoryStore } from './historyStore';
 import { registerHttpRoutes } from './http';
 import { PackStore } from './packStore';
 import { loadServerPlugins } from './plugins';
@@ -30,8 +31,10 @@ export async function buildServer(config: Omit<ServerConfig, 'port' | 'host'>) {
   await packs.init();
   const rooms = new RoomManager();
   const validator = createSubmissionValidator(plugins);
+  const history = new HistoryStore({ dataDir: config.dataDir, validator, log: (m) => app.log.warn(m) });
+  await history.init();
 
-  registerHttpRoutes(app, { packs, plugins, rooms });
+  registerHttpRoutes(app, { packs, plugins, rooms, history });
 
   if (config.webDist && existsSync(join(config.webDist, 'index.html'))) {
     await app.register(fastifyStatic, {
@@ -52,20 +55,28 @@ export async function buildServer(config: Omit<ServerConfig, 'port' | 'host'>) {
     maxHttpBufferSize: 256 * 1024,
     cors: { origin: true },
   });
-  attachRealtime({ io, rooms, packs, plugins, validator });
+  attachRealtime({ io, rooms, packs, plugins, validator, history });
 
   const sweeper = setInterval(() => {
-    const removed = rooms.sweep(Date.now(), ROOM_IDLE_LIMIT_MS);
+    const now = Date.now();
+    // Sessão abandonada no meio: encerra antes de descartar, para ficar no histórico.
+    for (const room of rooms.list()) {
+      if (room.inProgress && now - room.lastActivityAt > ROOM_IDLE_LIMIT_MS) void room.endSession();
+    }
+    const removed = rooms.sweep(now, ROOM_IDLE_LIMIT_MS);
     if (removed.length) app.log.info(`Salas inativas removidas: ${removed.join(', ')}`);
   }, 10 * 60 * 1000);
   sweeper.unref();
 
   app.addHook('onClose', async () => {
     clearInterval(sweeper);
+    // Sessões em andamento vão para o histórico antes de o servidor parar.
+    await Promise.allSettled(rooms.list().filter((room) => room.inProgress).map((room) => room.endSession()));
+    await history.close();
     disposePlugins();
     rooms.list().forEach((room) => rooms.delete(room.code));
     io.close();
   });
 
-  return { app, io, rooms, packs, plugins };
+  return { app, io, rooms, packs, plugins, history };
 }
