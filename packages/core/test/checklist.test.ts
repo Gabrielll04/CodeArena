@@ -171,3 +171,15 @@ describe('pluginRule', () => {
     expect(missing.items.every((i) => i.status === 'failed')).toBe(true);
   });
 });
+
+describe('evaluateChecklist: critérios manuais', () => {
+  it('ficam pendentes e não contam para a aceitação automática', async () => {
+    const q = question([
+      { id: 'texto', label: 'Escrever ok', rule: { type: 'contains', value: 'ok' } },
+      { id: 'legivel', label: 'Nomear as variáveis', rule: { type: 'manual' } },
+    ]);
+    const result = await evaluateChecklist('ok', q);
+    expect(result.items.find((i) => i.id === 'legivel')).toEqual({ id: 'legivel', optional: false, manual: true, status: 'pending' });
+    expect(result).toMatchObject({ requiredTotal: 1, requiredDone: 1, allRequiredDone: true });
+  });
+});

@@ -56,23 +56,44 @@ export const PluginRuleSchema = z
   })
   .strict();
 
+/**
+ * Critério avaliado por uma pessoa (o professor ou uma IA escolhida por ele), nunca marcado sozinho.
+ * Não conta para a aceitação automática nas salas de competição.
+ */
+export const ManualRuleSchema = z.object({ type: z.literal('manual') }).strict();
+
 export const ChecklistRuleSchema = z.discriminatedUnion('type', [
   ContainsRuleSchema,
   NotContainsRuleSchema,
   // A compilação da regex é verificada no ChecklistItemSchema (discriminatedUnion não aceita refinements).
   RegexRuleSchema,
   PluginRuleSchema,
+  ManualRuleSchema,
 ]);
+
+/** O que um critério avalia, na Metodologia SENAI de Educação Profissional (MSEP). */
+export const CAPABILITY_TYPES = ['capacidade-tecnica', 'capacidade-socioemocional', 'conhecimento'] as const;
+export type CapabilityType = (typeof CAPABILITY_TYPES)[number];
+
+export const CapabilitySchema = z
+  .object({
+    type: z.enum(CAPABILITY_TYPES, { errorMap: () => ({ message: `capability.type deve ser um de: ${CAPABILITY_TYPES.join(', ')}` }) }),
+    name: z.string().trim().min(1, 'capability.name é obrigatório').max(140, 'capability.name deve ter no máximo 140 caracteres'),
+  })
+  .strict();
 
 export const ChecklistItemSchema = z
   .object({
     id: slug('id do item'),
     label: z.string().trim().min(1, 'label é obrigatório').max(140, 'label deve ter no máximo 140 caracteres'),
     rule: ChecklistRuleSchema,
+    /** Nas atividades, itens obrigatórios são critérios críticos e itens opcionais são critérios desejáveis. */
     optional: z.boolean().default(false),
     hint: z.string().max(280).optional(),
-    /** Peso do item na nota das atividades avaliativas. Padrão: 1. */
-    weight: z.number().min(0.1, 'weight mínimo é 0.1').max(10, 'weight máximo é 10').optional(),
+    /** Capacidade ou conhecimento que o critério avalia. */
+    capability: CapabilitySchema.optional(),
+    /** Obsoleto e ignorado: mantido só para abrir packs da primeira versão das atividades. */
+    weight: z.number().optional(),
   })
   .strict()
   .superRefine((item, ctx) => {
@@ -93,9 +114,12 @@ export const QuestionSchema = z
     /**
      * build: o aluno escreve a solução a partir de pouco ou nada.
      * debug: o `starterCode` é um código com bug e a checklist verifica o comportamento corrigido.
-     * guided: projeto guiado; a checklist é uma sequência de passos, cada um com a sua instrução (`hint`).
+     * O antigo "guided" é lido como "build".
      */
-    kind: z.enum(['build', 'debug', 'guided']).default('build'),
+    kind: z
+      .enum(['build', 'debug', 'guided'])
+      .default('build')
+      .transform((kind): 'build' | 'debug' => (kind === 'guided' ? 'build' : kind)),
     /** Imagem do resultado esperado (link http ou https), mostrada junto do enunciado. */
     goalImage: z
       .string()
@@ -181,6 +205,8 @@ export type ContainsRule = z.infer<typeof ContainsRuleSchema>;
 export type NotContainsRule = z.infer<typeof NotContainsRuleSchema>;
 export type RegexRule = z.infer<typeof RegexRuleSchema>;
 export type PluginRule = z.infer<typeof PluginRuleSchema>;
+export type ManualRule = z.infer<typeof ManualRuleSchema>;
+export type Capability = z.infer<typeof CapabilitySchema>;
 export type ChecklistRule = z.infer<typeof ChecklistRuleSchema>;
 export type ChecklistItem = z.infer<typeof ChecklistItemSchema>;
 export type Question = z.infer<typeof QuestionSchema>;
@@ -189,6 +215,16 @@ export type QuestionPack = z.infer<typeof QuestionPackSchema>;
 /** Formato de entrada (antes dos defaults do Zod), útil para quem escreve JSON. */
 export type QuestionPackInput = z.input<typeof QuestionPackSchema>;
 export type QuestionInput = z.input<typeof QuestionSchema>;
+
+/** Critério avaliado por uma pessoa, sem verificação automática. */
+export function isManualItem(item: Pick<ChecklistItem, 'rule'>): boolean {
+  return item.rule.type === 'manual';
+}
+
+/** Conta para a aceitação automática: obrigatório e verificável pelo código. */
+export function countsForAcceptance(item: Pick<ChecklistItem, 'rule' | 'optional'>): boolean {
+  return !item.optional && !isManualItem(item);
+}
 
 /** Questão com o plugin já resolvido (pack.pluginId ou override da questão). */
 export type ResolvedQuestion = Question & { pluginId: string };

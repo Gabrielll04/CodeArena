@@ -52,10 +52,18 @@ describe('lintQuestion: questões de depuração', () => {
   });
 });
 
-describe('lintQuestion: projetos guiados', () => {
-  it('pede instrução em cada passo e pelo menos 3 passos', async () => {
-    const warnings = await levels({ kind: 'guided', solution: 'function somar(a, b) { return a + b; }' });
-    expect(warnings).toContain('warning:Passo sem instrução: escreva no campo hint o que o aluno faz neste passo.');
-    expect(warnings).toContain('warning:Projeto guiado com menos de 3 passos: prefira o tipo "build".');
+describe('lintQuestion: critérios manuais', () => {
+  it('não cobra da solução os critérios manuais e avisa quando nenhum crítico é verificado pelo código', async () => {
+    const warnings = await levels({
+      solution: 'function somar(a, b) { return a + b; }',
+      checklist: [
+        { id: 'legivel', label: 'Nomear as variáveis', rule: { type: 'manual' } },
+        { id: 'soma', label: 'Somar com +', rule: { type: 'contains', value: 'a + b' }, optional: true },
+      ],
+    });
+    expect(warnings.filter((w) => w.startsWith('error'))).toEqual([]);
+    expect(warnings).toContain(
+      'warning:Nenhum critério crítico é verificado pelo código: em salas de competição a resposta seria aceita sem conferir nada. Use esta questão em atividades.',
+    );
   });
 });

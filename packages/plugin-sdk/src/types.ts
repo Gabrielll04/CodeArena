@@ -16,6 +16,8 @@ export interface ChecklistItemResult {
   id: string;
   status: ChecklistItemStatus;
   optional: boolean;
+  /** Critério avaliado por uma pessoa: fica pendente e não conta para a aceitação automática. */
+  manual?: boolean;
   message?: string;
 }
 

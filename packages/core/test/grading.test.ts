@@ -1,30 +1,41 @@
 import { describe, expect, it } from 'vitest';
-import { ChecklistItemSchema } from '@codearena/schemas';
-import { activityGrade, formatGrade, questionGrade, roundGrade } from '../src';
+import { msepActivityGrade, msepQuestionGrade } from '../src';
 
-const item = (id: string, extra: Record<string, unknown> = {}) =>
-  ChecklistItemSchema.parse({ id, label: 'Item', rule: { type: 'contains', value: id }, ...extra });
+// 2 críticos (a, b) e 2 desejáveis (c, d).
+const checklist = [
+  { id: 'a', optional: false },
+  { id: 'b', optional: false },
+  { id: 'c', optional: true },
+  { id: 'd', optional: true },
+];
+const marks = (met: string[], unmet: string[] = []) =>
+  Object.fromEntries([...met.map((id) => [id, { met: true }]), ...unmet.map((id) => [id, { met: false }])]);
 
-describe('notas', () => {
-  it('pondera os itens obrigatórios pelo peso', () => {
-    const checklist = [item('a', { weight: 3 }), item('b'), item('c', { optional: true })];
-    expect(questionGrade(checklist, new Set(['a']))).toBe(7.5);
-    expect(questionGrade(checklist, new Set(['b', 'c']))).toBe(2.5);
-    expect(questionGrade(checklist, new Set(['a', 'b']))).toBe(10);
+describe('nota MSEP', () => {
+  it('com todos os críticos, vai de 50 a 100 conforme os desejáveis', () => {
+    expect(msepQuestionGrade(checklist, marks(['a', 'b'], ['c', 'd'])).grade).toBe(50);
+    expect(msepQuestionGrade(checklist, marks(['a', 'b', 'c'], ['d'])).grade).toBe(75);
+    expect(msepQuestionGrade(checklist, marks(['a', 'b', 'c', 'd'])).grade).toBe(100);
+    expect(msepQuestionGrade(checklist.slice(0, 2), marks(['a', 'b'])).grade).toBe(100);
   });
 
-  it('dá zero sem itens obrigatórios', () => {
-    expect(questionGrade([item('a', { optional: true })], new Set(['a']))).toBe(0);
+  it('sem todos os críticos, nunca passa de 50', () => {
+    const result = msepQuestionGrade(checklist, marks(['a', 'c', 'd'], ['b']));
+    expect(result).toMatchObject({ grade: 38, allCriticalMet: false, criticalMet: 1, desirableMet: 2 });
+    expect(msepQuestionGrade(checklist, marks([], ['a', 'b', 'c', 'd'])).grade).toBe(0);
   });
 
-  it('arredonda a média para uma casa decimal', () => {
-    expect(roundGrade(7.45)).toBe(7.5);
-    expect(activityGrade([10, 6.7, 5])).toBe(7.2);
-    expect(activityGrade([])).toBe(0);
+  it('fica pendente enquanto algum critério não foi avaliado', () => {
+    expect(msepQuestionGrade(checklist, marks(['a', 'b', 'c']))).toMatchObject({ grade: null, allCriticalMet: true, pending: 1 });
+    expect(msepQuestionGrade(checklist, marks(['c'], ['a']))).toMatchObject({ grade: null, allCriticalMet: false, pending: 2 });
   });
 
-  it('formata com vírgula decimal', () => {
-    expect(formatGrade(7.5)).toBe('7,5');
-    expect(formatGrade(10)).toBe('10,0');
+  it('a atividade é a média, limitada a 50 se faltou crítico em alguma questão', () => {
+    const full = msepQuestionGrade(checklist, marks(['a', 'b', 'c', 'd']));
+    const half = msepQuestionGrade(checklist, marks(['a', 'b', 'c'], ['d']));
+    const missing = msepQuestionGrade(checklist, marks(['a', 'c', 'd'], ['b']));
+    expect(msepActivityGrade([full, half])).toEqual({ grade: 88, capped: false });
+    expect(msepActivityGrade([full, full, missing])).toEqual({ grade: 50, capped: true });
+    expect(msepActivityGrade([full, msepQuestionGrade(checklist, {})])).toEqual({ grade: null, capped: false });
   });
 });
