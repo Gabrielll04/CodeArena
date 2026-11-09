@@ -82,3 +82,13 @@ e aponta regras frágeis. Saída com `ERRO` significa que o pack não deve ser e
 - Plugins são pacotes separados (`docs/decisoes/0001-plugins-como-pacotes.md`): seguem `docs/plugins/creating-a-plugin.md`,
   não alteram `packages/core` e trazem as próprias dependências. Packs são só JSON e nunca contêm código.
 - Rode `pnpm typecheck && pnpm test` antes de propor mudanças; `pnpm test:e2e` para fluxos de sala.
+
+## Autoria de commits, PRs e merges
+
+Toda a autoria é do dono do repositório. Agentes de IA **nunca** atribuem créditos a si mesmos:
+
+- sem `Co-Authored-By` de agentes, links de sessão (`Claude-Session` e similares) ou rodapés como "Generated with ...";
+  em commits, descrições e comentários de PR e mensagens de merge;
+- o autor e o committer dos commits são o dono da conta (configure `git config user.name` e `user.email` com os dados
+  dele antes de commitar);
+- nomes de branch descrevem a mudança, sem o nome do agente.
