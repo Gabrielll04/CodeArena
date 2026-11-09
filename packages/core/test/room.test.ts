@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   QuestionSchema,
-  type AssessmentGradeRow,
+  type AssessmentRow,
   type ResolvedQuestion,
   type RoomSettingsPatch,
   type ServerToClientEvents,
@@ -435,41 +435,43 @@ describe('Room: colagens e linha do tempo (só para o professor)', () => {
   });
 });
 
-/** Duas etapas com pesos 3 e 1: "a" e "b" no código. */
-function guidedQuestion(id: string): ResolvedQuestion {
+/** Questão de atividade: um critério crítico verificável, um manual e um desejável. */
+function activityQuestion(id: string): ResolvedQuestion {
   return {
     ...QuestionSchema.parse({
       id,
-      kind: 'guided',
-      prompt: 'Siga os passos',
+      prompt: 'Resolva o problema',
       timeLimitSeconds: 60,
       baseXP: 500,
       speedBonusMax: 500,
+      starterCode: '// comece aqui',
       solution: 'a b',
       checklist: [
-        { id: 'a', label: 'Escrever a', rule: { type: 'contains', value: 'a' }, weight: 3 },
-        { id: 'b', label: 'Escrever b', rule: { type: 'contains', value: 'b' } },
+        { id: 'a', label: 'Escrever a', rule: { type: 'contains', value: 'a' } },
+        { id: 'legivel', label: 'Nomear as variáveis', rule: { type: 'manual' } },
+        { id: 'b', label: 'Escrever b', rule: { type: 'contains', value: 'b' }, optional: true },
       ],
     }),
     pluginId: 'test',
   };
 }
 
-const stepsValidator: SubmissionValidator = async (code, question) => {
-  const items = question.checklist.map((i) => ({ id: i.id, passed: code.includes(i.id) }));
-  return { passed: items.every((i) => i.passed), items };
-};
-
 function assessmentSetup() {
-  return setup({
+  let validations = 0;
+  const counting: SubmissionValidator = async (code, question) => {
+    validations++;
+    return validator(code, question);
+  };
+  const result = setup({
     countdownSeconds: 0,
-    questions: [guidedQuestion('q1'), guidedQuestion('q2')],
-    validator: stepsValidator,
+    questions: [activityQuestion('q1'), activityQuestion('q2')],
+    validator: counting,
     settings: { mode: 'assessment', assessmentMinutes: 30 },
   });
+  return { ...result, validations: () => validations };
 }
 
-describe('Room: atividade avaliativa', () => {
+describe('Room: atividade', () => {
   it('abre todas as questões com o mesmo prazo e cada aluno navega no seu ritmo', async () => {
     const { room, clock } = assessmentSetup();
     const ana = room.join({ name: 'Ana', avatar: 'bolt' });
@@ -486,51 +488,81 @@ describe('Room: atividade avaliativa', () => {
     expect(() => room.startNextQuestion()).toThrowError(RoomError);
   });
 
-  it('dá nota pela melhor versão confirmada pelo servidor, sem XP', async () => {
-    const { room, clock, events } = assessmentSetup();
+  it('salva as respostas sem validar e sem XP; o código inicial conta como sem resposta', async () => {
+    const { room, events, validations } = assessmentSetup();
     const ana = room.join({ name: 'Ana', avatar: 'bolt' });
     room.startNextQuestion();
 
-    const partial = await room.submit(ana.playerId, 'a', 'q1');
-    expect(partial.status).toBe('rejected');
-    await clock.advance(1_000);
-    await room.submit(ana.playerId, 'b', 'q1'); // pior que a anterior: não substitui
-    await clock.advance(1_000);
-    const done = await room.submit(ana.playerId, 'a b', 'q2');
-    expect(done).toMatchObject({ status: 'accepted', xp: 0 });
+    room.saveAnswer(ana.playerId, 'q1', '// comece aqui');
+    expect(room.snapshotForHost().assessmentRows![0]!.questions[0]!.status).toBe('empty');
+    room.saveAnswer(ana.playerId, 'q1', 'const a = 1;');
+    room.saveAnswer(ana.playerId, 'q2', 'b');
+    expect(validations()).toBe(0);
+    await expect(room.submit(ana.playerId, 'a b')).rejects.toThrowError(RoomError);
 
-    const row = room.snapshotForHost().grades!.find((r) => r.playerId === ana.playerId)!;
-    expect(row.questions.map((q) => [q.status, q.grade])).toEqual([
-      ['partial', 7.5],
-      ['complete', 10],
-    ]);
-    expect(row.grade).toBe(8.8);
     const rows = events.filter((e) => e.event === 'assessment:row');
     expect(rows.every((e) => e.target.kind === 'host')).toBe(true);
-    expect((rows.at(-1)!.payload as AssessmentGradeRow).grade).toBe(8.8);
-
+    expect((rows.at(-1)!.payload as AssessmentRow).questions.map((q) => q.status)).toEqual(['started', 'started']);
     const me = room.snapshotForPlayer(ana.playerId).me!;
     expect(me.totalXP).toBe(0);
-    expect(me.assessment?.questions.map((q) => q.status)).toEqual(['partial', 'complete']);
-    expect(JSON.stringify(me)).not.toContain('grade');
+    expect(me.assessment).toMatchObject({ index: 0, delivered: false, code: 'const a = 1;' });
+    expect(room.snapshotForPlayer(ana.playerId).assessmentRows).toBeUndefined();
+    expect(events.some((e) => e.event === 'question:validated')).toBe(false);
   });
 
-  it('encerra no prazo e cada aluno recebe só o próprio relatório', async () => {
-    const { room, clock, events } = assessmentSetup();
+  it('depois de entregar, o aluno não edita mais', () => {
+    const { room } = assessmentSetup();
+    const ana = room.join({ name: 'Ana', avatar: 'bolt' });
+    room.startNextQuestion();
+    room.saveAnswer(ana.playerId, 'q1', 'a');
+    expect(room.deliver(ana.playerId).me!.assessment!.delivered).toBe(true);
+    expect(() => room.saveAnswer(ana.playerId, 'q1', 'a b')).toThrowError('Você já entregou a atividade');
+    expect(room.snapshotForHost().answeredCount).toBe(1);
+  });
+
+  it('encerra no prazo, cada aluno recebe só o próprio relatório e o histórico guarda as respostas', async () => {
+    const ended: Room[] = [];
+    const clock = new FakeClock();
+    const events: Emitted[] = [];
+    const room = new Room({
+      code: '123456',
+      hostToken: 'host-secret',
+      packTitle: 'Pack',
+      questions: [activityQuestion('q1'), activityQuestion('q2')],
+      settings: { countdownSeconds: 0, mode: 'assessment', assessmentMinutes: 30 },
+      validator,
+      sink: { emit: (target, event, payload) => events.push({ target, event, payload }), sync: () => undefined },
+      clock,
+      historyId: 'hist-1',
+      onEnded: (r) => ended.push(r),
+    });
     const ana = room.join({ name: 'Ana', avatar: 'bolt' });
     const bia = room.join({ name: 'Bia', avatar: 'prism' });
     room.startNextQuestion();
-    await room.submit(ana.playerId, 'a b', 'q1');
+    room.saveAnswer(ana.playerId, 'q1', 'a b');
+    room.reportPaste(ana.playerId, 120, false, 'q2');
     await clock.advance(30 * 60_000);
 
     expect(room.currentPhase).toBe('ended');
-    const ended = events.filter((e) => e.event === 'session:ended');
-    expect(ended.some((e) => e.target.kind === 'all')).toBe(false);
-    const forBia = ended.find((e) => e.target.kind === 'player' && e.target.playerId === bia.playerId)!;
+    expect(ended).toEqual([room]);
+    const sessionEnded = events.filter((e) => e.event === 'session:ended');
+    expect(sessionEnded.some((e) => e.target.kind === 'all')).toBe(false);
+    const forBia = sessionEnded.find((e) => e.target.kind === 'player' && e.target.playerId === bia.playerId)!;
     expect((forBia.payload as { players: { playerId: string }[] }).players.map((p) => p.playerId)).toEqual([bia.playerId]);
-    expect(room.snapshotForPlayer(bia.playerId).report?.players).toHaveLength(1);
-    expect(room.snapshotForHost().report?.players).toHaveLength(2);
-    await expect(room.submit(ana.playerId, 'a b', 'q2')).rejects.toThrowError(RoomError);
+    expect(room.snapshotForHost().historyId).toBe('hist-1');
+    expect(room.snapshotForPlayer(bia.playerId).historyId).toBeUndefined();
+    expect(() => room.saveAnswer(ana.playerId, 'q2', 'a')).toThrowError(RoomError);
+
+    const history = room.historySnapshot()!;
+    expect(history.mode).toBe('assessment');
+    expect(history.questions.map((q) => q.id)).toEqual(['q1', 'q2']);
+    expect(history.questions[0]!.solution).toBe('a b');
+    expect(history.players.map((p) => p.name)).toEqual(['Ana', 'Bia']);
+    const anaQ1 = history.answers.find((a) => a.playerId === ana.playerId && a.questionId === 'q1')!;
+    expect(anaQ1).toMatchObject({ code: 'a b', status: 'started', xp: 0 });
+    expect(history.answers.find((a) => a.playerId === ana.playerId && a.questionId === 'q2')!.paste?.count).toBe(1);
+    expect(history.answers.find((a) => a.playerId === bia.playerId && a.questionId === 'q1')).toMatchObject({ code: '', status: 'empty' });
+    expect(JSON.stringify(history)).not.toContain('host-secret');
   });
 
   it('não muda o modo depois de começar', () => {
@@ -539,6 +571,26 @@ describe('Room: atividade avaliativa', () => {
     room.startNextQuestion();
     room.updateSettings({ mode: 'competition', assessmentMinutes: 5, allowPaste: false });
     expect(room.currentSettings).toMatchObject({ mode: 'assessment', assessmentMinutes: 30, allowPaste: false });
+  });
+});
+
+describe('Room: histórico da competição', () => {
+  it('guarda o último código enviado, o status e o XP de cada aluno', async () => {
+    const { room, clock } = setup({ countdownSeconds: 0, questions: [makeQuestion('q1')] });
+    const ana = room.join({ name: 'Ana', avatar: 'bolt' });
+    const bia = room.join({ name: 'Bia', avatar: 'prism' });
+    room.startNextQuestion();
+    await room.submit(bia.playerId, 'nada');
+    await clock.advance(1_000);
+    await room.submit(ana.playerId, 'ok');
+    await room.endSession();
+    const history = room.historySnapshot()!;
+    expect(history.mode).toBe('competition');
+    const byName = (name: string) => history.answers.find((a) => a.playerId === history.players.find((p) => p.name === name)!.id)!;
+    expect(byName('Ana')).toMatchObject({ code: 'ok', status: 'accepted' });
+    expect(byName('Ana').xp).toBeGreaterThan(0);
+    expect(byName('Bia')).toMatchObject({ code: 'nada', status: 'rejected', xp: 0 });
+    expect(history.report.players[0]!.name).toBe('Ana');
   });
 });
 

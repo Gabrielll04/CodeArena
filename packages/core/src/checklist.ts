@@ -9,10 +9,10 @@ import type {
 } from '@codearena/plugin-sdk';
 import { stripComments } from './comments';
 
-export type BuiltinRule = Exclude<ChecklistRule, { type: 'pluginRule' }>;
+export type BuiltinRule = Exclude<ChecklistRule, { type: 'pluginRule' } | { type: 'manual' }>;
 
 export function isBuiltinRule(rule: ChecklistRule): rule is BuiltinRule {
-  return rule.type !== 'pluginRule';
+  return rule.type !== 'pluginRule' && rule.type !== 'manual';
 }
 
 /** Avalia de forma síncrona e determinística as regras contains, notContains e regex. */
@@ -61,7 +61,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 export function summarize(items: ChecklistItemResult[]): ChecklistEvaluationResult {
-  const required = items.filter((item) => !item.optional);
+  // Critérios manuais não são marcados sozinhos: ficam fora da aceitação automática.
+  const required = items.filter((item) => !item.optional && !item.manual);
   const requiredDone = required.filter((item) => item.status === 'done').length;
   return {
     items,
@@ -73,7 +74,11 @@ export function summarize(items: ChecklistItemResult[]): ChecklistEvaluationResu
 
 /** Estado inicial (tudo pendente) para exibir antes da primeira avaliação. */
 export function pendingChecklist(checklist: ChecklistItem[]): ChecklistEvaluationResult {
-  return summarize(checklist.map((item) => ({ id: item.id, status: 'pending', optional: item.optional })));
+  return summarize(checklist.map((item) => ({ id: item.id, status: 'pending', ...baseResult(item) })));
+}
+
+function baseResult(item: ChecklistItem): { optional: boolean; manual?: true } {
+  return item.rule.type === 'manual' ? { optional: item.optional, manual: true } : { optional: item.optional };
 }
 
 /**
@@ -92,7 +97,7 @@ export async function evaluateChecklist(
     return summarize(
       question.checklist.map((item) => ({
         id: item.id,
-        optional: item.optional,
+        ...baseResult(item),
         status: 'failed',
         message: `Código maior que o limite de ${MAX_CODE_LENGTH} caracteres`,
       })),
@@ -103,8 +108,12 @@ export async function evaluateChecklist(
   const pluginItems: { index: number; item: ChecklistItem & { rule: { type: 'pluginRule' } } }[] = [];
 
   question.checklist.forEach((item, index) => {
-    const base = { id: item.id, optional: item.optional };
+    const base = { id: item.id, ...baseResult(item) };
     const { rule } = item;
+    if (rule.type === 'manual') {
+      results[index] = { ...base, status: 'pending' };
+      return;
+    }
     if (rule.type !== 'pluginRule') {
       let status: ChecklistItemStatus = 'pending';
       let message: string | undefined;

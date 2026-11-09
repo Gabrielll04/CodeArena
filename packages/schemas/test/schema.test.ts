@@ -39,24 +39,17 @@ describe('QuestionPackSchema', () => {
     if (!result.ok) expect(result.issues.some((i) => i.path === 'questions[0].kind')).toBe(true);
   });
 
-  it('aceita projeto guiado com peso por item e imagem do resultado', () => {
+  it('aceita imagem do resultado esperado só com link http ou https', () => {
     const input = minimalPack() as any;
-    input.questions[0].kind = 'guided';
     input.questions[0].goalImage = 'https://exemplo.com/tela.png';
-    input.questions[0].checklist[0].weight = 2.5;
     const result = parseQuestionPack(input) as any;
     expect(result.ok).toBe(true);
-    expect(result.value.questions[0]).toMatchObject({ kind: 'guided', goalImage: 'https://exemplo.com/tela.png' });
-    expect(result.value.questions[0].checklist[0].weight).toBe(2.5);
+    expect(result.value.questions[0].goalImage).toBe('https://exemplo.com/tela.png');
 
     input.questions[0].goalImage = 'javascript:alert(1)';
-    input.questions[0].checklist[0].weight = 0;
     const invalid = parseQuestionPack(input);
     expect(invalid.ok).toBe(false);
-    if (!invalid.ok) {
-      expect(invalid.issues.some((i) => i.path === 'questions[0].goalImage')).toBe(true);
-      expect(invalid.issues.some((i) => i.path === 'questions[0].checklist[0].weight')).toBe(true);
-    }
+    if (!invalid.ok) expect(invalid.issues.some((i) => i.path === 'questions[0].goalImage')).toBe(true);
   });
 
   it('resolve o plugin da questão a partir do pack e remove a solução da versão pública', () => {
@@ -114,5 +107,29 @@ describe('QuestionPackSchema', () => {
     const result = parseQuestionPackJson('{ "pack": ');
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.issues[0]!.message).toMatch(/JSON inválido/);
+  });
+});
+
+describe('critérios das atividades', () => {
+  it('aceita regra manual e capacidade avaliada; lê o antigo kind "guided" como "build"', () => {
+    const input = minimalPack() as any;
+    input.questions[0].kind = 'guided';
+    input.questions[0].checklist.push({
+      id: 'b',
+      label: 'Nomear as variáveis',
+      rule: { type: 'manual' },
+      optional: true,
+      capability: { type: 'capacidade-socioemocional', name: 'Organização' },
+      weight: 2,
+    });
+    const result = parseQuestionPack(input) as any;
+    expect(result.ok).toBe(true);
+    expect(result.value.questions[0].kind).toBe('build');
+    expect(result.value.questions[0].checklist[1]).toMatchObject({ rule: { type: 'manual' }, capability: { type: 'capacidade-socioemocional' } });
+
+    input.questions[0].checklist[1].capability = { type: 'atitude', name: 'x' };
+    const invalid = parseQuestionPack(input);
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) expect(invalid.issues.some((i) => i.path === 'questions[0].checklist[1].capability.type')).toBe(true);
   });
 });

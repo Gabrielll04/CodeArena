@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type {
-  AssessmentGradeRow,
+  AssessmentRow,
   ProgressEntry,
   QuestionFinishedEvent,
   QuestionTimeline,
@@ -12,6 +12,7 @@ import type {
 import { syncServerClock } from '../lib/clock';
 import { getSocket, request } from '../lib/socket';
 import { local } from '../lib/storage';
+import { teacherKey } from '../lib/teacherKey';
 import { playCue } from '../lib/sound';
 
 const tokenKey = (code: string) => `codearena:host:${code}`;
@@ -27,8 +28,8 @@ interface HostStore {
   progress: Record<string, ProgressEntry>;
   /** Linha do tempo por questão (id da questão), só do professor. */
   timelines: Record<string, QuestionTimeline>;
-  /** Atividade avaliativa: nota e progresso de cada aluno (id do aluno). */
-  grades: Record<string, AssessmentGradeRow>;
+  /** Atividade: situação de cada aluno (id do aluno). */
+  rows: Record<string, AssessmentRow>;
   feed: FeedEntry[];
   lastFinished: QuestionFinishedEvent | null;
   report: SessionReport | null;
@@ -52,9 +53,9 @@ export const useHost = create<HostStore>((set, get) => {
     snapshot.progress.forEach((entry) => (progress[entry.playerId] = entry));
     const timelines: Record<string, QuestionTimeline> = {};
     snapshot.timelines?.forEach((timeline) => (timelines[timeline.questionId] = timeline));
-    const grades: Record<string, AssessmentGradeRow> = {};
-    snapshot.grades?.forEach((row) => (grades[row.playerId] = row));
-    set({ snapshot, progress, timelines, grades, report: snapshot.report ?? get().report });
+    const rows: Record<string, AssessmentRow> = {};
+    snapshot.assessmentRows?.forEach((row) => (rows[row.playerId] = row));
+    set({ snapshot, progress, timelines, rows, report: snapshot.report ?? get().report });
   };
 
   const listen = () => {
@@ -86,10 +87,8 @@ export const useHost = create<HostStore>((set, get) => {
       set({ timelines: { ...get().timelines, [questionId]: { ...question, players } } });
     });
     socket.on('assessment:row', (row) => {
-      const before = get().grades[row.playerId];
-      const completed = (r?: AssessmentGradeRow) => r?.questions.filter((q) => q.status === 'complete').length ?? 0;
-      if (completed(row) > completed(before)) playCue('check');
-      set({ grades: { ...get().grades, [row.playerId]: row } });
+      if (row.delivered && !get().rows[row.playerId]?.delivered) playCue('check');
+      set({ rows: { ...get().rows, [row.playerId]: row } });
     });
     socket.on('question:submitted', (event) => {
       set({ feed: [{ ...event, at: Date.now() }, ...get().feed].slice(0, 30) });
@@ -119,7 +118,7 @@ export const useHost = create<HostStore>((set, get) => {
     snapshot: null,
     progress: {},
     timelines: {},
-    grades: {},
+    rows: {},
     feed: [],
     lastFinished: null,
     report: null,
@@ -127,7 +126,8 @@ export const useHost = create<HostStore>((set, get) => {
 
     async create(input) {
       listen();
-      const res = await request('room:create', input);
+      // A chave do professor deixa a sessão no histórico dele.
+      const res = await request('room:create', { ...input, teacherKey: teacherKey() });
       if (!res.ok) return { ok: false, error: res.error };
       local.set(tokenKey(res.code), res.hostToken);
       set({ code: res.code, hostToken: res.hostToken, feed: [], lastFinished: null, report: null });

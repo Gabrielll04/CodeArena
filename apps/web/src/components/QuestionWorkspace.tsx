@@ -3,6 +3,7 @@ import type { ClientQuizPlugin } from '@codearena/plugin-sdk/ui';
 import type { PublicQuestion } from '@codearena/schemas';
 import type { LiveChecklist } from '../hooks/useChecklist';
 import { Checklist } from './Checklist';
+import { CriteriaList } from './Criteria';
 import { DebugBar } from './DebugBar';
 import { CodeEditor, type PasteInfo } from './CodeEditor';
 import { PluginPanel, pluginPanelTitle } from './PluginPanel';
@@ -29,6 +30,8 @@ export interface QuestionWorkspaceProps {
   allowPaste?: boolean;
   /** Recebe cada colagem (tamanho e se foi recusada) para a linha do tempo do professor. */
   onPaste?: (paste: PasteInfo) => void;
+  /** Atividade: mostra os critérios de avaliação, sem marcação automática. */
+  criteria?: boolean;
 }
 
 const PASTE_NOTICE_MS = 3000;
@@ -48,7 +51,7 @@ export function MissingPlugin({ pluginId }: { pluginId: string }) {
 }
 
 export function QuestionWorkspace(props: QuestionWorkspaceProps) {
-  const { question, plugin, code, onCodeChange, readOnly, live, mode, modelPath, status, editorOverlay, heading, onRestore, allowPaste = true, onPaste } = props;
+  const { question, plugin, code, onCodeChange, readOnly, live, mode, modelPath, status, editorOverlay, heading, onRestore, allowPaste = true, onPaste, criteria } = props;
   const [tab, setTab] = useState<MobileTab>('code');
   const [pasteNotice, setPasteNotice] = useState<string | null>(null);
   const toldAboutPaste = useRef(false);
@@ -77,7 +80,7 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
   const panelTitle = pluginPanelTitle(plugin);
 
   const mobileTabs: { id: MobileTab; label: string }[] = [
-    { id: 'task', label: `Tarefa ${evaluation.requiredDone}/${evaluation.requiredTotal}` },
+    { id: 'task', label: criteria ? 'Tarefa' : `Tarefa ${evaluation.requiredDone}/${evaluation.requiredTotal}` },
     { id: 'code', label: 'Código' },
     { id: 'panel', label: panelTitle },
   ];
@@ -110,22 +113,15 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
                 Depuração
               </Badge>
             )}
-            {question.kind === 'guided' && (
-              <Badge tone="violet" className="mb-2">
-                Projeto guiado
-              </Badge>
-            )}
             {question.title && <h2 className="mb-1.5 font-display text-lg font-bold leading-tight">{question.title}</h2>}
             <Prompt text={question.prompt} />
             {question.goalImage && <GoalImage src={question.goalImage} />}
           </div>
-          <Checklist
-            items={question.checklist}
-            evaluation={evaluation}
-            checking={live.checking}
-            announce={mode !== 'authoring'}
-            guided={question.kind === 'guided'}
-          />
+          {criteria ? (
+            <CriteriaList items={question.checklist} />
+          ) : (
+            <Checklist items={question.checklist} evaluation={evaluation} checking={live.checking} announce={mode !== 'authoring'} />
+          )}
           {status ?? (
             <p className="text-sm text-white/50" aria-live="polite">
               {evaluation.allRequiredDone ? 'Checklist completa.' : `Faltam ${remaining} ${remaining === 1 ? 'item' : 'itens'}.`}
@@ -137,9 +133,11 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
           <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-2 text-xs text-white/50">
             <span className="font-mono">{plugin.editorFileName ?? 'codigo'}</span>
             <span className="flex items-center gap-3">
-              <span className="lg:hidden" aria-live="polite">
-                {evaluation.requiredDone}/{evaluation.requiredTotal}
-              </span>
+              {!criteria && (
+                <span className="lg:hidden" aria-live="polite">
+                  {evaluation.requiredDone}/{evaluation.requiredTotal}
+                </span>
+              )}
               {!allowPaste && !readOnly && (
                 <span className="font-semibold text-amber" data-testid="paste-disabled">
                   Colar desativado

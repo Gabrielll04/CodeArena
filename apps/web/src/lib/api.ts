@@ -1,6 +1,14 @@
 import type { AuthoringWarning } from '@codearena/core';
 import type { ChecklistEvaluationResult } from '@codearena/plugin-sdk';
-import type { Question, QuestionPack, ValidationIssue } from '@codearena/schemas';
+import type {
+  EvaluationEntry,
+  Question,
+  QuestionPack,
+  SessionHistory,
+  SessionHistorySummary,
+  ValidationIssue,
+} from '@codearena/schemas';
+import { teacherKey } from './teacherKey';
 
 export interface PackSummary {
   id: string;
@@ -33,6 +41,11 @@ export class ApiError extends Error {
   }
 }
 
+/** O histórico de cada professor é aberto com a chave guardada no navegador dele. */
+function teacherHeaders(): Record<string, string> {
+  return { 'x-teacher-key': teacherKey() };
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
@@ -58,6 +71,16 @@ export const api = {
   deletePack: (id: string) => call<void>(`/api/packs/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   roomInfo: (code: string) =>
     call<{ code: string; phase: string; packTitle: string; playerCount: number }>(`/api/rooms/${encodeURIComponent(code)}`),
+  listHistory: () => call<SessionHistorySummary[]>('/api/history', { headers: teacherHeaders() }),
+  getHistory: (id: string) => call<SessionHistory>(`/api/history/${encodeURIComponent(id)}`, { headers: teacherHeaders() }),
+  saveEvaluations: (id: string, entries: EvaluationEntry[]) =>
+    call<SessionHistory>(`/api/history/${encodeURIComponent(id)}/evaluations`, {
+      method: 'PUT',
+      headers: teacherHeaders(),
+      body: JSON.stringify({ entries }),
+    }),
+  deleteHistory: (id: string) =>
+    call<void>(`/api/history/${encodeURIComponent(id)}`, { method: 'DELETE', headers: teacherHeaders() }),
   testQuestion: (question: Question, pluginId: string, code: string) =>
     call<{ evaluation: ChecklistEvaluationResult; warnings: AuthoringWarning[] }>('/api/questions/test', {
       method: 'POST',

@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { ClientQuizPlugin } from '@codearena/plugin-sdk/ui';
-import type { AssessmentQuestionProgress, PlayerAnswer, PublicQuestion, RoomSnapshot } from '@codearena/schemas';
+import type { PlayerAnswer, PublicQuestion, RoomSnapshot } from '@codearena/schemas';
 import { Avatar } from '../components/Avatar';
 import { SolutionView } from '../components/CodeDiff';
 import { Countdown } from '../components/Countdown';
@@ -18,6 +18,7 @@ import { playCue } from '../lib/sound';
 import { session as sessionStore } from '../lib/storage';
 import { loadClientPlugin, useClientPlugin } from '../plugins/registry';
 import { usePlayer } from '../stores/player';
+import { ActivityDelivered, ActivityEnded, ActivityQuestion, draftKey } from './PlayActivity';
 
 export function PlayPage() {
   const { code = '' } = useParams();
@@ -91,9 +92,11 @@ function PhaseView({ snapshot }: { snapshot: RoomSnapshot }) {
   if (phase === 'countdown' && question) {
     return <Countdown startsAt={question.startsAt} index={question.index} total={question.total} title={question.question.title} />;
   }
+  const activity = snapshot.settings.mode === 'assessment';
+  if (phase === 'question' && activity && snapshot.me?.assessment?.delivered) return <ActivityDelivered snapshot={snapshot} />;
   if (phase === 'question' && question) return <QuestionGate key={question.question.id} snapshot={snapshot} />;
   if (phase === 'review') return <Review snapshot={snapshot} />;
-  if (snapshot.settings.mode === 'assessment') return <AssessmentEnded snapshot={snapshot} />;
+  if (activity) return <ActivityEnded snapshot={snapshot} />;
   return <Ended snapshot={snapshot} />;
 }
 
@@ -111,8 +114,8 @@ function Lobby({ snapshot }: { snapshot: RoomSnapshot }) {
         </p>
         {snapshot.settings.mode === 'assessment' && (
           <p className="mx-auto mt-3 max-w-md text-sm text-white/60" data-testid="assessment-lobby">
-            Atividade avaliativa: sem placar, no seu ritmo. Você tem {snapshot.settings.assessmentMinutes} minutos para as{' '}
-            {snapshot.questionCount} {snapshot.questionCount === 1 ? 'questão' : 'questões'}.
+            Atividade: sem placar, no seu ritmo. Você tem {snapshot.settings.assessmentMinutes} minutos para{' '}
+            {snapshot.questionCount === 1 ? 'a questão' : `as ${snapshot.questionCount} questões`}. O professor avalia as respostas depois.
           </p>
         )}
       </div>
@@ -142,8 +145,6 @@ function Lobby({ snapshot }: { snapshot: RoomSnapshot }) {
   );
 }
 
-const draftKey = (room: string, questionId: string) => `codearena:draft:${room}:${questionId}`;
-
 function QuestionGate({ snapshot }: { snapshot: RoomSnapshot }) {
   const state = useClientPlugin(snapshot.question!.question.pluginId);
   if (state.status === 'loading') {
@@ -164,6 +165,7 @@ function QuestionGate({ snapshot }: { snapshot: RoomSnapshot }) {
       </div>
     );
   }
+  if (snapshot.settings.mode === 'assessment') return <ActivityQuestion snapshot={snapshot} plugin={state.plugin} />;
   return <ActiveQuestion snapshot={snapshot} plugin={state.plugin} />;
 }
 
@@ -172,10 +174,7 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
   // Cada room:update traz um objeto novo; a questão não muda durante a rodada, então fixamos pela id.
   const question: PublicQuestion = useMemo(() => active.question, [active.question.id]);
   const answer = snapshot.me!.answer;
-  const assessment = snapshot.settings.mode === 'assessment';
-  const { submit, reportProgress, reportPaste, goTo } = usePlayer();
-  // Na atividade avaliativa cada envio diz a questão, porque o aluno pode mudar de questão no meio.
-  const questionId = assessment ? question.id : undefined;
+  const { submit, reportProgress, reportPaste } = usePlayer();
   const storageKey = draftKey(snapshot.code, question.id);
   const [code, setCode] = useState(
     () => answer?.code ?? sessionStore.get<string>(storageKey) ?? plugin?.getStarterCode(question) ?? question.starterCode,
@@ -200,33 +199,8 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
   const { requiredDone, requiredTotal } = live.evaluation;
   const doneKey = live.evaluation.items.filter((i) => i.status === 'done').map((i) => i.id).join(',');
   useEffect(() => {
-    if (!accepted) reportProgress(requiredDone, requiredTotal, doneKey ? doneKey.split(',') : [], questionId);
-  }, [requiredDone, requiredTotal, doneKey, accepted, reportProgress, questionId]);
-
-  // Atividade avaliativa: cada avanço na checklist é salvo (o servidor valida e guarda a melhor versão).
-  const savedKeys = useRef(new Set<string>());
-  const [saved, setSaved] = useState(false);
-  const unsaved =
-    assessment && !accepted && live.fresh && live.evaluatedCode === code && requiredDone > 0 && !live.evaluation.allRequiredDone && !savedKeys.current.has(doneKey);
-  const save = async () => {
-    if (!unsaved) return;
-    savedKeys.current.add(doneKey);
-    const result = await submit(code, questionId);
-    if ('error' in result) savedKeys.current.delete(doneKey);
-    else setSaved(true);
-  };
-  // save usa o código e a checklist desta renderização; o temporizador recomeça quando eles mudam.
-  useEffect(() => {
-    if (!unsaved) return;
-    const timer = setTimeout(() => void save(), AUTOSAVE_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [unsaved, doneKey, code]);
-
-  const navigate = async (index: number) => {
-    await save();
-    const res = await goTo(index);
-    if (!res.ok) setLastResult({ error: res.error });
-  };
+    if (!accepted) reportProgress(requiredDone, requiredTotal, doneKey ? doneKey.split(',') : []);
+  }, [requiredDone, requiredTotal, doneKey, accepted, reportProgress]);
 
   // Envio automático quando a checklist completa (avaliação atualizada para o código atual).
   useEffect(() => {
@@ -234,7 +208,7 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
     if (live.evaluatedCode !== code || lastSubmitted.current === code) return;
     lastSubmitted.current = code;
     setSubmitting(true);
-    void submit(code, questionId).then((result) => {
+    void submit(code).then((result) => {
       setSubmitting(false);
       setLastResult(result);
       if ('status' in result && result.status === 'accepted') playCue('success');
@@ -252,36 +226,8 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
   const failure = lastResult && 'error' in lastResult ? lastResult.error : null;
   const late = answer?.status === 'late' || (lastResult && 'status' in lastResult && lastResult.status === 'late');
 
-  const progress = snapshot.me!.assessment;
-  const next = progress?.questions.findIndex((q, i) => i > active.index && q.status !== 'complete') ?? -1;
-  const firstOpen = next >= 0 ? next : (progress?.questions.findIndex((q) => q.status !== 'complete') ?? -1);
-
-  const status = accepted && assessment ? (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-lime/40 bg-lime/[0.07] p-4" data-testid="answer-accepted">
-      <p className="font-display text-lg font-bold text-lime">Questão concluída</p>
-      {firstOpen >= 0 ? (
-        <Button variant="secondary" size="sm" className="mt-3" onClick={() => void navigate(firstOpen)}>
-          Ir para a questão {firstOpen + 1}
-        </Button>
-      ) : (
-        <p className="mt-1 text-sm text-white/70">Você concluiu todas as questões. Pode revisar ou aguardar o fim da atividade.</p>
-      )}
-    </motion.div>
-  ) : accepted ? (
+  const status = accepted ? (
     <AcceptedCard answer={answer!} snapshot={snapshot} />
-  ) : assessment ? (
-    <div className="space-y-2 text-sm" aria-live="polite" data-testid="answer-status">
-      {late ? (
-        <p className="text-amber">O tempo da atividade acabou.</p>
-      ) : failure ? (
-        <p className="text-coral">{failure}</p>
-      ) : (
-        <p className="text-white/55">
-          {remainingText(live.evaluation.requiredTotal - live.evaluation.requiredDone)}{' '}
-          {saved || savedKeys.current.size > 0 ? 'Seu progresso está salvo.' : 'Seu progresso é salvo sozinho.'}
-        </p>
-      )}
-    </div>
   ) : (
     <div className="space-y-2 text-sm" aria-live="polite" data-testid="answer-status">
       {submitting || answer?.status === 'validating' ? (
@@ -327,13 +273,9 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
         <div className="min-w-0 flex-1">
           <Timer startsAt={active.startsAt} endsAt={active.endsAt} finishedAt={active.finishedAt} />
         </div>
-        {progress ? (
-          <QuestionNavigator questions={progress.questions} current={active.index} onSelect={(index) => void navigate(index)} />
-        ) : (
-          <span className="hidden shrink-0 text-xs text-white/50 sm:inline" data-testid="answered-count">
-            {snapshot.answeredCount} de {snapshot.connectedCount} concluíram
-          </span>
-        )}
+        <span className="hidden shrink-0 text-xs text-white/50 sm:inline" data-testid="answered-count">
+          {snapshot.answeredCount} de {snapshot.connectedCount} concluíram
+        </span>
       </div>
       <div className="min-h-0 flex-1">
         <QuestionWorkspace
@@ -358,9 +300,9 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
           mode="play"
           modelPath={`file:///${snapshot.code}/${question.id}/${plugin?.editorFileName ?? 'code.js'}`}
           status={status}
-          editorOverlay={accepted && !assessment ? <AcceptedOverlay xp={answer!.xp} /> : null}
+          editorOverlay={accepted ? <AcceptedOverlay xp={answer!.xp} /> : null}
           allowPaste={snapshot.settings.allowPaste}
-          onPaste={(paste) => reportPaste(paste.chars, paste.blocked, questionId)}
+          onPaste={(paste) => reportPaste(paste.chars, paste.blocked)}
           onRestore={() => {
             const original = plugin?.getStarterCode(question) ?? question.starterCode;
             setCode(original);
@@ -369,59 +311,6 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
         />
       </div>
     </div>
-  );
-}
-
-const AUTOSAVE_DELAY_MS = 1500;
-
-function remainingText(remaining: number): string {
-  if (remaining <= 0) return 'Checklist completa.';
-  return remaining === 1 ? 'Falta 1 item.' : `Faltam ${remaining} itens.`;
-}
-
-const NAV_TONE: Record<AssessmentQuestionProgress['status'], string> = {
-  empty: 'bg-white/[0.06] text-white/70',
-  partial: 'bg-violet/25 text-white',
-  complete: 'bg-lime text-ink-950',
-};
-
-const NAV_LABEL: Record<AssessmentQuestionProgress['status'], string> = {
-  empty: 'não iniciada',
-  partial: 'em andamento',
-  complete: 'concluída',
-};
-
-/** Atividade avaliativa: questões da atividade, com a situação de cada uma. */
-function QuestionNavigator({
-  questions,
-  current,
-  onSelect,
-}: {
-  questions: AssessmentQuestionProgress[];
-  current: number;
-  onSelect: (index: number) => void;
-}) {
-  return (
-    <nav className="flex max-w-[55%] shrink-0 gap-1 overflow-x-auto p-0.5" aria-label="Questões da atividade" data-testid="question-nav">
-      {questions.map((q, index) => (
-        <button
-          key={q.questionId}
-          type="button"
-          onClick={() => index !== current && onSelect(index)}
-          aria-current={index === current ? 'step' : undefined}
-          aria-label={`Questão ${index + 1}, ${NAV_LABEL[q.status]}`}
-          title={q.title}
-          data-status={q.status}
-          className={cx(
-            'h-8 min-w-8 shrink-0 rounded-lg px-2 font-mono text-xs font-bold transition',
-            NAV_TONE[q.status],
-            index === current ? 'ring-2 ring-white' : 'hover:brightness-125',
-          )}
-        >
-          {index + 1}
-        </button>
-      ))}
-    </nav>
   );
 }
 
@@ -571,43 +460,3 @@ function Ended({ snapshot }: { snapshot: RoomSnapshot }) {
   );
 }
 
-function AssessmentEnded({ snapshot }: { snapshot: RoomSnapshot }) {
-  const { leave } = usePlayer();
-  const navigate = useNavigate();
-  const questions = snapshot.me!.assessment?.questions ?? [];
-  const complete = questions.filter((q) => q.status === 'complete').length;
-
-  return (
-    <div className="mx-auto h-full max-w-xl space-y-6 overflow-auto px-5 py-10 text-center" data-testid="session-ended">
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/50">Atividade encerrada</p>
-        <p className="mt-2 font-display text-4xl font-bold">
-          {complete} de {questions.length} {questions.length === 1 ? 'questão concluída' : 'questões concluídas'}
-        </p>
-        <p className="mt-2 text-white/60">Suas respostas foram entregues ao professor.</p>
-      </div>
-      <Panel className="p-4 text-left">
-        <ul className="space-y-2">
-          {questions.map((q, index) => (
-            <li key={q.questionId} className="flex items-center gap-3 text-sm">
-              <span className={cx('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg font-mono text-xs font-bold', NAV_TONE[q.status])}>{index + 1}</span>
-              <span className="min-w-0 flex-1 truncate">{q.title}</span>
-              <span className="font-mono text-xs text-white/50">
-                {q.done}/{q.total}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </Panel>
-      <Button
-        variant="secondary"
-        onClick={() => {
-          leave();
-          navigate('/');
-        }}
-      >
-        Sair
-      </Button>
-    </div>
-  );
-}

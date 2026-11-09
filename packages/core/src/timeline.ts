@@ -1,4 +1,4 @@
-import type { ChecklistItem, PasteImpact, PasteStats, PlayerTimeline, TimelineEvent } from '@codearena/schemas';
+import { countsForAcceptance, type ChecklistItem, type PasteImpact, type PasteStats, type PlayerTimeline, type TimelineEvent } from '@codearena/schemas';
 
 /** Colagens guardadas por aluno e questão; as seguintes só entram nas contagens (protege a memória do servidor). */
 export const MAX_PASTE_EVENTS = 40;
@@ -80,7 +80,7 @@ export function buildPlayerTimeline(input: TimelineInput): PlayerTimeline {
     const at = input.itemFirstAt.get(item.id);
     if (at === undefined) continue;
     events.push({ kind: 'item', atMs: relative(at), itemId: item.id });
-    if (!item.optional) requiredDoneAtMs.push(relative(at));
+    if (countsForAcceptance(item)) requiredDoneAtMs.push(relative(at));
   }
   const pastes = (input.pastes?.events ?? []).map((p) => ({ ...p, atMs: relative(p.at) }));
   for (const paste of pastes) {
@@ -91,7 +91,7 @@ export function buildPlayerTimeline(input: TimelineInput): PlayerTimeline {
   const order: Record<TimelineEvent['kind'], number> = { 'paste-blocked': 0, paste: 1, item: 2, accepted: 3 };
   events.sort((a, b) => a.atMs - b.atMs || order[a.kind] - order[b.kind]);
 
-  const requiredTotal = input.checklist.filter((i) => !i.optional).length;
+  const requiredTotal = input.checklist.filter(countsForAcceptance).length;
   return {
     playerId: input.playerId,
     events,

@@ -100,6 +100,16 @@ parâmetros inválidos aparecem como item `failed` com a explicação. Validador
 
 Detalhes e parâmetros nos guias de cada plugin. A lista atualizada também está em `GET /api/plugins`.
 
+## `manual`
+
+```json
+{ "type": "manual" }
+```
+
+Critério que só uma pessoa decide (o professor ou a IA que ele escolher): nunca é marcado sozinho. Use nas atividades,
+para o que o código não basta para verificar (ex.: "Usar nomes descritivos para variáveis"). Nas competições, critérios
+manuais aparecem para o aluno mas não contam para a aceitação automática. Veja `activity-criteria.md`.
+
 ## Labels
 
 - No imperativo e com o resultado verificável: "Criar rota GET /health", "Retornar status 201", "Usar o componente Button".
@@ -109,5 +119,6 @@ Detalhes e parâmetros nos guias de cada plugin. A lista atualizada também est�
 
 ## `optional` e `hint`
 
-- `optional: true` cria um item bônus visual: aparece, mas não bloqueia o envio. Use pouco.
+- `optional: true` cria um item bônus visual: aparece, mas não bloqueia o envio. Use pouco. Nas atividades, item
+  opcional é critério desejável; obrigatório é crítico.
 - `hint` aparece abaixo do item enquanto pendente. Deve ajudar sem entregar a resposta: "Procure a prop que define o texto do botão".

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Download } from '@playwright/test';
 import { createRoom, joinRoom, pasteIntoEditor, setEditorCode } from './helpers';
 
 const SOLUTION = 'export default function App() {\n  return <Button title="Clique aqui" />;\n}';
@@ -321,24 +321,40 @@ test('sala com colar: a colagem que conclui a checklist aparece na linha do temp
   await expect(host.getByTestId('leaderboard-row').first()).toHaveAttribute('data-player', 'Ana');
 });
 
-test('atividade avaliativa com projeto guiado: passos, navegação entre questões, notas e CSV', async ({ page: host, browser }) => {
+async function readDownload(download: Download): Promise<string> {
+  const stream = await download.createReadStream();
+  let text = '';
+  for await (const chunk of stream) text += chunk;
+  return text;
+}
+
+test('atividade: respostas salvas sem correção automática, avaliação MSEP pelo professor e pela IA, CSV e histórico', async ({ page: host, browser }) => {
   const pack = {
     pack: { title: 'Avaliação E2E', pluginId: 'react-native', version: '1.0.0' },
     questions: [
       {
         id: 'boas-vindas',
-        kind: 'guided',
         title: 'Tela de boas-vindas',
-        prompt: 'Crie uma tela de boas-vindas.',
-        goalImage: 'https://example.com/boas-vindas.png',
+        prompt: 'Crie uma tela de boas-vindas com o texto "Bem-vindo".',
         timeLimitSeconds: 300,
         baseXP: 100,
         speedBonusMax: 100,
         solution: "import { View, Text } from 'react-native';\n\nexport default function App() {\n  return <View><Text>Bem-vindo</Text></View>;\n}",
         checklist: [
-          { id: 'app', label: 'Criar o componente App', hint: 'Comece com export default function App().', rule: { type: 'contains', value: 'export default function App' } },
-          { id: 'view', label: 'Usar uma View', hint: 'Devolva uma View no return.', rule: { type: 'contains', value: '<View' }, weight: 2 },
-          { id: 'texto', label: 'Mostrar "Bem-vindo"', hint: 'Coloque um Text com Bem-vindo dentro da View.', rule: { type: 'contains', value: 'Bem-vindo' } },
+          { id: 'app', label: 'Criar o componente App', rule: { type: 'contains', value: 'export default function App' } },
+          {
+            id: 'organizar',
+            label: 'Organizar a tela dentro de uma View',
+            rule: { type: 'manual' },
+            capability: { type: 'capacidade-tecnica', name: 'Estruturar telas' },
+          },
+          {
+            id: 'texto',
+            label: 'Mostrar "Bem-vindo"',
+            rule: { type: 'contains', value: 'Bem-vindo' },
+            optional: true,
+            capability: { type: 'conhecimento', name: 'Componente Text' },
+          },
         ],
       },
       {
@@ -358,7 +374,7 @@ test('atividade avaliativa com projeto guiado: passos, navegação entre questõ
 
   await host.goto('/teacher');
   await host.getByTestId(`pack-${id}`).getByTestId('open-room').click();
-  await host.getByText('Atividade avaliativa', { exact: true }).click();
+  await host.getByText('Atividade', { exact: true }).click();
   await host.getByTestId('assessment-minutes').fill('20');
   await host.getByTestId('create-room').click();
   const code = (await host.getByTestId('host-room-code').textContent())!.trim();
@@ -369,48 +385,88 @@ test('atividade avaliativa com projeto guiado: passos, navegação entre questõ
   await expect(ana.getByTestId('my-xp')).toHaveCount(0);
   await host.getByTestId('start-question').click();
 
-  // Projeto guiado: passos numerados, com a instrução do passo atual e a imagem do resultado.
-  await expect(ana.getByTestId('goal-image')).toBeVisible();
-  await expect(ana.getByTestId('checklist-item-app')).toHaveAttribute('data-current', 'true');
-  await expect(ana.getByTestId('step-hint')).toHaveText('Comece com export default function App().');
-  await setEditorCode(ana, 'export default function App() {');
-  await expect(ana.getByTestId('checklist-item-view')).toHaveAttribute('data-current', 'true');
-  // O progresso é salvo sozinho e o professor vê o que o servidor confirmou.
-  await expect(host.getByTestId('assessment-row-Ana')).toContainText('1/3');
-  await expect(ana.getByTestId('question-nav').getByRole('button', { name: 'Questão 1, em andamento' })).toBeVisible();
+  // O aluno vê os critérios, mas nada é marcado sozinho nem enviado para correção.
+  await expect(ana.getByTestId('criterion-organizar')).toContainText('Crítico');
+  await expect(ana.getByTestId('criterion-texto')).toContainText('Desejável');
+  await expect(ana.getByTestId('criterion-texto')).toContainText('Conhecimento: Componente Text');
+  await expect(ana.getByTestId('checklist')).toHaveCount(0);
+  await setEditorCode(ana, 'export default function App() {\n  return <View />;\n}');
+  await expect(ana.getByTestId('save-status')).toContainText('Resposta salva');
+  await expect(host.getByTestId('assessment-row-Ana').locator('[data-status="started"]')).toHaveCount(1);
 
-  // Cada aluno no seu ritmo: Ana vai para a questão 2 enquanto Bia continua na 1.
+  // Cada aluno no seu ritmo.
   await ana.getByTestId('question-nav').getByRole('button', { name: /Questão 2/ }).click();
   await expect(ana.getByTestId('question-prompt')).toContainText('Enviar');
   await expect(bia.getByTestId('question-prompt')).toContainText('boas-vindas');
   await setEditorCode(ana, 'export default function App() { return <Button title="Enviar" />; }');
-  await expect(ana.getByTestId('answer-accepted')).toContainText('Questão concluída');
-
-  // Volta para a questão 1 com o rascunho guardado e termina.
-  await ana.getByRole('button', { name: 'Ir para a questão 1' }).click();
-  await expect(ana.getByTestId('checklist-item-app')).toHaveAttribute('data-status', 'done');
-  await setEditorCode(ana, "import { View, Text } from 'react-native';\n\nexport default function App() {\n  return <View><Text>Bem-vindo</Text></View>;\n}");
-  await expect(ana.getByTestId('answer-accepted')).toContainText('todas as questões');
+  await expect(ana.getByTestId('save-status')).toContainText('Resposta salva');
+  await ana.getByTestId('deliver').click();
+  await ana.getByTestId('confirm-deliver').click();
+  await expect(ana.getByTestId('activity-delivered')).toBeVisible();
   await expect(host.getByTestId('host-answered')).toHaveText('1');
 
   await host.getByTestId('end-assessment').click();
   await host.getByTestId('confirm-end-assessment').click();
-  await expect(host.getByTestId('grades-table')).toContainText('Ana');
-  await expect(host.getByTestId('final-grade')).toHaveText(['10,0', '0,0']);
-  const [download] = await Promise.all([host.waitForEvent('download'), host.getByTestId('download-grades').click()]);
-  const csv = await new Promise<string>((resolve, reject) => {
-    void download.createReadStream().then((stream) => {
-      let text = '';
-      stream.on('data', (chunk) => (text += chunk));
-      stream.on('end', () => resolve(text));
-      stream.on('error', reject);
-    });
-  });
-  expect(csv).toContain('aluno;q1;q2;nota');
-  expect(csv).toContain('"Ana";10,0;10,0;10,0');
+  await expect(ana.getByTestId('session-ended')).toContainText('Você respondeu 2 de 2 questões');
+  await expect(bia.getByTestId('session-ended')).toContainText('Você respondeu 0 de 2 questões');
+  await host.getByTestId('evaluate-answers').click();
 
-  // O aluno vê o que concluiu, sem nota e sem placar.
-  await expect(ana.getByTestId('session-ended')).toContainText('2 de 2 questões concluídas');
-  await expect(bia.getByTestId('session-ended')).toContainText('0 de 2 questões concluídas');
-  await expect(bia.getByTestId('session-ended')).not.toContainText('10,0');
+  // Avaliação manual, com os testes automáticos como sugestão.
+  await host.getByTestId('student-Ana').click();
+  const evaluation = host.getByTestId('student-evaluation');
+  await expect(evaluation.getByTestId('answer-code').first()).toContainText('return <View />');
+  await expect(evaluation.getByTestId('apply-auto')).toBeEnabled({ timeout: 30_000 });
+  await evaluation.getByTestId('apply-auto').click();
+  await expect(evaluation.getByTestId('criterion-boas-vindas-app').getByTestId('mark-met')).toHaveAttribute('aria-pressed', 'true');
+  await expect(evaluation.getByTestId('criterion-boas-vindas-texto').getByTestId('mark-unmet')).toHaveAttribute('aria-pressed', 'true');
+  await expect(evaluation.getByTestId('final-grade')).toHaveText('-');
+  await evaluation.getByTestId('criterion-boas-vindas-organizar').getByTestId('mark-met').click();
+  // Q1: todos os críticos, nenhum desejável = 50. Q2: 100. Média 75.
+  await expect(evaluation.getByTestId('final-grade')).toHaveText('75');
+  await expect(host.getByTestId('save-state')).toHaveText('Salvo');
+
+  // Arquivo para a IA sem os nomes; a resposta da IA vira marcas revisáveis.
+  const [aiFile] = await Promise.all([host.waitForEvent('download'), host.getByTestId('ai-export-class').click()]);
+  const markdown = await readDownload(aiFile);
+  expect(markdown).toContain('### aluno-02');
+  expect(markdown).toContain('| `organizar` | crítico | Organizar a tela dentro de uma View | Capacidade técnica: Estruturar telas |');
+  expect(markdown).not.toContain('Bia');
+  const reply = {
+    avaliacoes: [
+      { aluno: 'aluno-02', questao: 'boas-vindas', criterios: ['app', 'organizar', 'texto'].map((c) => ({ id: c, atendido: false, justificativa: 'Sem resposta.' })) },
+      { aluno: 'aluno-02', questao: 'botao', criterios: [{ id: 'button', atendido: false, justificativa: 'Sem resposta.' }] },
+    ],
+  };
+  await host.getByTestId('ai-import-open').click();
+  await host.getByTestId('ai-import-text').fill('```json\n' + JSON.stringify(reply) + '\n```');
+  await expect(host.getByTestId('ai-import-summary')).toContainText('4 critérios avaliados em 2 respostas');
+  await host.getByTestId('ai-import-apply').click();
+  await host.getByTestId('student-Bia').click();
+  await expect(host.getByTestId('student-evaluation').getByTestId('final-grade')).toHaveText('0');
+  await expect(host.getByTestId('student-evaluation').getByText('Sem resposta.', { exact: true }).first()).toBeVisible();
+  await expect(host.getByTestId('save-state')).toHaveText('Salvo');
+
+  const [csvFile] = await Promise.all([host.waitForEvent('download'), host.getByTestId('download-grades').click()]);
+  const csv = await readDownload(csvFile);
+  expect(csv).toContain('aluno;q1;q2;nota;faltou_critico');
+  expect(csv).toContain('"Ana";50;100;75;nao');
+  expect(csv).toContain('"Bia";0;0;0;sim');
+
+  // Tudo fica no histórico do professor.
+  await host.goto('/teacher/historico');
+  await expect(host.getByTestId('history-row').first()).toContainText('Avaliação E2E');
+  await expect(host.getByTestId('history-row').first()).toContainText('2 de 2 avaliados');
+});
+
+test('competição também fica no histórico, com placar e respostas', async ({ page: host, browser }) => {
+  const code = await createRoom(host, 'pack-exemplo-react-native-fundamentos');
+  const ana = await joinRoom(browser, code, 'Ana', 'hex');
+  await host.getByTestId('start-question').click();
+  await setEditorCode(ana, SOLUTION);
+  await expect(host.getByTestId('host-review')).toBeVisible();
+  await host.getByTestId('end-session').click();
+  await host.getByRole('button', { name: 'Ver respostas' }).click();
+  await expect(host.getByTestId('history-scoreboard')).toContainText('Ana');
+  await expect(host.getByTestId('answer-botao-clique-aqui')).toContainText('Aceita');
+  await expect(host.getByTestId('answer-botao-clique-aqui')).toContainText('Clique aqui');
 });

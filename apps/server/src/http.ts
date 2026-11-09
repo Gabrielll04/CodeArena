@@ -1,21 +1,28 @@
 import type { FastifyInstance } from 'fastify';
 import { evaluateChecklist, lintQuestion, type RoomManager } from '@codearena/core';
 import type { PluginRegistry, QuizPlugin } from '@codearena/plugin-sdk';
-import { MAX_CODE_LENGTH, parseQuestion, toPublicQuestion } from '@codearena/schemas';
+import { EvaluationUpdateSchema, MAX_CODE_LENGTH, parseQuestion, TeacherKeySchema, toPublicQuestion } from '@codearena/schemas';
+import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { HistoryError, hashTeacherKey, type HistoryStore } from './historyStore';
 import { PackStoreError, PackValidationError, type PackStore } from './packStore';
+
+/** Cabeçalho com a chave do professor, guardada no navegador dele. */
+export const TEACHER_KEY_HEADER = 'x-teacher-key';
 
 export function registerHttpRoutes(
   app: FastifyInstance,
-  deps: { packs: PackStore; plugins: PluginRegistry<QuizPlugin<any>>; rooms: RoomManager },
+  deps: { packs: PackStore; plugins: PluginRegistry<QuizPlugin<any>>; rooms: RoomManager; history: HistoryStore },
 ): void {
-  const { packs, plugins, rooms } = deps;
+  const { packs, plugins, rooms, history } = deps;
 
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof PackValidationError) {
       return reply.status(422).send({ error: 'Pack inválido', issues: error.issues });
     }
-    if (error instanceof PackStoreError) return reply.status(error.status).send({ error: error.message });
+    if (error instanceof PackStoreError || error instanceof HistoryError) {
+      return reply.status(error.status).send({ error: error.message });
+    }
     const status = (error as { statusCode?: number }).statusCode ?? 500;
     if (status >= 500) app.log.error(error);
     return reply.status(status).send({ error: status >= 500 ? 'Erro interno' : (error as Error).message });
@@ -83,6 +90,31 @@ export function registerHttpRoutes(
       lintQuestion(resolved, plugin),
     ]);
     return { evaluation, warnings };
+  });
+
+  /* Histórico: cada professor vê só as sessões criadas com a chave dele. */
+  const ownerOf = (request: FastifyRequest): string => {
+    const key = TeacherKeySchema.safeParse(request.headers[TEACHER_KEY_HEADER]);
+    if (!key.success) throw new HistoryError(401, 'Chave do professor ausente ou inválida');
+    return hashTeacherKey(key.data);
+  };
+
+  app.get('/api/history', async (request) => history.list(ownerOf(request)));
+
+  app.get<{ Params: { id: string } }>('/api/history/:id', async (request) => history.get(request.params.id, ownerOf(request)));
+
+  app.put<{ Params: { id: string } }>('/api/history/:id/evaluations', async (request, reply) => {
+    const owner = ownerOf(request);
+    const body = EvaluationUpdateSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.status(400).send({ error: body.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') });
+    }
+    return history.updateEvaluations(request.params.id, owner, body.data.entries);
+  });
+
+  app.delete<{ Params: { id: string } }>('/api/history/:id', async (request, reply) => {
+    await history.delete(request.params.id, ownerOf(request));
+    return reply.status(204).send();
   });
 
   app.get<{ Params: { code: string } }>('/api/rooms/:code', async (request, reply) => {

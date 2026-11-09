@@ -59,17 +59,13 @@ export interface ChecklistProps {
   /** Toca som e anima quando um item é concluído (desligado no editor do professor). */
   announce?: boolean;
   compact?: boolean;
-  /** Projeto guiado: itens numerados como passos, com a instrução do passo atual em destaque. */
-  guided?: boolean;
 }
 
-export function Checklist({ items, evaluation, checking, announce = true, compact, guided }: ChecklistProps) {
+export function Checklist({ items, evaluation, checking, announce = true, compact }: ChecklistProps) {
   const previous = useRef<Map<string, ChecklistItemStatus>>(new Map());
   const byId = new Map(evaluation.items.map((r) => [r.id, r]));
   const complete = evaluation.allRequiredDone;
   const percent = evaluation.requiredTotal ? (evaluation.requiredDone / evaluation.requiredTotal) * 100 : 0;
-  // Passo atual: o primeiro obrigatório ainda não concluído, na ordem do pack.
-  const currentStep = guided ? items.find((i) => !i.optional && byId.get(i.id)?.status !== 'done')?.id : undefined;
 
   useEffect(() => {
     let newlyDone = false;
@@ -83,7 +79,7 @@ export function Checklist({ items, evaluation, checking, announce = true, compac
 
   return (
     <section
-      aria-label={guided ? 'Passos da questão' : 'Checklist da questão'}
+      aria-label="Checklist da questão"
       data-testid="checklist"
       data-complete={complete}
       className={cx(
@@ -92,7 +88,7 @@ export function Checklist({ items, evaluation, checking, announce = true, compac
       )}
     >
       <header className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-white/60">{guided ? 'Passos' : 'Checklist'}</h3>
+        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-white/60">Checklist</h3>
         <span className={cx('font-mono text-xs font-semibold', complete ? 'text-lime' : 'text-white/60')} data-testid="checklist-count">
           {evaluation.requiredDone}/{evaluation.requiredTotal}
         </span>
@@ -101,41 +97,34 @@ export function Checklist({ items, evaluation, checking, announce = true, compac
         <motion.div className="h-full rounded-full bg-lime" animate={{ width: `${percent}%` }} transition={{ type: 'spring', stiffness: 200, damping: 26 }} />
       </div>
       <ol className={cx('space-y-2.5', compact && 'space-y-1.5')}>
-        {items.map((item, index) => {
+        {items.map((item) => {
           const result = byId.get(item.id);
           const status = result?.status ?? 'pending';
           const isChecking = checking?.has(item.id) ?? false;
-          const isCurrent = item.id === currentStep;
+          const manual = item.rule.type === 'manual';
           return (
-            <li
-              key={item.id}
-              data-testid={`checklist-item-${item.id}`}
-              data-status={status}
-              data-current={isCurrent || undefined}
-              aria-current={isCurrent ? 'step' : undefined}
-              className={cx(
-                'flex gap-3',
-                isCurrent && '-mx-2 rounded-xl bg-violet/[0.09] px-2 py-2 ring-1 ring-violet/35',
-                guided && !isCurrent && status !== 'done' && 'opacity-60',
+            <li key={item.id} data-testid={`checklist-item-${item.id}`} data-status={manual ? 'manual' : status} className="flex gap-3">
+              {manual ? (
+                <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-dashed border-white/20 text-xs text-white/35" aria-hidden>
+                  ?
+                </span>
+              ) : (
+                <Indicator status={status} checking={isChecking} />
               )}
-            >
-              <Indicator status={status} checking={isChecking} />
               <div className="min-w-0 flex-1 pt-0.5">
-                <p className={cx('text-sm leading-snug transition-colors', status === 'done' ? 'text-white' : 'text-white/80', isCurrent && 'font-semibold text-white')}>
-                  {guided && <span className="mr-1.5 font-mono text-xs text-white/45">{index + 1}.</span>}
+                <p className={cx('text-sm leading-snug transition-colors', status === 'done' ? 'text-white' : 'text-white/80')}>
                   {item.label}
                   {item.optional && <span className="ml-1.5 text-[11px] font-medium uppercase tracking-wider text-white/35">opcional</span>}
-                  <span className="sr-only"> ({STATUS_TEXT[status]})</span>
+                  {manual && <span className="ml-1.5 text-[11px] font-medium uppercase tracking-wider text-white/35">o professor avalia</span>}
+                  {!manual && <span className="sr-only"> ({STATUS_TEXT[status]})</span>}
                 </p>
                 {result?.message && status !== 'done' && (
                   <p className={cx('mt-0.5 break-words font-mono text-[11px] leading-snug', status === 'failed' ? 'text-coral' : 'text-white/45')}>
                     {result.message}
                   </p>
                 )}
-                {!compact && item.hint && status !== 'done' && !result?.message && (!guided || isCurrent) && (
-                  <p className={cx('mt-0.5 text-xs', isCurrent ? 'text-sm leading-snug text-white/75' : 'text-white/40')} data-testid={isCurrent ? 'step-hint' : undefined}>
-                    {item.hint}
-                  </p>
+                {!compact && item.hint && status !== 'done' && !result?.message && (
+                  <p className="mt-0.5 text-xs text-white/40">{item.hint}</p>
                 )}
               </div>
             </li>

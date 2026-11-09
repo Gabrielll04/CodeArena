@@ -1,4 +1,4 @@
-import { toPublicQuestion, type ChecklistItem, type Question, type ResolvedQuestion } from '@codearena/schemas';
+import { countsForAcceptance, toPublicQuestion, type ChecklistItem, type Question, type ResolvedQuestion } from '@codearena/schemas';
 import type { QuizPlugin } from '@codearena/plugin-sdk';
 import { evaluateChecklist } from './checklist';
 
@@ -70,7 +70,7 @@ export async function lintQuestion(
   } else {
     const result = await evaluateChecklist(question.solution, publicQuestion, { plugin });
     result.items.forEach((item) => {
-      if (item.status !== 'done' && !item.optional) {
+      if (item.status !== 'done' && !item.optional && !item.manual) {
         warnings.push({
           level: 'error',
           itemId: item.id,
@@ -89,16 +89,11 @@ export async function lintQuestion(
     }
   }
 
-  if (question.kind === 'guided') {
-    // No projeto guiado, a instrução de cada passo é o que guia o aluno.
-    for (const item of question.checklist) {
-      if (!item.optional && !item.hint?.trim()) {
-        warnings.push({ level: 'warning', itemId: item.id, message: 'Passo sem instrução: escreva no campo hint o que o aluno faz neste passo.' });
-      }
-    }
-    if (question.checklist.filter((item) => !item.optional).length < 3) {
-      warnings.push({ level: 'warning', message: 'Projeto guiado com menos de 3 passos: prefira o tipo "build".' });
-    }
+  if (!question.checklist.some(countsForAcceptance)) {
+    warnings.push({
+      level: 'warning',
+      message: 'Nenhum critério crítico é verificado pelo código: em salas de competição a resposta seria aceita sem conferir nada. Use esta questão em atividades.',
+    });
   }
 
   // Avalia o código inicial inteiro (inclusive regras que executam o código): é isso que o aluno recebe.
@@ -111,7 +106,7 @@ export async function lintQuestion(
         : 'O código inicial já completa a checklist: a resposta seria aceita sem esforço.',
     });
   } else if (debug) {
-    const failing = starter.items.filter((item) => !item.optional && item.status !== 'done');
+    const failing = starter.items.filter((item) => !item.optional && !item.manual && item.status !== 'done');
     const labels = failing.map((item) => question.checklist.find((i) => i.id === item.id)?.label ?? item.id);
     warnings.push({
       level: 'info',

@@ -1,6 +1,6 @@
 # 0003: Atividades avaliativas e projetos guiados
 
-- **Status:** aceita.
+- **Status:** substituída em parte pela [0004](0004-atividades-msep-e-historico.md) (nota, projeto guiado e correção automática durante a atividade).
 - **Data:** 2026-10-26
 
 ## Contexto

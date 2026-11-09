@@ -21,8 +21,8 @@ o servidor valida de novo e concede XP (base + bônus por velocidade).
 | `packages/plugin-sdk/src/types.ts` | Contrato de plugins (`QuizPlugin`, `ChecklistValidator`) |
 | `codearena.config.json` | Plugins ativos na instalação (lidos por `packages/plugin-host`) |
 | `docs/agents/debug-questions.md` | Como criar questões de depuração (`kind: "debug"`) |
-| `docs/agents/guided-questions.md` | Como criar projetos guiados (`kind: "guided"`) |
-| `packages/core/src/grading.ts` | Nota de 0 a 10 das atividades avaliativas (pesos dos itens) |
+| `docs/agents/activity-criteria.md` | Critérios críticos e desejáveis (MSEP) para atividades |
+| `packages/core/src/grading.ts` | Nota MSEP de 0 a 100 das atividades |
 | `node_modules/@codearena/plugin-*/packs/*.json` | Packs de exemplo válidos de cada plugin (inclui `depuracao-*.json`) |
 | `docs/agents/` | Instruções detalhadas para gerar conteúdo |
 | `scripts/validate-packs.ts` | Validador de packs (schema + checklist contra a solução) |
@@ -58,12 +58,14 @@ Leia `docs/agents/debug-questions.md`. Em resumo:
 13. Pelo menos um item obrigatório **falha** no código com bug; os demais devem ser itens de proteção que já passam.
 14. Labels descrevem o comportamento esperado, não o conserto.
 
-## Regras extras para projetos guiados (`"kind": "guided"`)
+## Regras extras para atividades (critérios MSEP)
 
-Leia `docs/agents/guided-questions.md`. Em resumo:
+Leia `docs/agents/activity-criteria.md`. Em resumo:
 
-15. Cada item da checklist é um passo, na ordem; todo passo obrigatório tem `hint` com a instrução do passo.
-16. Cada passo depende só dos anteriores. `goalImage` só com um link real fornecido pelo professor.
+15. Item obrigatório é critério crítico; `"optional": true` é desejável. Todo critério tem `capability`.
+16. Prefira regras verificáveis; `{ "type": "manual" }` só quando o código não basta, e ainda assim com um resultado
+    observável (nada de "código bem feito").
+17. `goalImage` só com um link real fornecido pelo professor.
 
 ## Como verificar o que você gerou
 
@@ -82,3 +84,13 @@ e aponta regras frágeis. Saída com `ERRO` significa que o pack não deve ser e
 - Plugins são pacotes separados (`docs/decisoes/0001-plugins-como-pacotes.md`): seguem `docs/plugins/creating-a-plugin.md`,
   não alteram `packages/core` e trazem as próprias dependências. Packs são só JSON e nunca contêm código.
 - Rode `pnpm typecheck && pnpm test` antes de propor mudanças; `pnpm test:e2e` para fluxos de sala.
+
+## Autoria de commits, PRs e merges
+
+Toda a autoria é do dono do repositório. Agentes de IA **nunca** atribuem créditos a si mesmos:
+
+- sem `Co-Authored-By` de agentes, links de sessão (`Claude-Session` e similares) ou rodapés como "Generated with ...";
+  em commits, descrições e comentários de PR e mensagens de merge;
+- o autor e o committer dos commits são o dono da conta (configure `git config user.name` e `user.email` com os dados
+  dele antes de commitar);
+- nomes de branch descrevem a mudança, sem o nome do agente.

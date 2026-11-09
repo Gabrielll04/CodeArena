@@ -2,10 +2,15 @@ import {
   DEFAULT_ROOM_SETTINGS,
   toPublicQuestion,
   type ActiveQuestion,
-  type AssessmentGradeRow,
+  countsForAcceptance,
   type AssessmentQuestionProgress,
+  type AssessmentQuestionStatus,
+  type AssessmentRow,
   type AssessmentStudentView,
   type AvatarId,
+  type HistoryAnswer,
+  type HistoryAnswerStatus,
+  type HistoryPlayer,
   type ErrorCode,
   type ItemCheck,
   type ItemInsight,
@@ -23,9 +28,9 @@ import {
   type RoomSettingsPatch,
   type RoomSnapshot,
   type ServerToClientEvents,
+  type SessionHistory,
   type SessionReport,
 } from '@codearena/schemas';
-import { activityGrade, questionGrade } from './grading';
 import { calculateStreakBonus, calculateXP, rankPlayers } from './scoring';
 import { buildPlayerTimeline, createPasteLog, recordPaste, type PasteLog } from './timeline';
 
@@ -85,8 +90,10 @@ interface PlayerState {
   rank: number | null;
   previousRank: number | null;
   lastQuestionXP: number;
-  /** Atividade avaliativa: índice da questão em que o aluno está. */
+  /** Atividade: índice da questão em que o aluno está. */
   position: number;
+  /** Atividade: o aluno entregou e não edita mais. */
+  delivered: boolean;
 }
 
 interface QuestionRecord {
@@ -105,8 +112,8 @@ interface QuestionRecord {
   allowPaste: boolean;
   pending: Map<string, Promise<void>>;
   lastSubmitAt: Map<string, number>;
-  /** Atividade avaliativa: a melhor versão de cada aluno, pelos itens que o servidor confirmou. */
-  best: Map<string, { grade: number; passed: Set<string> }>;
+  /** Último código de cada aluno: salvo na atividade ou enviado na competição (vai para o histórico). */
+  codes: Map<string, { code: string; at: number }>;
   results: QuestionResults | null;
 }
 
@@ -120,6 +127,10 @@ export interface RoomOptions {
   sink: RoomSink;
   clock?: Clock;
   createId?: () => string;
+  /** Id do registro desta sessão no histórico do professor (mostrado a ele no fim). */
+  historyId?: string;
+  /** Chamado uma vez, quando a sessão termina (para guardar no histórico). */
+  onEnded?: (room: Room) => void;
 }
 
 const randomId = () => globalThis.crypto.randomUUID();
@@ -137,6 +148,7 @@ export class Room {
   private readonly sink: RoomSink;
   private readonly clock: Clock;
   private readonly createId: () => string;
+  private readonly options: Pick<RoomOptions, 'historyId' | 'onEnded'>;
 
   private phase: RoomPhase = 'lobby';
   private settings: RoomSettings;
@@ -148,7 +160,7 @@ export class Room {
   private ending: Promise<SessionReport> | null = null;
   private report: SessionReport | null = null;
   private startedAt: number | null = null;
-  /** Atividade avaliativa: começo e prazo, iguais para todas as questões. */
+  /** Atividade: começo e prazo, iguais para todas as questões. */
   private window: { startsAt: number; endsAt: number } | null = null;
   lastActivityAt: number;
 
@@ -162,6 +174,7 @@ export class Room {
     this.sink = options.sink;
     this.clock = options.clock ?? systemClock;
     this.createId = options.createId ?? randomId;
+    this.options = { historyId: options.historyId, onEnded: options.onEnded };
     this.settings = { ...DEFAULT_ROOM_SETTINGS, ...options.settings };
     this.createdAt = this.clock.now();
     this.lastActivityAt = this.createdAt;
@@ -237,6 +250,7 @@ export class Room {
       previousRank: null,
       lastQuestionXP: 0,
       position: 0,
+      delivered: false,
     };
     this.players.set(player.id, player);
     this.sink.emit({ kind: 'all' }, 'player:joined', this.publicPlayer(player));
@@ -283,7 +297,7 @@ export class Room {
       record.answers.delete(playerId);
       record.progress.delete(playerId);
       record.itemState.delete(playerId);
-      record.best.delete(playerId);
+      record.codes.delete(playerId);
     }
     this.sink.emit({ kind: 'all' }, 'player:left', { playerId, name: player.name });
     this.sink.sync();
@@ -366,7 +380,10 @@ export class Room {
     this.window = { startsAt, endsAt };
     this.history = this.questions.map((question, index) => this.createRecord(question, index, startsAt, endsAt));
     this.current = this.history[0]!;
-    for (const player of this.players.values()) player.position = 0;
+    for (const player of this.players.values()) {
+      player.position = 0;
+      player.delivered = false;
+    }
     this.phase = countdownMs > 0 ? 'countdown' : 'question';
 
     const active = this.activeQuestion(this.current)!;
@@ -387,17 +404,51 @@ export class Room {
     return active;
   }
 
-  /** Atividade avaliativa: o aluno vai para outra questão. Devolve o snapshot dele. */
+  /** Atividade: o aluno vai para outra questão. Devolve o snapshot dele. */
   goTo(playerId: string, index: number): RoomSnapshot {
-    const player = this.players.get(playerId);
-    if (!player) throw new RoomError('not_in_room', 'Você não está nesta sala');
-    if (!this.isAssessment || !this.window) throw new RoomError('invalid_state', 'Disponível só em atividades avaliativas');
-    if (this.phase === 'ended') throw new RoomError('room_ended', 'A atividade foi encerrada');
+    const player = this.activityPlayer(playerId);
     if (!this.history[index]) throw new RoomError('invalid_state', 'Questão não encontrada');
     this.touch();
     player.position = index;
-    this.sink.emit({ kind: 'host' }, 'assessment:row', this.gradeRow(player));
+    this.emitRow(player);
     return this.snapshotForPlayer(playerId);
+  }
+
+  /**
+   * Atividade: guarda a resposta do aluno como está, sem validar (o professor avalia depois).
+   * Devolve o horário do servidor em que foi salva.
+   */
+  saveAnswer(playerId: string, questionId: string, code: string): number {
+    const player = this.activityPlayer(playerId);
+    if (this.phase !== 'question') throw new RoomError('invalid_state', 'A atividade ainda não começou');
+    if (player.delivered) throw new RoomError('invalid_state', 'Você já entregou a atividade');
+    const record = this.history.find((r) => r.question.id === questionId);
+    if (!record) throw new RoomError('invalid_state', 'Questão não encontrada');
+    const now = this.clock.now();
+    if (now > record.endsAt) throw new RoomError('invalid_state', 'O tempo da atividade acabou');
+    const before = this.answerStatus(record, playerId);
+    record.codes.set(playerId, { code, at: now });
+    this.touch();
+    if (this.answerStatus(record, playerId) !== before) this.emitRow(player);
+    return now;
+  }
+
+  /** Atividade: o aluno entrega; as respostas ficam como estão. Devolve o snapshot dele. */
+  deliver(playerId: string): RoomSnapshot {
+    const player = this.activityPlayer(playerId);
+    if (this.phase !== 'question') throw new RoomError('invalid_state', 'A atividade ainda não começou');
+    player.delivered = true;
+    this.touch();
+    this.emitRow(player);
+    return this.snapshotForPlayer(playerId);
+  }
+
+  private activityPlayer(playerId: string): PlayerState {
+    const player = this.players.get(playerId);
+    if (!player) throw new RoomError('not_in_room', 'Você não está nesta sala');
+    if (!this.isAssessment || !this.window) throw new RoomError('invalid_state', 'Disponível só em atividades');
+    if (this.phase === 'ended') throw new RoomError('room_ended', 'A atividade foi encerrada');
+    return player;
   }
 
   private createRecord(question: ResolvedQuestion, index: number, startsAt: number, endsAt: number): QuestionRecord {
@@ -414,7 +465,7 @@ export class Room {
       allowPaste: this.settings.allowPaste,
       pending: new Map(),
       lastSubmitAt: new Map(),
-      best: new Map(),
+      codes: new Map(),
       results: null,
     };
   }
@@ -424,7 +475,7 @@ export class Room {
   }
 
   /**
-   * A questão em que o aluno está trabalhando: a atual da sala ou, na atividade avaliativa, a que ele informou
+   * A questão em que o aluno está trabalhando: a atual da sala ou, na atividade, a que ele informou
    * (ou a posição dele).
    */
   private recordFor(playerId: string, questionId?: string): QuestionRecord | null {
@@ -439,9 +490,11 @@ export class Room {
    * É apenas informativo, para o painel do professor e a revisão da turma; a pontuação não depende dele.
    */
   reportProgress(playerId: string, done: number, total: number, doneIds?: string[], questionId?: string): void {
+    // Na atividade não há checklist automática: nada a acompanhar.
+    if (this.isAssessment) return;
     const record = this.recordFor(playerId, questionId);
     if (!record || record.finishedAt !== null || !this.players.has(playerId)) return;
-    const required = record.question.checklist.filter((i) => !i.optional);
+    const required = record.question.checklist.filter(countsForAcceptance);
     let firstCompletion = false;
     if (doneIds) {
       const valid = new Set(record.question.checklist.map((i) => i.id));
@@ -450,8 +503,7 @@ export class Room {
     }
     const entry = { done: Math.min(done, required.length), total: required.length };
     record.progress.set(playerId, entry);
-    // Na atividade avaliativa, o professor acompanha pelo que o servidor confirmou (assessment:row).
-    if (!this.isAssessment) this.sink.emit({ kind: 'host' }, 'question:progress', {
+    this.sink.emit({ kind: 'host' }, 'question:progress', {
       playerId,
       ...entry,
       answered: record.answers.get(playerId)?.status === 'accepted',
@@ -473,6 +525,8 @@ export class Room {
     if (!log) record.pastes.set(playerId, (log = createPasteLog()));
     recordPaste(log, { at: now, chars, blocked });
     this.emitTimeline(record, playerId);
+    const player = this.players.get(playerId);
+    if (this.isAssessment && player) this.emitRow(player);
   }
 
   private emitTimeline(record: QuestionRecord, playerId: string): void {
@@ -514,6 +568,7 @@ export class Room {
   async submit(playerId: string, code: string, questionId?: string): Promise<PlayerAnswer> {
     const player = this.players.get(playerId);
     if (!player) throw new RoomError('not_in_room', 'Você não está nesta sala');
+    if (this.isAssessment) throw new RoomError('invalid_state', 'Na atividade, as respostas são salvas automaticamente');
     const record = this.recordFor(playerId, questionId);
     const receivedAt = this.clock.now();
     this.touch();
@@ -531,6 +586,7 @@ export class Room {
       throw new RoomError('invalid_state', 'Aguarde um instante antes de reenviar');
     }
     record.lastSubmitAt.set(playerId, receivedAt);
+    record.codes.set(playerId, { code, at: receivedAt });
 
     const timeLimitMs = record.question.timeLimitSeconds * 1000;
     const remainingMs = Math.max(0, record.endsAt - receivedAt);
@@ -560,9 +616,7 @@ export class Room {
         verdict = { passed: false, items: [], message: `Falha na validação: ${err instanceof Error ? err.message : String(err)}` };
       }
       let answer: PlayerAnswer;
-      if (verdict.passed && this.isAssessment) {
-        answer = { status: 'accepted', xp: 0, receivedAt, remainingMs, items: verdict.items, code };
-      } else if (verdict.passed) {
+      if (verdict.passed) {
         const xp = calculateXP({
           baseXP: record.question.baseXP,
           speedBonusMax: record.question.speedBonusMax,
@@ -597,13 +651,6 @@ export class Room {
           : new Set(verdict.items.filter((i) => i.passed).map((i) => i.id));
         this.markItems(record, playerId, confirmed, 'add', receivedAt);
         if (answer.status === 'accepted') this.emitTimeline(record, playerId);
-        if (this.isAssessment) {
-          const grade = questionGrade(record.question.checklist, confirmed);
-          const best = record.best.get(playerId);
-          if (!best || grade > best.grade || (grade === best.grade && confirmed.size > best.passed.size)) {
-            record.best.set(playerId, { grade, passed: confirmed });
-          }
-        }
       }
       return answer;
     })();
@@ -614,14 +661,6 @@ export class Room {
     record.pending.delete(playerId);
 
     this.sink.emit({ kind: 'player', playerId }, 'question:validated', { questionId: record.question.id, answer });
-    if (this.isAssessment) {
-      // Sem sincronizar a sala inteira a cada envio: só o aluno e a linha dele no painel do professor.
-      if (this.players.has(playerId)) {
-        this.sink.emit({ kind: 'player', playerId }, 'room:update', this.snapshotForPlayer(playerId));
-        this.sink.emit({ kind: 'host' }, 'assessment:row', this.gradeRow(player));
-      }
-      return answer;
-    }
     this.sink.emit({ kind: 'host' }, 'question:submitted', {
       playerId,
       name: player.name,
@@ -699,7 +738,7 @@ export class Room {
       const report = this.buildReport();
       this.report = report;
       if (this.isAssessment) {
-        // Na atividade avaliativa, cada aluno recebe só o próprio resultado.
+        // Na atividade, cada aluno recebe só o próprio resultado.
         this.sink.emit({ kind: 'host' }, 'session:ended', report);
         for (const player of this.players.values()) {
           this.sink.emit({ kind: 'player', playerId: player.id }, 'session:ended', this.reportFor(player.id)!);
@@ -708,27 +747,75 @@ export class Room {
         this.sink.emit({ kind: 'all' }, 'session:ended', report);
       }
       this.sink.sync();
+      try {
+        this.options.onEnded?.(this);
+      } catch {
+        // falha ao guardar no histórico não impede o encerramento
+      }
       return report;
     })();
     return this.ending;
   }
 
-  /** Fecha todas as questões da atividade: espera as validações em andamento e calcula os resultados. */
+  /** Fecha todas as questões da atividade. As respostas ficam como foram salvas. */
   private async finishAssessment(): Promise<void> {
     if (!this.window) return;
-    await Promise.allSettled(this.history.flatMap((record) => [...record.pending.values()]));
     const finishedAt = Math.min(this.clock.now(), this.window.endsAt);
     for (const record of this.history) {
       record.finishedAt = finishedAt;
       record.results = this.computeResults(record);
     }
-    for (const player of this.players.values()) {
-      player.correctCount = this.history.filter((r) => r.answers.get(player.id)?.status === 'accepted').length;
-    }
   }
 
   dispose(): void {
     this.clearTimers();
+  }
+
+  /** A sessão já começou e ainda não terminou (vale guardar no histórico antes de descartar a sala). */
+  get inProgress(): boolean {
+    return this.startedAt !== null && this.phase !== 'ended';
+  }
+
+  /**
+   * Dados da sessão encerrada para o histórico do professor: questões completas, alunos, placar e o último código de
+   * cada aluno em cada questão. Nunca inclui tokens. null antes do encerramento.
+   */
+  historySnapshot(): Omit<SessionHistory, 'id' | 'version' | 'packId' | 'evaluations' | 'autoCheck'> | null {
+    if (!this.report) return null;
+    const players: HistoryPlayer[] = [...this.players.values()]
+      .sort((a, b) => a.joinedAt - b.joinedAt)
+      .map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, delivered: p.delivered }));
+    const answers: HistoryAnswer[] = this.history.flatMap((record) =>
+      players.map((player) => {
+        const saved = record.codes.get(player.id);
+        const answer = record.answers.get(player.id);
+        let status: HistoryAnswerStatus;
+        if (this.isAssessment) status = this.answerStatus(record, player.id);
+        else if (answer) status = answer.status === 'validating' ? 'rejected' : answer.status;
+        else status = saved ? 'rejected' : 'empty';
+        return {
+          playerId: player.id,
+          questionId: record.question.id,
+          code: saved?.code ?? '',
+          status,
+          xp: answer?.status === 'accepted' ? answer.xp : 0,
+          savedAt: saved?.at ?? null,
+          paste: record.pastes.get(player.id)?.stats ?? null,
+        };
+      }),
+    );
+    return {
+      mode: this.settings.mode,
+      roomCode: this.code,
+      packTitle: this.packTitle,
+      startedAt: this.startedAt ?? this.createdAt,
+      endedAt: this.report.endedAt,
+      settings: { ...this.settings },
+      questions: this.history.map((record) => record.question),
+      players,
+      report: this.report,
+      answers,
+    };
   }
 
   /* ---------------------------------------------------------------- */
@@ -741,11 +828,14 @@ export class Room {
       progress: this.progressEntries(),
       timelines: this.history.map((record) => this.questionTimeline(record)),
     };
+    const extra: Partial<RoomSnapshot> = {};
+    if (this.phase === 'ended' && this.options.historyId) extra.historyId = this.options.historyId;
     if (this.isAssessment && this.window) {
-      const grades = [...this.players.values()].map((player) => this.gradeRow(player));
-      return { ...snapshot, grades, answeredCount: grades.filter((row) => isComplete(row.questions)).length };
+      const rows = [...this.players.values()].map((player) => this.assessmentRow(player));
+      extra.assessmentRows = rows;
+      extra.answeredCount = rows.filter((row) => row.delivered).length;
     }
-    return snapshot;
+    return { ...snapshot, ...extra };
   }
 
   snapshotForPlayer(playerId: string): RoomSnapshot {
@@ -782,48 +872,51 @@ export class Room {
   }
 
   /* ---------------------------------------------------------------- */
-  /* Atividade avaliativa                                              */
+  /* Atividade                                                         */
   /* ---------------------------------------------------------------- */
 
-  private questionProgress(record: QuestionRecord, playerId: string): AssessmentQuestionProgress & { grade: number } {
-    const required = record.question.checklist.filter((i) => !i.optional);
-    const best = record.best.get(playerId);
-    const done = best ? required.filter((i) => best.passed.has(i.id)).length : 0;
-    const complete = record.answers.get(playerId)?.status === 'accepted';
+  /** Sem resposta: nada salvo, ou só o código inicial. */
+  private answerStatus(record: QuestionRecord, playerId: string): AssessmentQuestionStatus {
+    const code = record.codes.get(playerId)?.code.trim() ?? '';
+    return code && code !== record.question.starterCode.trim() ? 'started' : 'empty';
+  }
+
+  private questionProgress(record: QuestionRecord, playerId: string): AssessmentQuestionProgress {
     return {
       questionId: record.question.id,
       title: record.question.title ?? record.question.prompt.slice(0, 60),
-      kind: record.question.kind,
-      done: complete ? required.length : done,
-      total: required.length,
-      status: complete ? 'complete' : done > 0 ? 'partial' : 'empty',
-      grade: complete ? questionGrade(record.question.checklist, new Set(required.map((i) => i.id))) : (best?.grade ?? 0),
+      status: this.answerStatus(record, playerId),
     };
   }
 
-  /** Linha do professor: nota de cada questão (melhor versão) e média da atividade. */
-  private gradeRow(player: PlayerState): AssessmentGradeRow {
-    const questions = this.history.map((record) => this.questionProgress(record, player.id));
+  /** Linha do professor: questão atual, situação de cada resposta, colagens e entrega. */
+  private assessmentRow(player: PlayerState): AssessmentRow {
     return {
       playerId: player.id,
       index: player.position,
-      grade: activityGrade(questions.map((q) => q.grade)),
-      questions,
+      delivered: player.delivered,
+      questions: this.history.map((record) => ({
+        ...this.questionProgress(record, player.id),
+        pastes: record.pastes.get(player.id)?.stats.count ?? 0,
+      })),
     };
   }
 
-  /** O que o aluno vê: as mesmas situações, sem nota. */
+  private emitRow(player: PlayerState): void {
+    this.sink.emit({ kind: 'host' }, 'assessment:row', this.assessmentRow(player));
+  }
+
+  /** O que o aluno vê da própria atividade, com a resposta salva da questão atual. */
   private studentView(player: PlayerState): AssessmentStudentView {
     return {
       index: player.position,
-      questions: this.history.map((record) => {
-        const { grade: _grade, ...progress } = this.questionProgress(record, player.id);
-        return progress;
-      }),
+      delivered: player.delivered,
+      questions: this.history.map((record) => this.questionProgress(record, player.id)),
+      code: this.history[player.position]?.codes.get(player.id)?.code ?? null,
     };
   }
 
-  /** O relatório com só o próprio aluno (atividade avaliativa). */
+  /** O relatório com só o próprio aluno (atividade). */
   private reportFor(playerId: string): SessionReport | null {
     if (!this.report) return null;
     return { ...this.report, players: this.report.players.filter((p) => p.playerId === playerId) };
@@ -894,7 +987,7 @@ export class Room {
 
   private progressEntries(): ProgressEntry[] {
     const record = this.current;
-    const total = record ? record.question.checklist.filter((i) => !i.optional).length : 0;
+    const total = record ? record.question.checklist.filter(countsForAcceptance).length : 0;
     return [...this.players.values()].map((player) => {
       const answered = record?.answers.get(player.id)?.status === 'accepted';
       const progress = record?.progress.get(player.id);
@@ -928,7 +1021,7 @@ export class Room {
       index: record.index,
       title: record.question.title ?? record.question.prompt.slice(0, 60),
       timeLimitMs: record.question.timeLimitSeconds * 1000,
-      requiredTotal: record.question.checklist.filter((i) => !i.optional).length,
+      requiredTotal: record.question.checklist.filter(countsForAcceptance).length,
       allowPaste: record.allowPaste,
       players: [...this.players.keys()].map((id) => this.timelineOf(record, id)),
     };
@@ -1037,10 +1130,6 @@ export class Room {
   private touch(): void {
     this.lastActivityAt = this.clock.now();
   }
-}
-
-function isComplete(questions: AssessmentQuestionProgress[]): boolean {
-  return questions.length > 0 && questions.every((q) => q.status === 'complete');
 }
 
 function median(values: number[]): number | null {
