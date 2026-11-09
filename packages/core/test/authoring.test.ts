@@ -67,3 +67,26 @@ describe('lintQuestion: critérios manuais', () => {
     );
   });
 });
+
+describe('lintQuestion: regras de texto para componentes', () => {
+  it('sugere o validador do plugin quando a regra de texto confere um componente', async () => {
+    const plugin = {
+      id: 'rn',
+      displayName: 'RN',
+      description: '',
+      version: '0.0.0',
+      editorLanguage: 'typescript',
+      getStarterCode: () => '',
+      validators: { hasComponent: { description: '', mode: 'static' as const, validate: () => true } },
+    };
+    const q = question({
+      solution: 'function somar(a, b) { return <Text>{a + b}</Text>; }',
+      checklist: [
+        { id: 'soma', label: 'Somar com +', rule: { type: 'contains', value: 'a + b' } },
+        { id: 'texto', label: 'Utilizar o componente Text', rule: { type: 'regex', pattern: '<Text\\b', flags: 'i' } },
+      ],
+    });
+    const warnings = await lintQuestion(q, plugin);
+    expect(warnings.filter((w) => w.message.startsWith('Regra de texto para conferir componente')).map((w) => w.itemId)).toEqual(['texto']);
+  });
+});

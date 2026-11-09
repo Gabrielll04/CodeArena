@@ -183,3 +183,54 @@ describe('evaluateChecklist: critérios manuais', () => {
     expect(result).toMatchObject({ requiredTotal: 1, requiredDone: 1, allRequiredDone: true });
   });
 });
+
+describe('evaluateChecklist: código com erro de sintaxe', () => {
+  let sessions = 0;
+  // "Compila" quando as chaves estão balanceadas; a sessão guarda o resultado, como a AST dos plugins reais.
+  const parsing: QuizPlugin<{ balanced: boolean }> = {
+    id: 'test',
+    displayName: 'Teste',
+    description: '',
+    version: '0.0.0',
+    editorLanguage: 'javascript',
+    getStarterCode: () => '',
+    createSession: ({ code }) => {
+      sessions++;
+      return { balanced: (code.match(/\{/g) ?? []).length === (code.match(/\}/g) ?? []).length };
+    },
+    validators: {
+      testCompiles: {
+        description: 'Sem erro de sintaxe',
+        mode: 'static',
+        validate: ({ session }) => (session.balanced ? true : { passed: false, message: 'Erro de sintaxe na linha 1' }),
+      },
+      hasText: { description: 'Usa Text', mode: 'static', validate: ({ code }) => code.includes('<Text') },
+    },
+  };
+  const q = question([
+    { id: 'texto', label: 'Utilizar o componente Text', rule: { type: 'contains', value: 'Text' } },
+    { id: 'ast', label: 'Usar Text', rule: { type: 'pluginRule', validator: 'hasText' }, optional: true },
+  ]);
+
+  it('não conclui nenhum item e informa o erro', async () => {
+    sessions = 0;
+    const result = await evaluateChecklist('function App() { return <Text>', q, { plugin: parsing });
+    expect(result.syntaxError).toBe('Erro de sintaxe na linha 1');
+    expect(result.items.map((i) => i.status)).toEqual(['pending', 'pending']);
+    expect(result.allRequiredDone).toBe(false);
+    expect(sessions).toBe(1);
+  });
+
+  it('com o código bem formado, avalia normalmente com uma só sessão', async () => {
+    sessions = 0;
+    const result = await evaluateChecklist('function App() { return <Text>Oi</Text>; }', q, { plugin: parsing });
+    expect(result.syntaxError).toBeUndefined();
+    expect(result.items.map((i) => i.status)).toEqual(['done', 'done']);
+    expect(sessions).toBe(1);
+  });
+
+  it('o plugin pode desligar a verificação', async () => {
+    const result = await evaluateChecklist('{ Text', q, { plugin: { ...parsing, syntaxValidator: false } });
+    expect(result.items[0]!.status).toBe('done');
+  });
+});

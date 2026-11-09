@@ -96,6 +96,11 @@ export function Checklist({ items, evaluation, checking, announce = true, compac
       <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-white/[0.07]" aria-hidden>
         <motion.div className="h-full rounded-full bg-lime" animate={{ width: `${percent}%` }} transition={{ type: 'spring', stiffness: 200, damping: 26 }} />
       </div>
+      {evaluation.syntaxError && (
+        <p role="status" className="mb-3 rounded-xl bg-coral/10 px-3 py-2 text-xs text-coral ring-1 ring-coral/25" data-testid="syntax-error">
+          {evaluation.syntaxError}. Corrija para os itens contarem.
+        </p>
+      )}
       <ol className={cx('space-y-2.5', compact && 'space-y-1.5')}>
         {items.map((item) => {
           const result = byId.get(item.id);

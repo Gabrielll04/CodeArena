@@ -55,6 +55,20 @@ export async function lintQuestion(
   const resolved = { ...question, pluginId: question.pluginId ?? plugin?.id ?? '' } as ResolvedQuestion;
   const publicQuestion = toPublicQuestion(resolved);
 
+  const hasValidators = Object.keys(plugin?.validators ?? {}).length > 0;
+  for (const item of question.checklist) {
+    const { rule } = item;
+    const text = rule.type === 'regex' ? rule.pattern : rule.type === 'contains' ? rule.value : null;
+    // "<Text" ou "Button": parece conferir um componente; texto solto casa em comentários, strings e tags erradas.
+    if (hasValidators && text !== null && /<\\?[A-Za-z]|^[A-Z][A-Za-z]+$/.test(text)) {
+      warnings.push({
+        level: 'warning',
+        itemId: item.id,
+        message: 'Regra de texto para conferir componente: também conta em comentários, strings e tags erradas. Prefira um validador do plugin, que lê a estrutura do código.',
+      });
+    }
+  }
+
   for (const item of question.checklist) {
     if (item.rule.type === 'pluginRule' && plugin && !plugin.validators?.[item.rule.validator]) {
       warnings.push({

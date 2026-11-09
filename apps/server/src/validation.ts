@@ -16,6 +16,7 @@ export function createSubmissionValidator(registry: PluginRegistry<QuizPlugin<an
       passed: item.status === 'done',
       ...(item.message ? { message: item.message } : {}),
     }));
+    if (result.syntaxError) return { passed: false, items, message: result.syntaxError };
     if (!result.allRequiredDone) {
       const missing = result.requiredTotal - result.requiredDone;
       return {

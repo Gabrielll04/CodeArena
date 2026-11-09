@@ -104,95 +104,153 @@ export async function evaluateChecklist(
     );
   }
 
-  const results: ChecklistItemResult[] = [];
-  const pluginItems: { index: number; item: ChecklistItem & { rule: { type: 'pluginRule' } } }[] = [];
+  // Itens de plugin que vão rodar nesta avaliação (validador existe e o modo foi pedido).
+  const runnable = (item: ChecklistItem) =>
+    item.rule.type === 'pluginRule' && Boolean(plugin?.validators?.[item.rule.validator]) && modes.has(plugin!.validators![item.rule.validator]!.mode);
+  const gate = modes.has('static') ? syntaxValidatorOf(plugin) : null;
 
-  question.checklist.forEach((item, index) => {
-    const base = { id: item.id, ...baseResult(item) };
-    const { rule } = item;
-    if (rule.type === 'manual') {
-      results[index] = { ...base, status: 'pending' };
-      return;
-    }
-    if (rule.type !== 'pluginRule') {
-      let status: ChecklistItemStatus = 'pending';
-      let message: string | undefined;
-      try {
-        status = evaluateBuiltinRule(code, rule) ? 'done' : 'pending';
-      } catch (err) {
-        status = 'failed';
-        message = `Regra inválida: ${err instanceof Error ? err.message : String(err)}`;
-      }
-      results[index] = message ? { ...base, status, message } : { ...base, status };
-      return;
-    }
-    if (!plugin) {
-      results[index] = { ...base, status: 'failed', message: `Plugin da questão não está disponível` };
-      return;
-    }
-    const validator = plugin.validators?.[rule.validator];
-    if (!validator) {
-      results[index] = {
-        ...base,
-        status: 'failed',
-        message: `Validador "${rule.validator}" não existe no plugin "${plugin.id}"`,
-      };
-      return;
-    }
-    if (!modes.has(validator.mode)) {
-      results[index] = { ...base, status: 'running' };
-      return;
-    }
-    pluginItems.push({ index, item: item as ChecklistItem & { rule: { type: 'pluginRule' } } });
-  });
-
-  if (pluginItems.length > 0 && plugin) {
-    let session: unknown;
+  // Uma sessão por avaliação (ex.: a AST parseada uma vez), compartilhada pela sintaxe e pelos validadores.
+  let session: unknown;
+  let sessionError: string | null = null;
+  if (plugin?.createSession && (gate || question.checklist.some(runnable))) {
     try {
-      session = plugin.createSession ? await plugin.createSession({ code, question, modes, signal }) : undefined;
-      for (const { index, item } of pluginItems) {
-        const base = { id: item.id, optional: item.optional };
-        if (signal?.aborted) {
-          results[index] = { ...base, status: 'running' };
-          continue;
-        }
-        const rule = item.rule as Extract<ChecklistRule, { type: 'pluginRule' }>;
-        const validator = plugin.validators![rule.validator]!;
-        const parsed = validator.params ? validator.params.safeParse(rule.params) : { success: true as const, data: rule.params };
-        if (!parsed.success) {
-          const detail = parsed.error.issues.map((i) => `${i.path.join('.') || 'params'}: ${i.message}`).join('; ');
-          results[index] = { ...base, status: 'failed', message: `Parâmetros inválidos: ${detail}` };
-          continue;
-        }
-        try {
-          const outcome = normalizeOutcome(
-            await withTimeout(
-              Promise.resolve(validator.validate({ code, question, item, params: parsed.data, session, signal })),
-              validatorTimeoutMs,
-            ),
-          );
-          const failStatus: ChecklistItemStatus = validator.mode === 'dynamic' ? 'failed' : 'pending';
-          const status: ChecklistItemStatus = outcome.passed ? 'done' : failStatus;
-          results[index] = outcome.message ? { ...base, status, message: outcome.message } : { ...base, status };
-        } catch (err) {
-          results[index] = { ...base, status: 'failed', message: err instanceof Error ? err.message : String(err) };
-        }
-      }
+      session = await plugin.createSession({ code, question, modes, signal });
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      for (const { index, item } of pluginItems) {
-        results[index] = { id: item.id, optional: item.optional, status: 'failed', message };
-      }
-    } finally {
-      if (session !== undefined && plugin.disposeSession) {
-        try {
-          await plugin.disposeSession(session);
-        } catch {
-          // falha ao liberar a sessão não altera o resultado
-        }
-      }
+      sessionError = err instanceof Error ? err.message : String(err);
     }
   }
 
-  return summarize(results);
+  try {
+    // Código com erro de sintaxe não conclui nenhum item: texto solto, chaves e aspas não contam como resposta.
+    if (gate && sessionError === null) {
+      const syntaxError = await checkSyntax(plugin!, gate, { code, question, session, signal, validatorTimeoutMs });
+      if (syntaxError !== null) {
+        return {
+          ...summarize(question.checklist.map((item) => ({ id: item.id, status: 'pending' as const, ...baseResult(item) }))),
+          syntaxError,
+        };
+      }
+    }
+
+    const results: ChecklistItemResult[] = [];
+    const pluginItems: { index: number; item: ChecklistItem & { rule: { type: 'pluginRule' } } }[] = [];
+
+    question.checklist.forEach((item, index) => {
+      const base = { id: item.id, ...baseResult(item) };
+      const { rule } = item;
+      if (rule.type === 'manual') {
+        results[index] = { ...base, status: 'pending' };
+        return;
+      }
+      if (rule.type !== 'pluginRule') {
+        let status: ChecklistItemStatus = 'pending';
+        let message: string | undefined;
+        try {
+          status = evaluateBuiltinRule(code, rule) ? 'done' : 'pending';
+        } catch (err) {
+          status = 'failed';
+          message = `Regra inválida: ${err instanceof Error ? err.message : String(err)}`;
+        }
+        results[index] = message ? { ...base, status, message } : { ...base, status };
+        return;
+      }
+      if (!plugin) {
+        results[index] = { ...base, status: 'failed', message: `Plugin da questão não está disponível` };
+        return;
+      }
+      const validator = plugin.validators?.[rule.validator];
+      if (!validator) {
+        results[index] = {
+          ...base,
+          status: 'failed',
+          message: `Validador "${rule.validator}" não existe no plugin "${plugin.id}"`,
+        };
+        return;
+      }
+      if (!modes.has(validator.mode)) {
+        results[index] = { ...base, status: 'running' };
+        return;
+      }
+      pluginItems.push({ index, item: item as ChecklistItem & { rule: { type: 'pluginRule' } } });
+    });
+
+    for (const { index, item } of pluginItems) {
+      const base = { id: item.id, ...baseResult(item) };
+      if (sessionError !== null) {
+        results[index] = { ...base, status: 'failed', message: sessionError };
+        continue;
+      }
+      if (signal?.aborted) {
+        results[index] = { ...base, status: 'running' };
+        continue;
+      }
+      const rule = item.rule as Extract<ChecklistRule, { type: 'pluginRule' }>;
+      const validator = plugin!.validators![rule.validator]!;
+      const parsed = validator.params ? validator.params.safeParse(rule.params) : { success: true as const, data: rule.params };
+      if (!parsed.success) {
+        const detail = parsed.error.issues.map((i) => `${i.path.join('.') || 'params'}: ${i.message}`).join('; ');
+        results[index] = { ...base, status: 'failed', message: `Parâmetros inválidos: ${detail}` };
+        continue;
+      }
+      try {
+        const outcome = normalizeOutcome(
+          await withTimeout(
+            Promise.resolve(validator.validate({ code, question, item, params: parsed.data, session, signal })),
+            validatorTimeoutMs,
+          ),
+        );
+        const failStatus: ChecklistItemStatus = validator.mode === 'dynamic' ? 'failed' : 'pending';
+        const status: ChecklistItemStatus = outcome.passed ? 'done' : failStatus;
+        results[index] = outcome.message ? { ...base, status, message: outcome.message } : { ...base, status };
+      } catch (err) {
+        results[index] = { ...base, status: 'failed', message: err instanceof Error ? err.message : String(err) };
+      }
+    }
+
+    return summarize(results);
+  } finally {
+    if (session !== undefined && plugin?.disposeSession) {
+      try {
+        await plugin.disposeSession(session);
+      } catch {
+        // falha ao liberar a sessão não altera o resultado
+      }
+    }
+  }
+}
+
+/**
+ * Validador estático que confere a sintaxe do código: o declarado pelo plugin em `syntaxValidator` ou, enquanto o
+ * plugin não declara, um validador estático cujo nome termina em "Compiles" (convenção dos plugins oficiais).
+ * `syntaxValidator: false` desliga a verificação.
+ */
+export function syntaxValidatorOf(plugin?: QuizPlugin<any>): string | null {
+  const validators = plugin?.validators;
+  if (!validators || plugin.syntaxValidator === false) return null;
+  if (plugin.syntaxValidator) return validators[plugin.syntaxValidator]?.mode === 'static' ? plugin.syntaxValidator : null;
+  return Object.entries(validators).find(([name, v]) => v.mode === 'static' && name.endsWith('Compiles'))?.[0] ?? null;
+}
+
+/** Devolve a mensagem do erro de sintaxe, ou null se o código está bem formado (ou a verificação falhou por outro motivo). */
+async function checkSyntax(
+  plugin: QuizPlugin<any>,
+  name: string,
+  input: { code: string; question: PublicQuestion; session: unknown; signal?: AbortSignal; validatorTimeoutMs: number },
+): Promise<string | null> {
+  const validator = plugin.validators![name]!;
+  const params = validator.params ? validator.params.safeParse({}) : { success: true as const, data: {} };
+  if (!params.success) return null;
+  const item: ChecklistItem = { id: 'sintaxe', label: 'Código sem erros de sintaxe', optional: false, rule: { type: 'pluginRule', validator: name, params: {} } };
+  try {
+    const outcome = normalizeOutcome(
+      await withTimeout(
+        Promise.resolve(validator.validate({ ...input, item, params: params.data })),
+        input.validatorTimeoutMs,
+      ),
+    );
+    return outcome.passed ? null : (outcome.message ?? 'O código tem erro de sintaxe');
+  } catch {
+    // Falha da própria verificação não bloqueia a checklist: os itens seguem com as regras deles.
+    return null;
+  }
 }

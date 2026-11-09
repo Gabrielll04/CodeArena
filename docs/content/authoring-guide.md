@@ -42,6 +42,11 @@ Para cada questão:
 
 **Modo discreto:** alunos veem só o top 3 e a própria posição, sem pódio. Use quando a competição aberta puder constranger.
 
+### Código com erro
+
+Enquanto o código do aluno tiver erro de sintaxe, nenhum item novo é marcado e nada é enviado. O aluno vê a linha do
+erro; o que ele já tinha concluído continua marcado.
+
 ### Colar texto e linha do tempo
 
 - **Permitir colar texto:** desligado, os alunos só podem digitar. Dá para mudar durante a aula, em Configurações.
