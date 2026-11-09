@@ -7,7 +7,7 @@ import type {
   SessionReport,
 } from '@codearena/schemas';
 import { syncServerClock } from '../lib/clock';
-import { getSocket, request } from '../lib/socket';
+import { getSocket, request, requestWithoutPayload } from '../lib/socket';
 import { local } from '../lib/storage';
 import { playCue } from '../lib/sound';
 
@@ -32,13 +32,16 @@ interface PlayerStore {
   join(input: { code: string; name: string; avatar: AvatarId }): Promise<{ ok: true } | { ok: false; error: string }>;
   resume(code: string): Promise<boolean>;
   leave(): void;
-  /** `questionId` só nas atividades avaliativas, em que cada aluno está numa questão. */
   submit(code: string, questionId?: string): Promise<PlayerAnswer | { error: string }>;
   reportProgress(done: number, total: number, doneIds: string[], questionId?: string): void;
   /** Informa uma colagem no editor (só o tamanho) para a linha do tempo do professor. */
   reportPaste(chars: number, blocked: boolean, questionId?: string): void;
-  /** Atividade avaliativa: vai para outra questão. */
+  /** Atividade: vai para outra questão. */
   goTo(index: number): Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Atividade: salva a resposta de uma questão como está. */
+  saveAnswer(questionId: string, code: string): Promise<{ ok: true; savedAt: number } | { ok: false; error: string }>;
+  /** Atividade: entrega; depois disso não dá mais para editar. */
+  deliver(): Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 let listening = false;
@@ -150,6 +153,18 @@ export const usePlayer = create<PlayerStore>((set, get) => {
 
     async goTo(index) {
       const res = await request('assessment:goto', { index });
+      if (!res.ok) return { ok: false, error: res.error };
+      accept(res.snapshot);
+      return { ok: true };
+    },
+
+    async saveAnswer(questionId, code) {
+      const res = await request('assessment:save', { questionId, code });
+      return res.ok ? { ok: true, savedAt: res.savedAt } : { ok: false, error: res.error };
+    },
+
+    async deliver() {
+      const res = await requestWithoutPayload('assessment:deliver');
       if (!res.ok) return { ok: false, error: res.error };
       accept(res.snapshot);
       return { ok: true };

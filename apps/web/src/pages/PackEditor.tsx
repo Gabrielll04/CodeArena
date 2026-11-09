@@ -4,9 +4,11 @@ import { calculateXP, lintQuestion, type AuthoringWarning } from '@codearena/cor
 import type { ChecklistEvaluationResult, RegexHelper } from '@codearena/plugin-sdk';
 import type { ClientQuizPlugin } from '@codearena/plugin-sdk/ui';
 import {
+  CAPABILITY_TYPES,
   formatZodError,
   QuestionPackSchema,
   regexCompileError,
+  type CapabilityType,
   type ChecklistItem,
   type ChecklistRule,
   type PublicQuestion,
@@ -15,6 +17,7 @@ import {
 } from '@codearena/schemas';
 import { Checklist } from '../components/Checklist';
 import { CodeEditor } from '../components/CodeEditor';
+import { CAPABILITY_LABEL } from '../lib/criteria';
 import { IssueList, WarningList } from '../components/IssueList';
 import { QuestionWorkspace } from '../components/QuestionWorkspace';
 import { TopBar } from '../components/TopBar';
@@ -31,6 +34,7 @@ const RULE_LABELS: Record<ChecklistRule['type'], string> = {
   notContains: 'Não contém texto',
   regex: 'Expressão regular',
   pluginRule: 'Validador do plugin',
+  manual: 'Avaliado pelo professor',
 };
 
 function defaultRule(type: ChecklistRule['type'], plugin?: ClientQuizPlugin<any>): ChecklistRule {
@@ -44,6 +48,8 @@ function defaultRule(type: ChecklistRule['type'], plugin?: ClientQuizPlugin<any>
       const [name, validator] = Object.entries(plugin?.validators ?? {})[0] ?? ['', undefined];
       return { type, validator: name, params: { ...(validator?.exampleParams ?? {}) } };
     }
+    case 'manual':
+      return { type };
   }
 }
 
@@ -404,7 +410,6 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
               [
                 ['build', 'Construir', 'O aluno escreve a solução.'],
                 ['debug', 'Depurar', 'O aluno corrige um código com bug.'],
-                ['guided', 'Guiado', 'O aluno constrói seguindo passos.'],
               ] as const
             ).map(([value, label, hint]) => (
               <button
@@ -427,9 +432,7 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
           <p className="text-xs text-white/40">
             {question.kind === 'debug'
               ? 'O código inicial é o código com bug. Descreva o sintoma no enunciado e verifique o comportamento corrigido na checklist.'
-              : question.kind === 'guided'
-                ? 'Cada item da checklist é um passo, na ordem. Escreva no campo de instrução o que o aluno faz nesse passo.'
-                : 'O código inicial é o ponto de partida (pode ficar vazio).'}
+              : 'O código inicial é o ponto de partida (pode ficar vazio).'}
           </p>
         </div>
         <Field label="Enunciado" htmlFor="q-prompt" hint="Curto e objetivo. Use `crases` para destacar código.">
@@ -493,7 +496,6 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
               key={index}
               index={index}
               item={item}
-              guided={question.kind === 'guided'}
               plugin={plugin}
               helpers={helpers}
               status={live.evaluation.items.find((r) => r.id === item.id)?.status}
@@ -559,7 +561,6 @@ function QuestionEditor({ question, plugin, onChange }: { question: Question; pl
 const KIND_TONE = {
   build: 'bg-white/10 text-white',
   debug: 'bg-coral/20 text-coral',
-  guided: 'bg-violet/25 text-[#C3ADFF]',
 } as const;
 
 function ItemEditor({
@@ -571,11 +572,9 @@ function ItemEditor({
   onChange,
   onRemove,
   onMove,
-  guided,
 }: {
   item: ChecklistItem;
   index: number;
-  guided: boolean;
   plugin: ClientQuizPlugin<any>;
   helpers: RegexHelper[];
   status?: string;
@@ -674,7 +673,11 @@ function ItemEditor({
           </>
         )}
 
-        {rule.type !== 'pluginRule' && (
+        {rule.type === 'manual' && (
+          <p className="text-xs text-white/45">Não é marcado sozinho. Nas atividades, você ou uma IA decide se foi atendido.</p>
+        )}
+
+        {rule.type !== 'pluginRule' && rule.type !== 'manual' && (
           <div className="flex flex-wrap items-center gap-2">
             <Select aria-label="Padrões comuns" value={helperId} onChange={(e) => {
               setHelperId(e.target.value);
@@ -737,32 +740,43 @@ function ItemEditor({
         <div className="flex flex-wrap items-center gap-3">
           <Input aria-label="Id do item" value={item.id} onChange={(e) => onChange({ ...item, id: slugify(e.target.value, '') })} className="w-44 font-mono text-xs" />
           <Input
-            aria-label={guided ? 'Instrução do passo' : 'Dica (opcional)'}
+            aria-label="Dica (opcional)"
             value={item.hint ?? ''}
             onChange={(e) => onChange({ ...item, hint: e.target.value || undefined })}
-            placeholder={guided ? 'Instrução do passo: o que o aluno faz agora' : 'Dica exibida enquanto pendente (opcional)'}
+            placeholder="Dica para o aluno (opcional)"
             className="min-w-[200px] flex-1 text-xs"
           />
-          <label className="flex items-center gap-1.5 text-xs text-white/60" title="Peso na nota das atividades avaliativas">
-            Peso
-            <Input
-              aria-label="Peso na nota"
-              type="number"
-              min={0.1}
-              max={10}
-              step={0.5}
-              value={item.weight ?? 1}
-              onChange={(e) => {
-                const weight = Number(e.target.value);
-                onChange({ ...item, weight: weight === 1 || !Number.isFinite(weight) ? undefined : weight });
-              }}
-              className="w-16 py-1 text-xs"
-            />
-          </label>
-          <label className="flex items-center gap-1.5 text-xs text-white/60">
+          <label className="flex items-center gap-1.5 text-xs text-white/60" title="Nas atividades: crítico é obrigatório, desejável aumenta a nota">
             <input type="checkbox" className="accent-[#B9FF3B]" checked={item.optional} onChange={(e) => onChange({ ...item, optional: e.target.checked })} />
-            Opcional
+            Opcional (desejável)
           </label>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            aria-label="O que o critério avalia"
+            value={item.capability?.type ?? ''}
+            onChange={(e) => {
+              const type = e.target.value as CapabilityType | '';
+              onChange({ ...item, capability: type ? { type, name: item.capability?.name ?? '' } : undefined });
+            }}
+            className="w-56 text-xs"
+          >
+            <option value="" className="bg-ink-850">Sem capacidade ou conhecimento</option>
+            {CAPABILITY_TYPES.map((type) => (
+              <option key={type} value={type} className="bg-ink-850">
+                {CAPABILITY_LABEL[type]}
+              </option>
+            ))}
+          </Select>
+          {item.capability && (
+            <Input
+              aria-label="Nome da capacidade ou conhecimento"
+              value={item.capability.name}
+              onChange={(e) => onChange({ ...item, capability: { ...item.capability!, name: e.target.value } })}
+              placeholder="Ex.: Utilizar componentes de interface"
+              className="min-w-[200px] flex-1 text-xs"
+            />
+          )}
         </div>
       </div>
     </li>

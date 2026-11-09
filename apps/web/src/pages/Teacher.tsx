@@ -52,7 +52,15 @@ export function TeacherPage() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <TopBar>
+      <TopBar
+        right={
+          <Link to="/teacher/historico" data-testid="open-history">
+            <Button variant="ghost" size="sm">
+              Histórico
+            </Button>
+          </Link>
+        }
+      >
         <span className="text-sm font-semibold text-white/60">Área do professor</span>
       </TopBar>
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-5 py-8">
@@ -272,7 +280,7 @@ function ImportDialog({ open, onClose, onImported }: { open: boolean; onClose: (
 
 const ROOM_MODES: { id: RoomMode; label: string; description: string }[] = [
   { id: 'competition', label: 'Competição', description: 'Todos na mesma questão, com placar e XP.' },
-  { id: 'assessment', label: 'Atividade avaliativa', description: 'Cada aluno no seu ritmo, sem placar. Você recebe as notas de 0 a 10.' },
+  { id: 'assessment', label: 'Atividade', description: 'Cada aluno no seu ritmo, sem placar. Você avalia as respostas depois.' },
 ];
 
 function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored: StoredPack; onClose: () => void }) {
@@ -381,15 +389,10 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
                             Depuração
                           </Badge>
                         )}
-                        {q.kind === 'guided' && (
-                          <Badge tone="violet" className="ml-2 align-middle">
-                            Projeto guiado
-                          </Badge>
-                        )}
                       </span>
                       <span className="text-xs text-white/40">
                         {mode === 'assessment'
-                          ? plural(q.checklist.length, 'item', 'itens')
+                          ? plural(q.checklist.length, 'critério', 'critérios')
                           : `${q.timeLimitSeconds} s · ${q.baseXP} + até ${q.speedBonusMax} XP · ${plural(q.checklist.length, 'item', 'itens')}`}
                       </span>
                     </span>
@@ -400,7 +403,7 @@ function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored
           </div>
           <div className="space-y-4 rounded-2xl bg-white/[0.03] p-4">
             {mode === 'assessment' ? (
-              <Field label="Duração (minutos)" htmlFor="assessment-minutes" hint="Ao fim do tempo, a atividade é encerrada e as notas ficam prontas.">
+              <Field label="Duração (minutos)" htmlFor="assessment-minutes" hint="Ao fim do tempo, a atividade é encerrada e as respostas ficam salvas para você avaliar.">
                 <Input
                   id="assessment-minutes"
                   type="number"

@@ -1,9 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { formatGrade } from '@codearena/core';
 import type {
-  AssessmentGradeRow,
   AssessmentQuestionProgress,
   PlayerPublic,
   QuestionResults,
@@ -86,8 +84,8 @@ function useAction() {
 
 function HostPhase({ snapshot }: { snapshot: RoomSnapshot }) {
   const assessment = snapshot.settings.mode === 'assessment';
-  if (assessment && snapshot.phase === 'question') return <HostAssessment snapshot={snapshot} />;
-  if (assessment && snapshot.phase === 'ended') return <HostAssessmentEnded snapshot={snapshot} />;
+  if (assessment && snapshot.phase === 'question') return <HostActivity snapshot={snapshot} />;
+  if (assessment && snapshot.phase === 'ended') return <HostActivityEnded snapshot={snapshot} />;
   switch (snapshot.phase) {
     case 'lobby':
       return <HostLobby snapshot={snapshot} />;
@@ -142,7 +140,7 @@ function HostLobby({ snapshot }: { snapshot: RoomSnapshot }) {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="flex items-center gap-2 font-display text-xl font-bold">
             Alunos
-            {snapshot.settings.mode === 'assessment' && <Badge tone="violet">Atividade avaliativa</Badge>}
+            {snapshot.settings.mode === 'assessment' && <Badge tone="violet">Atividade</Badge>}
           </h2>
           <Badge tone={snapshot.players.length ? 'lime' : 'neutral'}>
             <span data-testid="host-player-count">{snapshot.players.length}</span> na sala
@@ -428,6 +426,13 @@ function HostEnded({ snapshot }: { snapshot: RoomSnapshot }) {
           <Button variant="secondary" size="sm" onClick={() => downloadFile(`relatorio-${report.roomCode}.json`, JSON.stringify(report, null, 2))}>
             <Icon name="download" /> JSON
           </Button>
+          {snapshot.historyId && (
+            <Link to={`/teacher/historico/${snapshot.historyId}`}>
+              <Button variant="secondary" size="sm">
+                Ver respostas
+              </Button>
+            </Link>
+          )}
           <Link to="/teacher">
             <Button variant="primary" size="sm">
               Voltar à biblioteca
@@ -635,32 +640,31 @@ function SessionTimelines({ report, players }: { report: SessionReport; players:
 
 const CELL_TONE: Record<AssessmentQuestionProgress['status'], string> = {
   empty: 'bg-white/[0.04] text-white/35',
-  partial: 'bg-violet/20 text-white',
-  complete: 'bg-lime/90 text-ink-950',
+  started: 'bg-violet/25 text-white',
 };
 
-/** Atividade avaliativa em andamento: cada aluno em cada questão, com a nota parcial. */
-function HostAssessment({ snapshot }: { snapshot: RoomSnapshot }) {
-  const { grades, timelines, endSession } = useHost();
+/** Atividade em andamento: em que questão cada aluno está, o que já respondeu e quem entregou. */
+function HostActivity({ snapshot }: { snapshot: RoomSnapshot }) {
+  const { rows, endSession } = useHost();
   const { busy, error, run } = useAction();
   const [confirming, setConfirming] = useState(false);
   const period = snapshot.assessment!;
   const titles = snapshot.timelines?.map((t) => t.title) ?? [];
-  const finished = snapshot.players.filter((p) => grades[p.id]?.questions.every((q) => q.status === 'complete')).length;
+  const delivered = snapshot.players.filter((p) => rows[p.id]?.delivered).length;
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-5 py-6" data-testid="host-assessment">
       <Panel className="space-y-4 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="flex items-center gap-2">
-            <Badge tone="violet">Atividade avaliativa</Badge>
+            <Badge tone="violet">Atividade</Badge>
             <span className="text-sm text-white/60">{plural(snapshot.questionCount, 'questão', 'questões')}</span>
           </span>
           <span className="text-sm text-white/60">
             <strong className="font-mono text-lg text-lime" data-testid="host-answered">
-              {finished}
+              {delivered}
             </strong>{' '}
-            de {snapshot.players.length} concluíram tudo
+            de {snapshot.players.length} entregaram
           </span>
         </div>
         <Timer startsAt={period.startsAt} endsAt={period.endsAt} finishedAt={null} size="lg" />
@@ -676,12 +680,12 @@ function HostAssessment({ snapshot }: { snapshot: RoomSnapshot }) {
                   Q{i + 1}
                 </th>
               ))}
-              <th className="px-3 py-2 text-right">Nota</th>
+              <th className="px-3 py-2 text-right">Situação</th>
             </tr>
           </thead>
           <tbody>
             {snapshot.players.map((player) => {
-              const row = grades[player.id];
+              const row = rows[player.id];
               return (
                 <tr key={player.id} className={cx('border-t border-white/[0.05]', !player.connected && 'opacity-45')} data-testid={`assessment-row-${player.name}`}>
                   <td className="px-3 py-2">
@@ -690,26 +694,31 @@ function HostAssessment({ snapshot }: { snapshot: RoomSnapshot }) {
                       <span className="max-w-[160px] truncate">{player.name}</span>
                     </span>
                   </td>
-                  {row?.questions.map((q, i) => {
-                    const flagged = timelines[q.questionId]?.players.find((t) => t.playerId === player.id)?.pasteImpact;
-                    return (
-                      <td key={q.questionId} className="px-1 py-1.5 text-center">
-                        <span
-                          className={cx(
-                            'relative mx-auto flex h-8 min-w-[52px] items-center justify-center rounded-lg font-mono text-xs font-semibold',
-                            CELL_TONE[q.status],
-                            row.index === i && 'ring-2 ring-white/70',
-                          )}
-                          title={`${q.title}: ${q.done}/${q.total}${row.index === i ? ' (está nesta questão)' : ''}`}
-                        >
-                          {q.done}/{q.total}
-                          {flagged && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-coral ring-2 ring-ink-900" title="Colagem para revisar" />}
-                        </span>
-                      </td>
-                    );
-                  })}
-                  <td className="px-3 py-2 text-right font-mono font-bold" data-testid="assessment-grade">
-                    {row ? formatGrade(row.grade) : '-'}
+                  {row?.questions.map((q, i) => (
+                    <td key={q.questionId} className="px-1 py-1.5 text-center">
+                      <span
+                        className={cx(
+                          'relative mx-auto flex h-8 min-w-[52px] items-center justify-center rounded-lg text-xs font-semibold',
+                          CELL_TONE[q.status],
+                          !row.delivered && row.index === i && 'ring-2 ring-white/70',
+                        )}
+                        title={`${q.title}${!row.delivered && row.index === i ? ' (está nesta questão)' : ''}`}
+                        data-status={q.status}
+                      >
+                        {q.status === 'started' ? 'Respondida' : '-'}
+                        {(q.pastes ?? 0) > 0 && (
+                          <span
+                            className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber px-1 text-[10px] font-bold text-ink-950"
+                            title={`Colou ${q.pastes} ${q.pastes === 1 ? 'vez' : 'vezes'}`}
+                          >
+                            {q.pastes}
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                  ))}
+                  <td className="px-3 py-2 text-right text-xs">
+                    {row?.delivered ? <Badge tone="lime">Entregou</Badge> : <span className="text-white/45">Respondendo</span>}
                   </td>
                 </tr>
               );
@@ -718,7 +727,7 @@ function HostAssessment({ snapshot }: { snapshot: RoomSnapshot }) {
         </table>
         {snapshot.players.length === 0 && <p className="p-4 text-sm text-white/40">Nenhum aluno na sala.</p>}
       </Panel>
-      <p className="text-xs text-white/40">A nota parcial conta os itens confirmados pelo servidor na melhor versão de cada questão.</p>
+      <p className="text-xs text-white/40">As respostas ficam salvas. Você avalia cada uma depois de encerrar.</p>
 
       {error && <p className="text-sm text-coral">{error}</p>}
       <Button variant="danger" onClick={() => setConfirming(true)} data-testid="end-assessment">
@@ -739,105 +748,34 @@ function HostAssessment({ snapshot }: { snapshot: RoomSnapshot }) {
           </>
         }
       >
-        <p className="text-sm text-white/70">Os alunos não poderão mais responder. As notas ficam como estão agora.</p>
+        <p className="text-sm text-white/70">Os alunos não poderão mais responder. As respostas ficam como estão agora.</p>
       </Dialog>
     </div>
   );
 }
 
-/** Notas em CSV para diário ou Classroom: separador ";" e vírgula decimal, como as planilhas em português esperam. */
-function gradesToCsv(rows: AssessmentGradeRow[], players: PlayerPublic[], questionCount: number): string {
-  const names = new Map(players.map((p) => [p.id, p.name]));
-  const header = ['aluno', ...Array.from({ length: questionCount }, (_, i) => `q${i + 1}`), 'nota'];
-  const lines = rows.map((row) => [
-    `"${(names.get(row.playerId) ?? row.playerId).replace(/"/g, '""')}"`,
-    ...row.questions.map((q) => formatGrade(q.grade)),
-    formatGrade(row.grade),
-  ]);
-  return '\uFEFF' + [header, ...lines].map((line) => line.join(';')).join('\n');
-}
-
-function HostAssessmentEnded({ snapshot }: { snapshot: RoomSnapshot }) {
-  const { grades } = useHost();
-  const report = snapshot.report;
-  if (!report) return null;
-  const names = new Map(snapshot.players.map((p) => [p.id, p]));
-  // Em ordem alfabética, como no diário.
-  const rows = [...snapshot.players]
-    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
-    .map((p) => grades[p.id])
-    .filter((row): row is AssessmentGradeRow => row !== undefined);
-  const average = rows.length ? rows.reduce((sum, row) => sum + row.grade, 0) / rows.length : null;
-
+function HostActivityEnded({ snapshot }: { snapshot: RoomSnapshot }) {
+  const { rows } = useHost();
+  const answered = snapshot.players.filter((p) => rows[p.id]?.questions.some((q) => q.status === 'started')).length;
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-5 py-8" data-testid="host-ended">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/50">Atividade encerrada</p>
-          <h2 className="font-display text-3xl font-bold">{report.packTitle}</h2>
-          {average !== null && <p className="mt-1 text-sm text-white/60">Média da turma: {formatGrade(Math.round(average * 10) / 10)}</p>}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => downloadFile(`notas-${report.roomCode}.csv`, gradesToCsv(rows, snapshot.players, snapshot.questionCount), 'text/csv')}
-            data-testid="download-grades"
-          >
-            <Icon name="download" /> Notas (CSV)
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => downloadFile(`relatorio-${report.roomCode}.json`, JSON.stringify({ ...report, grades: rows }, null, 2))}>
-            <Icon name="download" /> JSON
-          </Button>
-          <Link to="/teacher">
-            <Button variant="secondary" size="sm">
-              Voltar à biblioteca
+    <div className="mx-auto flex max-w-xl flex-col items-center gap-5 px-5 py-16 text-center" data-testid="host-ended">
+      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/50">Atividade encerrada</p>
+      <h2 className="font-display text-3xl font-bold">{snapshot.packTitle}</h2>
+      <p className="text-white/60">
+        {plural(answered, 'aluno respondeu', 'alunos responderam')}. As respostas estão salvas no histórico.
+      </p>
+      <div className="flex flex-wrap justify-center gap-2">
+        {snapshot.historyId && (
+          <Link to={`/teacher/historico/${snapshot.historyId}`}>
+            <Button variant="primary" data-testid="evaluate-answers">
+              Avaliar respostas
             </Button>
           </Link>
-        </div>
+        )}
+        <Link to="/teacher">
+          <Button variant="secondary">Voltar à biblioteca</Button>
+        </Link>
       </div>
-
-      <Panel className="overflow-x-auto p-2">
-        <table className="w-full min-w-[560px] text-left text-sm" data-testid="grades-table">
-          <thead className="text-xs uppercase tracking-wider text-white/40">
-            <tr>
-              <th className="px-3 py-2">Aluno</th>
-              {report.questions.map((q, i) => (
-                <th key={q.questionId} className="px-3 py-2 text-center" title={q.title}>
-                  Q{i + 1}
-                </th>
-              ))}
-              <th className="px-3 py-2 text-right">Nota</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => {
-              const player = names.get(row.playerId);
-              return (
-                <tr key={row.playerId} className="border-t border-white/[0.05]">
-                  <td className="px-3 py-2">
-                    <span className="flex items-center gap-2">
-                      {player && <Avatar id={player.avatar} size={24} />} {player?.name}
-                    </span>
-                  </td>
-                  {row.questions.map((q) => (
-                    <td key={q.questionId} className={cx('px-3 py-2 text-center font-mono text-xs', q.status === 'complete' ? 'text-lime' : q.status === 'partial' ? 'text-white/80' : 'text-white/30')}>
-                      {formatGrade(q.grade)}
-                    </td>
-                  ))}
-                  <td className="px-3 py-2 text-right font-mono text-base font-bold" data-testid="final-grade">
-                    {formatGrade(row.grade)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </Panel>
-
-      <SessionInsights report={report} />
-
-      <SessionTimelines report={report} players={snapshot.players} />
     </div>
   );
 }
