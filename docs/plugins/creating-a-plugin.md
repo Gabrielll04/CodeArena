@@ -111,6 +111,7 @@ interface QuizPlugin<S = unknown> {
   editorFileName?: string;    // ex.: "App.tsx", "main.py"
   getStarterCode(question): string;
   validators?: Record<string, ChecklistValidator<any, S>>;
+  syntaxValidator?: string | false;        // validador estático que confere a sintaxe (ver abaixo)
   createSession?(input): S | Promise<S>;   // estado compartilhado numa rodada de avaliação
   disposeSession?(session: S): void | Promise<void>;
   validateSubmission?(code, question): Promise<{ valid: boolean; message?: string }>; // só no servidor
@@ -266,6 +267,15 @@ expect(result.allRequiredDone).toBe(true);
 ```
 
 Rode também `pnpm validate:packs` com um pack de exemplo do seu plugin depois de ativá-lo em `codearena.config.json`.
+
+## Sintaxe antes de tudo (`syntaxValidator`)
+
+Código com erro de sintaxe não conclui nenhum item da checklist, nem os de texto (`contains`, `regex`): senão, trechos
+soltos com chaves e aspas completariam a questão. O núcleo roda primeiro o validador estático indicado em
+`syntaxValidator`, com a mesma sessão dos outros validadores (a análise do código acontece uma vez só). Sem declarar,
+vale um validador estático cujo nome termina em `Compiles` (convenção dos plugins oficiais); `false` desliga.
+
+O validador deve ser rápido e devolver a mensagem com a linha do erro: ela aparece para o aluno.
 
 ## Validadores dinâmicos (que executam código)
 

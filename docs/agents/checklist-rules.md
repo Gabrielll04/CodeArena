@@ -12,6 +12,11 @@ O mesmo motor (`packages/core/src/checklist.ts`) roda no navegador do aluno e no
 | `done` | Satisfeito. |
 | `failed` | Regra dinâmica executou e falhou (com mensagem, ex.: "Esperado status 200, recebido 404"), ou a regra está mal configurada. |
 
+**Código com erro de sintaxe não conclui nenhum item**, nem os de texto. O aluno vê o erro com a linha e os itens que já
+tinha concluído continuam na tela até ele corrigir. Mesmo assim, `contains` e `regex` aceitam o trecho em qualquer lugar
+do código válido (comentário, string, tag minúscula com a flag `i`). Para conferir componentes, chamadas e estrutura,
+prefira `pluginRule`: o editor avisa quando uma regra de texto parece conferir um componente.
+
 ## `contains`
 
 ```json
