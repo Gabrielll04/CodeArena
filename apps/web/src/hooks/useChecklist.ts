@@ -20,6 +20,19 @@ function hasDynamicItems(question: PublicQuestion, plugin?: QuizPlugin<any>): bo
 }
 
 /**
+ * Código com erro de sintaxe: mantém na tela o que o aluno já tinha concluído com o código válido (sem piscar a cada
+ * tecla), mostra o erro e não conclui nada novo. Nada é enviado enquanto houver erro.
+ */
+function withSyntaxError(previous: LiveChecklist, syntaxError: string, code: string): LiveChecklist {
+  return {
+    evaluation: { ...previous.evaluation, allRequiredDone: false, syntaxError },
+    fresh: true,
+    checking: new Set(),
+    evaluatedCode: code,
+  };
+}
+
+/**
  * Avalia a checklist em duas fases:
  *  1. regras estáticas (texto/AST) com debounce curto: feedback quase imediato;
  *  2. regras dinâmicas (execução) com debounce maior, mantendo o último resultado visível enquanto roda.
@@ -54,6 +67,10 @@ export function useChecklist(
     const staticTimer = setTimeout(async () => {
       const result = await evaluateChecklist(code, question, { plugin, modes: ['static'] });
       if (seq.current !== id) return;
+      if (result.syntaxError) {
+        setState((previous) => withSyntaxError(previous, result.syntaxError!, code));
+        return;
+      }
       if (!dynamic) {
         setState({ evaluation: result, fresh: true, checking: new Set(), evaluatedCode: code });
         return;
@@ -72,6 +89,10 @@ export function useChecklist(
       ? setTimeout(async () => {
           const result = await evaluateChecklist(code, question, { plugin, signal: controller.signal });
           if (seq.current !== id || controller.signal.aborted) return;
+          if (result.syntaxError) {
+            setState((previous) => withSyntaxError(previous, result.syntaxError!, code));
+            return;
+          }
           result.items.forEach((item) => {
             const original = question.checklist.find((i) => i.id === item.id);
             if (original?.rule.type === 'pluginRule' && plugin?.validators?.[original.rule.validator]?.mode === 'dynamic') {

@@ -18,13 +18,13 @@ test('sessão ao vivo com React Native: checklist automática, validação no se
   await expect(ana.getByTestId('question-prompt')).toContainText('Clique aqui');
   await expect(bia.getByTestId('question-prompt')).toContainText('Clique aqui');
 
-  // Escrever export default function App() marca imediatamente o primeiro item.
-  await setEditorCode(ana, 'export default function App() {');
+  // Escrever export default function App() {} marca na hora o componente e o código sem erros.
+  await setEditorCode(ana, 'export default function App() {}');
   await expect(ana.getByTestId('checklist-item-componente-app')).toHaveAttribute('data-status', 'done');
   await expect(ana.getByTestId('checklist-item-usar-button')).toHaveAttribute('data-status', 'pending');
-  await expect(ana.getByTestId('checklist-count')).toHaveText('1/4');
+  await expect(ana.getByTestId('checklist-count')).toHaveText('2/4');
   // O professor vê o progresso (contagem), não o código.
-  await expect(host.getByTestId('host-progress')).toContainText('1/4');
+  await expect(host.getByTestId('host-progress')).toContainText('2/4');
   // Revisão ao vivo por item: 1 de 2 alunos concluiu "Criar o componente App"; ninguém concluiu o botão ainda.
   await expect(host.getByTestId('insight-componente-app')).toHaveAttribute('data-done', '1');
   await expect(host.getByTestId('insight-componente-app')).toHaveAttribute('data-total', '2');
@@ -469,4 +469,26 @@ test('competição também fica no histórico, com placar e respostas', async ({
   await expect(host.getByTestId('history-scoreboard')).toContainText('Ana');
   await expect(host.getByTestId('answer-botao-clique-aqui')).toContainText('Aceita');
   await expect(host.getByTestId('answer-botao-clique-aqui')).toContainText('Clique aqui');
+});
+
+test('código com erro de sintaxe não conclui itens nem é enviado, mesmo com os trechos certos', async ({ page: host, browser }) => {
+  const code = await createRoom(host, 'pack-exemplo-react-native-fundamentos');
+  const ana = await joinRoom(browser, code, 'Ana', 'hex');
+  await host.getByTestId('start-question').click();
+
+  await setEditorCode(ana, 'export default function App() {}');
+  await expect(ana.getByTestId('checklist-item-componente-app')).toHaveAttribute('data-status', 'done');
+
+  // Os trechos certos, mas o código não fecha: nada novo é marcado e o erro aparece.
+  await setEditorCode(ana, 'export default function App() { return <Button title="Clique aqui" ');
+  await expect(ana.getByTestId('syntax-error')).toContainText('Erro de sintaxe na linha 1');
+  await expect(ana.getByTestId('checklist-item-usar-button')).toHaveAttribute('data-status', 'pending');
+  // O que já estava certo continua marcado, sem piscar.
+  await expect(ana.getByTestId('checklist-item-componente-app')).toHaveAttribute('data-status', 'done');
+  await expect(ana.getByTestId('checklist')).toHaveAttribute('data-complete', 'false');
+  await expect(ana.getByTestId('answer-accepted')).toHaveCount(0);
+
+  await setEditorCode(ana, SOLUTION);
+  // Única aluna da sala: a resposta aceita encerra a questão.
+  await expect(ana.getByTestId('review')).toBeVisible();
 });
