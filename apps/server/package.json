@@ -20,7 +20,7 @@
     "@codearena/plugin-host": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/node": "^26.6.5",
     "socket.io-client": "^4.8.1",
     "tsx": "^4.19.2"
   }

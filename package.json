@@ -40,7 +40,7 @@
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@fontsource-variable/space-grotesk": "^5.3.0",
     "@playwright/test": "1.56.1",
-    "@types/node": "^22.10.0",
+    "@types/node": "^26.6.5",
     "socket.io-client": "^4.8.1",
     "tsup": "^8.5.1",
     "tsx": "^4.19.2",
