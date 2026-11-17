@@ -4,6 +4,7 @@ import type {
   EvaluationEntry,
   Question,
   QuestionPack,
+  RoomMode,
   SessionHistory,
   SessionHistorySummary,
   ValidationIssue,
@@ -70,7 +71,9 @@ export const api = {
     call<StoredPack>(`/api/packs/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(pack) }),
   deletePack: (id: string) => call<void>(`/api/packs/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   roomInfo: (code: string) =>
-    call<{ code: string; phase: string; packTitle: string; playerCount: number }>(`/api/rooms/${encodeURIComponent(code)}`),
+    call<{ code: string; phase: string; packTitle: string; playerCount: number; mode: RoomMode }>(
+      `/api/rooms/${encodeURIComponent(code)}`,
+    ),
   listHistory: () => call<SessionHistorySummary[]>('/api/history', { headers: teacherHeaders() }),
   getHistory: (id: string) => call<SessionHistory>(`/api/history/${encodeURIComponent(id)}`, { headers: teacherHeaders() }),
   saveEvaluations: (id: string, entries: EvaluationEntry[]) =>

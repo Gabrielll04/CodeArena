@@ -38,11 +38,16 @@ export async function createRoom(host: Page, packTestId: string): Promise<string
   return (await code.textContent())!.trim();
 }
 
-export async function joinRoom(browser: Browser, code: string, name: string, avatar = 'bolt'): Promise<Page> {
+/** Entra na sala. `avatar: null` para atividades, que pedem nome completo ou RA e não têm avatar. */
+export async function joinRoom(browser: Browser, code: string, name: string, avatar: string | null = 'bolt'): Promise<Page> {
   const page = await newPage(browser);
   await page.goto(`/join?code=${code}`);
-  await page.getByLabel('Seu nome').fill(name);
-  await page.getByTestId(`avatar-${avatar}`).click();
+  if (avatar === null) {
+    await page.getByLabel('Nome completo ou RA').fill(name);
+  } else {
+    await page.getByLabel('Seu nome').fill(name);
+    await page.getByTestId(`avatar-${avatar}`).click();
+  }
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(page.getByTestId('lobby')).toBeVisible();
   return page;
