@@ -18,7 +18,7 @@ export function JoinPage() {
   const [avatar, setAvatar] = useState<AvatarId>(
     session?.avatar ?? AVATAR_IDS[Math.floor(Math.random() * AVATAR_IDS.length)]!,
   );
-  const [room, setRoom] = useState<{ title: string } | { error: string } | null>(null);
+  const [room, setRoom] = useState<{ title: string; activity: boolean } | { error: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,12 +27,14 @@ export function JoinPage() {
     let cancelled = false;
     api
       .roomInfo(code)
-      .then((info) => !cancelled && setRoom({ title: info.packTitle }))
+      .then((info) => !cancelled && setRoom({ title: info.packTitle, activity: info.mode === 'assessment' }))
       .catch(() => !cancelled && setRoom({ error: 'Sala não encontrada. Confira o código.' }));
     return () => {
       cancelled = true;
     };
   }, [code]);
+
+  const activity = room !== null && 'activity' in room && room.activity;
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -41,7 +43,8 @@ export function JoinPage() {
     if (!codeCheck.success) return setError(codeCheck.error.issues[0]!.message);
     const nameCheck = PlayerNameSchema.safeParse(name);
     if (!nameCheck.success) return setError(nameCheck.error.issues[0]!.message);
-    const result = await join({ code, name: nameCheck.data, avatar });
+    // Na atividade não há avatar: todos entram com o mesmo, que nem aparece para os alunos.
+    const result = await join({ code, name: nameCheck.data, avatar: activity ? AVATAR_IDS[0]! : avatar });
     if (!result.ok) return setError(result.error);
     navigate(`/play/${code}`);
   };
@@ -53,7 +56,9 @@ export function JoinPage() {
         <form onSubmit={submit} className="space-y-6" noValidate>
           <div>
             <h1 className="font-display text-3xl font-bold">Entrar na sala</h1>
-            <p className="mt-1 text-sm text-white/50">Sem cadastro. Escolha um nome e um avatar.</p>
+            <p className="mt-1 text-sm text-white/50">
+              {activity ? 'Atividade avaliada pelo professor.' : 'Sem cadastro. Escolha um nome e um avatar.'}
+            </p>
           </div>
 
           <Field
@@ -74,14 +79,22 @@ export function JoinPage() {
             />
           </Field>
 
-          <Field label="Seu nome" htmlFor="player-name" hint="Como a turma vai ver você no placar.">
-            <Input id="player-name" value={name} maxLength={24} autoComplete="nickname" onChange={(e) => setName(e.target.value)} placeholder="Ex.: Ana" />
-          </Field>
+          {activity ? (
+            <Field label="Nome completo ou RA" htmlFor="player-name" hint="Como na chamada. O professor usa para lançar a sua nota.">
+              <Input id="player-name" value={name} maxLength={60} autoComplete="name" onChange={(e) => setName(e.target.value)} placeholder="Ex.: Ana Paula Souza" />
+            </Field>
+          ) : (
+            <>
+              <Field label="Seu nome" htmlFor="player-name" hint="Como a turma vai ver você no placar.">
+                <Input id="player-name" value={name} maxLength={24} autoComplete="nickname" onChange={(e) => setName(e.target.value)} placeholder="Ex.: Ana" />
+              </Field>
 
-          <div className="space-y-2">
-            <span className="block text-xs font-semibold uppercase tracking-wider text-white/55">Avatar</span>
-            <AvatarPicker value={avatar} onChange={setAvatar} />
-          </div>
+              <div className="space-y-2">
+                <span className="block text-xs font-semibold uppercase tracking-wider text-white/55">Avatar</span>
+                <AvatarPicker value={avatar} onChange={setAvatar} />
+              </div>
+            </>
+          )}
 
           {error && (
             <p role="alert" className="rounded-xl bg-coral/10 px-3 py-2 text-sm text-coral">
@@ -90,9 +103,11 @@ export function JoinPage() {
           )}
 
           <div className="flex items-center gap-4">
+            {!activity && (
             <motion.div key={avatar} initial={{ scale: 0.7, rotate: -10 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 500, damping: 20 }}>
               <Avatar id={avatar} size={56} />
             </motion.div>
+            )}
             <Button type="submit" variant="primary" size="lg" className="flex-1" loading={status === 'joining'}>
               Entrar
             </Button>

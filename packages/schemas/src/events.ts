@@ -281,7 +281,10 @@ export interface RoomSnapshot {
   /** Índice da questão atual/última (-1 antes da primeira). */
   questionIndex: number;
   settings: RoomSettings;
+  /** Alunos visíveis para quem recebe. Na atividade, o aluno recebe só a si mesmo (use `playerCount`). */
   players: PlayerPublic[];
+  /** Quantos alunos estão na sala. */
+  playerCount: number;
   leaderboard: LeaderboardEntry[];
   question: ActiveQuestion | null;
   /** Alunos com resposta aceita na questão atual. */
@@ -324,8 +327,9 @@ export const PlayerNameSchema = z
   .string()
   .trim()
   .min(2, 'O nome precisa de pelo menos 2 caracteres')
-  .max(24, 'O nome pode ter no máximo 24 caracteres')
-  .regex(/^[\p{L}\p{N} ._-]+$/u, 'Use apenas letras, números, espaço, ".", "_" ou "-"');
+  // Até 60 caracteres: nas atividades o aluno entra com o nome completo ou o RA.
+  .max(60, 'O nome pode ter no máximo 60 caracteres')
+  .regex(/^[\p{L}\p{N} ._'-]+$/u, 'Use apenas letras, números, espaço, ".", "_", "-" ou apóstrofo');
 
 export const RoomSettingsPatchSchema = z
   .object({

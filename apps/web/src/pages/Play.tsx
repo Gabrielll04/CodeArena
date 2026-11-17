@@ -62,8 +62,8 @@ export function PlayPage() {
       <TopBar
         right={
           <div className="flex items-center gap-2 rounded-xl bg-white/[0.05] py-1 pl-1 pr-3">
-            <Avatar id={snapshot.me.avatar} size={30} />
-            <span className="hidden max-w-[120px] truncate text-sm font-semibold sm:inline">{snapshot.me.name}</span>
+            {snapshot.settings.mode !== 'assessment' && <Avatar id={snapshot.me.avatar} size={30} />}
+            <span className="hidden max-w-[160px] truncate pl-2 text-sm font-semibold sm:inline">{snapshot.me.name}</span>
             {snapshot.settings.mode !== 'assessment' && (
               <span className="font-mono text-sm font-bold text-lime" data-testid="my-xp">
                 {formatXP(snapshot.me.totalXP)} XP
@@ -101,6 +101,7 @@ function PhaseView({ snapshot }: { snapshot: RoomSnapshot }) {
 }
 
 function Lobby({ snapshot }: { snapshot: RoomSnapshot }) {
+  if (snapshot.settings.mode === 'assessment') return <ActivityLobby snapshot={snapshot} />;
   const me = snapshot.me!;
   return (
     <div className="mx-auto flex h-full max-w-4xl flex-col items-center gap-8 overflow-auto px-5 py-10 text-center" data-testid="lobby">
@@ -112,12 +113,6 @@ function Lobby({ snapshot }: { snapshot: RoomSnapshot }) {
         <p className="mt-2 flex items-center justify-center gap-2 text-white/50">
           <span className="h-2 w-2 animate-pulse rounded-full bg-lime" aria-hidden /> Aguardando o professor iniciar
         </p>
-        {snapshot.settings.mode === 'assessment' && (
-          <p className="mx-auto mt-3 max-w-md text-sm text-white/60" data-testid="assessment-lobby">
-            Atividade: sem placar, no seu ritmo. Você tem {snapshot.settings.assessmentMinutes} minutos para{' '}
-            {snapshot.questionCount === 1 ? 'a questão' : `as ${snapshot.questionCount} questões`}. O professor avalia as respostas depois.
-          </p>
-        )}
       </div>
       <Panel className="w-full p-5">
         <p className="mb-4 text-left text-xs font-bold uppercase tracking-[0.14em] text-white/50">
@@ -141,6 +136,47 @@ function Lobby({ snapshot }: { snapshot: RoomSnapshot }) {
           </AnimatePresence>
         </ul>
       </Panel>
+    </div>
+  );
+}
+
+/** Atividade: sem avatares nem nomes dos colegas, só quantos estão na sala. */
+function ActivityLobby({ snapshot }: { snapshot: RoomSnapshot }) {
+  const me = snapshot.me!;
+  const { leave } = usePlayer();
+  const navigate = useNavigate();
+  const count = snapshot.playerCount;
+  return (
+    <div className="mx-auto flex h-full max-w-xl flex-col items-center justify-center gap-6 overflow-auto px-5 py-10 text-center" data-testid="lobby">
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/50">Atividade</p>
+        <p className="mt-2 font-display text-3xl font-bold">{snapshot.packTitle}</p>
+        <p className="mt-2 text-white/70">
+          Você entrou como <strong className="text-white">{me.name}</strong>.
+        </p>
+      </div>
+      <Panel className="w-full space-y-2 p-5 text-sm text-white/65" data-testid="assessment-lobby">
+        <p>
+          {snapshot.settings.assessmentMinutes} minutos para {snapshot.questionCount === 1 ? 'a questão' : `as ${snapshot.questionCount} questões`}, no
+          seu ritmo. O professor avalia as respostas depois.
+        </p>
+        <p>Se esse não for o seu nome completo ou RA, entre de novo com o nome certo.</p>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            leave();
+            navigate(`/join?code=${snapshot.code}`);
+          }}
+          data-testid="rename"
+        >
+          Corrigir o nome
+        </Button>
+      </Panel>
+      <p className="flex items-center gap-2 text-white/50" data-testid="lobby-count">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-lime" aria-hidden />
+        {count === 1 ? '1 aluno na sala' : `${count} alunos na sala`}. Aguardando o professor iniciar.
+      </p>
     </div>
   );
 }

@@ -379,9 +379,13 @@ test('atividade: respostas salvas sem correção automática, avaliação MSEP p
   await host.getByTestId('create-room').click();
   const code = (await host.getByTestId('host-room-code').textContent())!.trim();
 
-  const ana = await joinRoom(browser, code, 'Ana', 'hex');
-  const bia = await joinRoom(browser, code, 'Bia', 'cube');
+  const ana = await joinRoom(browser, code, 'Ana', null);
+  const bia = await joinRoom(browser, code, 'Bia', null);
   await expect(ana.getByTestId('assessment-lobby')).toContainText('20 minutos');
+  // Atividade: sem nomes nem avatares dos colegas, só a contagem.
+  await expect(ana.getByTestId('lobby-count')).toContainText('2 alunos na sala');
+  await expect(ana.getByTestId('lobby')).not.toContainText('Bia');
+  await expect(ana.locator('[aria-label^="Avatar"]')).toHaveCount(0);
   await expect(ana.getByTestId('my-xp')).toHaveCount(0);
   await host.getByTestId('start-question').click();
 
