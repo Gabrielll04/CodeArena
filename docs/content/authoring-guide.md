@@ -59,6 +59,7 @@ Esses sinais não mudam o XP. Use-os para conversar com o aluno.
 
 Para atividades que valem nota, feitas em aula. Ao abrir a sala, escolha **Atividade** e a duração em minutos.
 
+- Os alunos entram com o nome completo ou o RA, sem avatar. Eles não veem os colegas, só quantos estão na sala.
 - Todas as questões abrem juntas. Cada aluno vai e volta entre elas no próprio ritmo e entrega quando terminar.
 - Sem placar, sem XP e sem checklist automática: o aluno vê o problema e os critérios de avaliação, e resolve.
 - A resposta é salva enquanto o aluno escreve. No fim do tempo, a atividade encerra sozinha.
