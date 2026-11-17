@@ -221,7 +221,7 @@ export class Room {
       for (const player of this.players.values()) {
         if (player.token === input.playerToken) {
           player.connected = true;
-          this.sink.emit({ kind: 'all' }, 'player:joined', this.publicPlayer(player));
+          this.sink.emit(this.rosterTarget, 'player:joined', this.publicPlayer(player));
           this.sink.sync();
           return { playerId: player.id, playerToken: player.token, reconnected: true };
         }
@@ -253,7 +253,7 @@ export class Room {
       delivered: false,
     };
     this.players.set(player.id, player);
-    this.sink.emit({ kind: 'all' }, 'player:joined', this.publicPlayer(player));
+    this.sink.emit(this.rosterTarget, 'player:joined', this.publicPlayer(player));
     this.sink.sync();
     return { playerId: player.id, playerToken: player.token, reconnected: false };
   }
@@ -271,7 +271,7 @@ export class Room {
     if (!player || !player.connected) return;
     player.connected = false;
     this.touch();
-    this.sink.emit({ kind: 'all' }, 'player:left', { playerId, name: player.name });
+    this.sink.emit(this.rosterTarget, 'player:left', { playerId, name: player.name });
     this.sink.sync();
     this.maybeFinishWhenAllAnswered();
   }
@@ -282,7 +282,7 @@ export class Room {
     if (!player) return;
     if (this.phase === 'lobby') {
       this.players.delete(playerId);
-      this.sink.emit({ kind: 'all' }, 'player:left', { playerId, name: player.name });
+      this.sink.emit(this.rosterTarget, 'player:left', { playerId, name: player.name });
       this.sink.sync();
       return;
     }
@@ -299,7 +299,7 @@ export class Room {
       record.itemState.delete(playerId);
       record.codes.delete(playerId);
     }
-    this.sink.emit({ kind: 'all' }, 'player:left', { playerId, name: player.name });
+    this.sink.emit(this.rosterTarget, 'player:left', { playerId, name: player.name });
     this.sink.sync();
     this.maybeFinishWhenAllAnswered();
   }
@@ -472,6 +472,11 @@ export class Room {
 
   private get isAssessment(): boolean {
     return this.settings.mode === 'assessment';
+  }
+
+  /** Entradas e saídas de alunos: na atividade, só o professor fica sabendo quem é quem. */
+  private get rosterTarget(): RoomTarget {
+    return this.isAssessment ? { kind: 'host' } : { kind: 'all' };
   }
 
   /**
@@ -841,9 +846,14 @@ export class Room {
   snapshotForPlayer(playerId: string): RoomSnapshot {
     const player = this.players.get(playerId);
     if (this.isAssessment) {
-      // Sem placar: o aluno vê só a própria atividade.
+      // Sem placar e sem os colegas: o aluno vê só a própria atividade e quantos estão na sala.
       const record = this.recordFor(playerId);
-      const snapshot = { ...this.baseSnapshot([], record), report: this.report && this.reportFor(playerId) };
+      const base = this.baseSnapshot([], record);
+      const snapshot = {
+        ...base,
+        players: base.players.filter((p) => p.id === playerId),
+        report: this.report && this.reportFor(playerId),
+      };
       if (!player) return snapshot;
       return {
         ...snapshot,
@@ -936,6 +946,7 @@ export class Room {
       questionIndex: record?.index ?? -1,
       settings: this.settings,
       players: [...this.players.values()].sort((a, b) => a.joinedAt - b.joinedAt).map((p) => this.publicPlayer(p)),
+      playerCount: this.players.size,
       leaderboard,
       question: this.activeQuestion(record),
       answeredCount: this.current ? this.acceptedCount(this.current) : 0,

@@ -510,6 +510,17 @@ describe('Room: atividade', () => {
     expect(events.some((e) => e.event === 'question:validated')).toBe(false);
   });
 
+  it('o aluno não recebe nomes nem avatares dos colegas, só quantos estão na sala', () => {
+    const { room, events } = assessmentSetup();
+    const ana = room.join({ name: 'Ana Paula Souza', avatar: 'bolt' });
+    room.join({ name: '2024001234', avatar: 'bolt' });
+    const snapshot = room.snapshotForPlayer(ana.playerId);
+    expect(snapshot.players.map((p) => p.name)).toEqual(['Ana Paula Souza']);
+    expect(snapshot.playerCount).toBe(2);
+    expect(room.snapshotForHost().players).toHaveLength(2);
+    expect(events.filter((e) => e.event === 'player:joined').every((e) => e.target.kind === 'host')).toBe(true);
+  });
+
   it('depois de entregar, o aluno não edita mais', () => {
     const { room } = assessmentSetup();
     const ana = room.join({ name: 'Ana', avatar: 'bolt' });

@@ -121,6 +121,12 @@ export function registerHttpRoutes(
     const room = rooms.get(request.params.code);
     if (!room) return reply.status(404).send({ error: 'Sala não encontrada' });
     const snapshot = room.snapshotForHost();
-    return { code: room.code, phase: snapshot.phase, packTitle: snapshot.packTitle, playerCount: snapshot.players.length };
+    return {
+      code: room.code,
+      phase: snapshot.phase,
+      packTitle: snapshot.packTitle,
+      playerCount: snapshot.playerCount,
+      mode: snapshot.settings.mode,
+    };
   });
 }
