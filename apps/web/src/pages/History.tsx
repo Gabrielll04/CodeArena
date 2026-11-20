@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { SessionHistorySummary } from '@codearena/schemas';
 import { TopBar } from '../components/TopBar';
-import { Badge, Button, EmptyState, Input, Panel, Spinner } from '../components/ui';
+import { Badge, Button, EmptyState, Icon, Input, Panel, Spinner } from '../components/ui';
 import { api } from '../lib/api';
 import { setTeacherKey, teacherKey } from '../lib/teacherKey';
 
@@ -33,9 +33,12 @@ export function HistoryPage() {
             <h1 className="font-display text-3xl font-bold">Histórico</h1>
             <p className="mt-1 text-white/50">Sessões encerradas, com placar, respostas e avaliações.</p>
           </div>
-          <Link to="/teacher">
-            <Button variant="secondary">Voltar à biblioteca</Button>
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <ImportSessionButton onImported={load} onError={setError} />
+            <Link to="/teacher">
+              <Button variant="secondary">Voltar à biblioteca</Button>
+            </Link>
+          </div>
         </div>
 
         {error && (
@@ -99,6 +102,52 @@ export function HistoryPage() {
   );
 }
 
+/** Traz de volta uma sessão baixada em "Baixar sessão" (ex.: aplicada numa guia anônima, cuja chave sumiu). */
+function ImportSessionButton({ onImported, onError }: { onImported: () => void; onError: (message: string | null) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  const importFile = async (file: File) => {
+    setBusy(true);
+    onError(null);
+    try {
+      let record: unknown;
+      try {
+        record = JSON.parse(await file.text());
+      } catch {
+        throw new Error('O arquivo não é um JSON válido.');
+      }
+      await api.importHistory(record);
+      onImported();
+    } catch (err) {
+      onError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Button variant="secondary" disabled={busy} onClick={() => input.current?.click()} data-testid="history-import">
+        <Icon name="upload" /> Importar sessão
+      </Button>
+      <input
+        ref={input}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        aria-label="Arquivo da sessão"
+        data-testid="history-import-file"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) void importFile(file);
+        }}
+      />
+    </>
+  );
+}
+
 /** O histórico fica ligado a uma chave guardada neste navegador. Para usar outro navegador, leve a chave junto. */
 function TeacherKeyPanel({ onChange }: { onChange: () => void }) {
   const [copied, setCopied] = useState(false);
@@ -107,7 +156,10 @@ function TeacherKeyPanel({ onChange }: { onChange: () => void }) {
   return (
     <Panel className="space-y-3 p-5">
       <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">Usar em outro navegador</h2>
-      <p className="text-sm text-white/60">Copie a chave deste navegador e cole no outro. Quem tem a chave vê este histórico.</p>
+      <p className="text-sm text-white/60">
+        Copie a chave deste navegador e cole no outro. Quem tem a chave vê este histórico. Numa guia anônima, a chave some
+        quando a guia fecha: baixe os Dados (JSON) da sessão antes e use Importar sessão depois.
+      </p>
       <div className="flex flex-wrap items-center gap-2">
         <Button
           variant="secondary"

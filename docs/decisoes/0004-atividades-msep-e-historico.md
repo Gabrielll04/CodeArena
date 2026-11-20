@@ -37,6 +37,8 @@ desempenho de todas as sessões.
 6. **Histórico por professor, sem login.** O navegador do professor gera uma chave aleatória e a envia ao criar a sala;
    o servidor guarda só o hash. A API do histórico exige a chave no cabeçalho `x-teacher-key` e responde 404 para
    sessões de outra chave. Para usar outro navegador, o professor copia a chave.
+   O JSON baixado em **Dados (JSON)** pode ser importado (`POST /api/history/import`) e passa a ser da chave de quem
+   importa; se o id já for de outra chave, a cópia ganha id novo e o original não muda.
 7. **O tipo "guided" sai.** Packs antigos continuam abrindo: `"guided"` é lido como `"build"` e `weight` é ignorado.
 
 ## Consequências

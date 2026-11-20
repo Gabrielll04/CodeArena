@@ -74,4 +74,22 @@ describe('HistoryStore', () => {
     await reopened.delete(id, owner);
     await expect(reopened.get(id, owner)).rejects.toThrowError('Sessão não encontrada');
   });
+
+  it('importa uma sessão baixada para outra chave sem mexer no original', async () => {
+    const { history, dataDir } = await store();
+    const first = hashTeacherKey('chave-da-guia-anonima-1234567890');
+    const second = hashTeacherKey('chave-do-navegador-normal-123456');
+    const id = history.newId();
+    await history.saveRoom({ id, owner: first, packId: 'pack', room: fakeRoom });
+    const downloaded = await history.get(id, first);
+
+    await expect(history.importRecord(downloaded, first)).rejects.toThrowError('já está no seu histórico');
+    const summary = await history.importRecord(downloaded, second);
+    expect(summary.id).not.toBe(id);
+    expect(history.list(first).map((s) => s.id)).toEqual([id]);
+
+    const reopened = new HistoryStore({ dataDir });
+    await reopened.init();
+    expect((await reopened.get(summary.id, second)).players).toEqual(downloaded.players);
+  });
 });
