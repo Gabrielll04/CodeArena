@@ -342,6 +342,7 @@ Cada registro guarda o hash da chave do professor enviada em `room:create`. A AP
 | Rota | O que faz |
 | --- | --- |
 | `GET /api/history` | resumos das sessões da chave, mais recentes primeiro |
+| `GET /api/history/active` | salas ainda abertas da chave, com `hostToken` para o professor voltar a elas |
 | `GET /api/history/:id` | registro completo |
 | `PUT /api/history/:id/evaluations` | `{ entries: [{ playerId, questionId, marks, comment? }] }`; marca `null` remove |
 | `DELETE /api/history/:id` | exclui a sessão |
@@ -352,7 +353,8 @@ O snapshot do professor traz `historyId` depois do encerramento, para abrir a av
 
 - Aluno: `playerToken` fica no `localStorage`. Ao reconectar (ou recarregar), o cliente reenvia `room:join` com o token e
   recebe o mesmo jogador, com XP e resposta atual. O rascunho do código fica no `sessionStorage` por questão.
-- Professor: `hostToken` fica no `localStorage` por sala; `/host/<code>` retoma a sala.
+- Professor: `hostToken` fica no `localStorage` por sala; `/host/<code>` retoma a sala. Sem o token neste navegador,
+  `GET /api/history/active` devolve as salas abertas da chave do professor, e o histórico grava o token antes de abrir.
 - Servidor: as salas abertas ficam gravadas em `<dataDir>/codearena.db` (SQLite, uma linha por sala com `room.toState()`,
   no máximo uma gravação por segundo, a cada `onChange`). Ao iniciar, `rooms.restore` recria cada sala com o mesmo código
   e os mesmos tokens; os prazos abertos são adiados pelo tempo fora do ar, e os alunos voltam pelo token. Desligar o

@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import type { SessionHistorySummary } from '@codearena/schemas';
+import { Link, useNavigate } from 'react-router-dom';
+import type { ActiveRoomSummary, SessionHistorySummary } from '@codearena/schemas';
 import { TopBar } from '../components/TopBar';
 import { Badge, Button, EmptyState, Icon, Input, Panel, Spinner } from '../components/ui';
 import { api } from '../lib/api';
+import { plural } from '../lib/format';
 import { setTeacherKey, teacherKey } from '../lib/teacherKey';
+import { rememberHostToken } from '../stores/host';
 
 export const dateTime = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
 /** Sessões encerradas pelo professor deste navegador, das mais recentes para as mais antigas. */
 export function HistoryPage() {
   const [sessions, setSessions] = useState<SessionHistorySummary[] | null>(null);
+  const [active, setActive] = useState<ActiveRoomSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -19,6 +22,10 @@ export function HistoryPage() {
       .listHistory()
       .then(setSessions)
       .catch((err: Error) => setError(err.message));
+    api
+      .activeRooms()
+      .then(setActive)
+      .catch(() => setActive([]));
   }, []);
   useEffect(load, [load]);
 
@@ -46,6 +53,8 @@ export function HistoryPage() {
             {error}
           </p>
         )}
+
+        {active.length > 0 && <ActiveRooms rooms={active} />}
 
         {!sessions ? (
           !error && (
@@ -99,6 +108,44 @@ export function HistoryPage() {
         <TeacherKeyPanel onChange={load} />
       </main>
     </div>
+  );
+}
+
+/** Salas que ainda estão abertas: o professor volta a elas mesmo se saiu da tela (ex.: o servidor caiu no meio da aula). */
+function ActiveRooms({ rooms }: { rooms: ActiveRoomSummary[] }) {
+  const navigate = useNavigate();
+  const rejoin = (room: ActiveRoomSummary) => {
+    rememberHostToken(room.roomCode, room.hostToken);
+    navigate(`/host/${room.roomCode}`);
+  };
+
+  return (
+    <section className="space-y-3" aria-labelledby="active-rooms-title" data-testid="active-rooms">
+      <h2 id="active-rooms-title" className="flex items-center gap-2 font-display text-lg font-bold">
+        <span aria-hidden className="h-2 w-2 rounded-full bg-coral" />
+        Em andamento
+      </h2>
+      {rooms.map((room) => (
+        <Panel key={room.roomCode} className="flex flex-wrap items-center justify-between gap-4 p-4" data-testid="active-room">
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold">{room.packTitle}</span>
+              {room.mode === 'assessment' ? <Badge tone="violet">Atividade</Badge> : <Badge>Competição</Badge>}
+              <Badge tone={room.phase === 'lobby' ? 'neutral' : 'coral'}>
+                {room.phase === 'lobby' ? 'Aguardando início' : 'Em andamento'}
+              </Badge>
+            </div>
+            <p className="text-xs text-white/50">
+              Sala <span className="font-mono text-white/70">{room.roomCode}</span> · {plural(room.playerCount, 'aluno')} ·
+              aberta em {dateTime.format(room.createdAt)}
+            </p>
+          </div>
+          <Button variant="primary" size="sm" onClick={() => rejoin(room)} data-testid="active-room-rejoin">
+            <Icon name="play" /> Voltar para a sala
+          </Button>
+        </Panel>
+      ))}
+    </section>
   );
 }
 

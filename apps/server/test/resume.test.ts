@@ -174,4 +174,37 @@ describe('retomada da sala depois de o servidor cair', () => {
     expect(record.answers[0]!.code).toBe('resposta');
     expect(server.roomStore.list().rooms).toEqual([]);
   });
+
+  it('o histórico lista as salas abertas do professor, com o token para voltar, e só para ele', async () => {
+    const dataDir = await tempDir();
+    const first = await start(dataDir);
+    const host = await client(first.url);
+    const created = await emit<{ ok: true; code: string; hostToken: string }>(host, 'room:create', {
+      packId: 'exemplo-react-native-fundamentos',
+      questionIds: ['botao-clique-aqui'],
+      settings: { countdownSeconds: 0, mode: 'assessment', assessmentMinutes: 10 },
+      teacherKey,
+    });
+    await emit(host, 'host:start-question', { code: created.code, hostToken: created.hostToken });
+    await new Promise((r) => setTimeout(r, ROOM_SAVE_INTERVAL_MS + 300));
+    first.server.roomStore.close();
+    cleanup.push(() => first.server.app.close());
+    const second = await start(dataDir);
+    cleanup.push(() => second.server.app.close());
+
+    const active = (key?: string) =>
+      fetch(`${second.url}/api/history/active`, { headers: key ? { 'x-teacher-key': key } : {} });
+    expect((await active()).status).toBe(401);
+    expect(await (await active('outra-chave-de-outro-professor-0000')).json()).toEqual([]);
+    const listed = await (await active(teacherKey)).json();
+    expect(listed).toEqual([
+      expect.objectContaining({ roomCode: created.code, hostToken: created.hostToken, mode: 'assessment', phase: 'question' }),
+    ]);
+
+    // Encerrada, sai da lista e vai para o histórico.
+    const host2 = await client(second.url);
+    await emit(host2, 'room:host', { code: created.code, hostToken: created.hostToken });
+    await emit(host2, 'host:end-session', { code: created.code, hostToken: created.hostToken });
+    expect(await (await active(teacherKey)).json()).toEqual([]);
+  });
 });

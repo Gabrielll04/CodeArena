@@ -510,3 +510,26 @@ test('código com erro de sintaxe não conclui itens nem é enviado, mesmo com o
   // Única aluna da sala: a resposta aceita encerra a questão.
   await expect(ana.getByTestId('review')).toBeVisible();
 });
+
+test('sala aberta aparece no histórico e o botão do histórico avisa, mesmo sem o token no navegador', async ({ page: host, browser }) => {
+  await host.goto('/teacher');
+  await expect(host.getByTestId('open-history')).toBeVisible();
+  await expect(host.getByTestId('open-rooms-dot')).toHaveCount(0);
+  const code = await createRoom(host, 'pack-exemplo-react-native-fundamentos');
+
+  // O professor volta para a tela inicial (ex.: o servidor caiu) e perdeu o token da sala neste navegador.
+  const key = await host.evaluate(() => localStorage.getItem('codearena:teacher-key'));
+  const teacher = await (await browser.newContext()).newPage();
+  await teacher.addInitScript((value) => localStorage.setItem('codearena:teacher-key', value!), key);
+  await teacher.goto('/teacher');
+  await expect(teacher.getByTestId('open-rooms-dot')).toBeVisible();
+  await expect(teacher.getByTestId('open-history')).toContainText('1 sala aberta');
+
+  await teacher.getByTestId('open-history').click();
+  const room = teacher.getByTestId('active-room');
+  await expect(room).toHaveCount(1);
+  await expect(room).toContainText(code);
+  await room.getByTestId('active-room-rejoin').click();
+  await expect(teacher).toHaveURL(new RegExp(`/host/${code}$`));
+  await expect(teacher.getByTestId('host-room-code')).toHaveText(code);
+});

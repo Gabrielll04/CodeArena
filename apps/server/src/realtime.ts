@@ -15,6 +15,7 @@ import {
   resolveQuestions,
   SubmitPayloadSchema,
   type Ack,
+  type ActiveRoomSummary,
   type ClientToServerEvents,
   type ErrorCode,
   type ServerToClientEvents,
@@ -83,7 +84,7 @@ export function attachRealtime({
   roomStore,
   idleLimitMs,
   log = () => {},
-}: RealtimeDeps): { saveAll(): void } {
+}: RealtimeDeps): { saveAll(): void; activeRooms(owner: string): ActiveRoomSummary[] } {
   const sinkFor = (getRoom: () => Room | undefined): RoomSink => ({
     emit(target, event, payload) {
       const room = getRoom();
@@ -391,6 +392,26 @@ export function attachRealtime({
   });
 
   return {
+    /** Salas abertas de um professor, para ele voltar a elas pelo histórico (de qualquer navegador com a mesma chave). */
+    activeRooms(owner: string): ActiveRoomSummary[] {
+      const found: ActiveRoomSummary[] = [];
+      for (const room of rooms.list()) {
+        const phase = room.currentPhase;
+        if (metas.get(room)?.owner !== owner || phase === 'ended') continue;
+        const snapshot = room.snapshotForHost();
+        found.push({
+          roomCode: room.code,
+          hostToken: room.hostToken,
+          mode: snapshot.settings.mode,
+          packTitle: room.packTitle,
+          phase,
+          playerCount: snapshot.players.length,
+          createdAt: room.createdAt,
+          lastActivityAt: room.lastActivityAt,
+        });
+      }
+      return found.sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+    },
     /** Grava agora todas as salas abertas (ao desligar o servidor, para retomar depois). */
     saveAll() {
       for (const room of rooms.list()) {

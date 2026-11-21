@@ -26,6 +26,15 @@ export function TeacherPage() {
   }, []);
   useEffect(load, [load]);
 
+  // Sala que ficou aberta (ex.: o servidor caiu e o professor voltou para cá): avisa no botão do histórico.
+  const [openRooms, setOpenRooms] = useState(0);
+  useEffect(() => {
+    api
+      .activeRooms()
+      .then((list) => setOpenRooms(list.length))
+      .catch(() => setOpenRooms(0));
+  }, []);
+
   const exportPack = async (id: string) => {
     const stored = await api.getPack(id);
     downloadFile(`${stored.id}.json`, JSON.stringify(stored.pack, null, 2));
@@ -54,10 +63,16 @@ export function TeacherPage() {
     <div className="flex min-h-full flex-col">
       <TopBar
         right={
-          <Link to="/teacher/historico" data-testid="open-history">
+          <Link to="/teacher/historico" data-testid="open-history" className="relative inline-flex">
             <Button variant="ghost" size="sm">
               Histórico
+              {openRooms > 0 && <span className="sr-only">({plural(openRooms, 'sala aberta', 'salas abertas')})</span>}
             </Button>
+            {openRooms > 0 && (
+              <span aria-hidden className="pointer-events-none absolute -right-1 -top-1" data-testid="open-rooms-dot">
+                <span className="block h-2.5 w-2.5 animate-dot-bounce rounded-full bg-coral ring-2 ring-ink-900" />
+              </span>
+            )}
           </Link>
         }
       >
