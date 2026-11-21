@@ -576,6 +576,21 @@ describe('Room: atividade', () => {
     expect(JSON.stringify(history)).not.toContain('host-secret');
   });
 
+  it('durante a sessão, o histórico serve de ponto de recuperação com as respostas salvas', () => {
+    const { room } = assessmentSetup();
+    const ana = room.join({ name: 'Ana', avatar: 'bolt' });
+    expect(room.historySnapshot()).toBeNull();
+    room.startNextQuestion();
+    room.saveAnswer(ana.playerId, 'q1', 'a b');
+
+    const partial = room.historySnapshot()!;
+    expect(room.currentPhase).not.toBe('ended');
+    expect(partial.players.map((p) => p.name)).toEqual(['Ana']);
+    expect(partial.answers.find((a) => a.questionId === 'q1')).toMatchObject({ code: 'a b', status: 'started' });
+    expect(partial.report.players.map((p) => p.name)).toEqual(['Ana']);
+    expect(JSON.stringify(partial)).not.toContain('host-secret');
+  });
+
   it('não muda o modo depois de começar', () => {
     const { room } = assessmentSetup();
     room.join({ name: 'Ana', avatar: 'bolt' });

@@ -337,6 +337,11 @@ avaliações. Sessões abandonadas são encerradas antes de a sala ser descartad
 salas em andamento. Em atividades, o servidor roda depois a checklist oficial em cada resposta (duas por vez) e guarda o
 resultado em `answers[].auto`, só como sugestão.
 
+Durante a sessão, cada emissão da sala (pelo `RoomSink`) agenda um ponto de recuperação: o mesmo `historySnapshot()`,
+com o placar parcial, gravado em `<dataDir>/history/running/<id>.json` no máximo uma vez por segundo. O registro final
+apaga o ponto. Se sobrar algum ao iniciar (o processo morreu sem encerrar a sessão), ele entra no histórico com
+`interrupted: true`.
+
 Cada registro guarda o hash da chave do professor enviada em `room:create`. A API exige a chave no cabeçalho
 `x-teacher-key`:
 

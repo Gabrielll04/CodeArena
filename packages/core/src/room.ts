@@ -782,11 +782,13 @@ export class Room {
   }
 
   /**
-   * Dados da sessão encerrada para o histórico do professor: questões completas, alunos, placar e o último código de
-   * cada aluno em cada questão. Nunca inclui tokens. null antes do encerramento.
+   * Dados da sessão para o histórico do professor: questões completas, alunos, placar e o último código de cada aluno
+   * em cada questão. Nunca inclui tokens. Durante a sessão, serve de ponto de recuperação: o placar é o parcial e as
+   * questões abertas ainda não têm resultado. null antes do início.
    */
   historySnapshot(): Omit<SessionHistory, 'id' | 'version' | 'packId' | 'evaluations' | 'autoCheck'> | null {
-    if (!this.report) return null;
+    if (!this.report && !this.inProgress) return null;
+    const report = this.report ?? this.buildReport();
     const players: HistoryPlayer[] = [...this.players.values()]
       .sort((a, b) => a.joinedAt - b.joinedAt)
       .map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, delivered: p.delivered }));
@@ -814,11 +816,11 @@ export class Room {
       roomCode: this.code,
       packTitle: this.packTitle,
       startedAt: this.startedAt ?? this.createdAt,
-      endedAt: this.report.endedAt,
+      endedAt: report.endedAt,
       settings: { ...this.settings },
       questions: this.history.map((record) => record.question),
       players,
-      report: this.report,
+      report,
       answers,
     };
   }

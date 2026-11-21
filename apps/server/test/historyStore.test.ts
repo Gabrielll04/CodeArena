@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -91,5 +91,30 @@ describe('HistoryStore', () => {
     const reopened = new HistoryStore({ dataDir });
     await reopened.init();
     expect((await reopened.get(summary.id, second)).players).toEqual(downloaded.players);
+  });
+
+  it('recupera como interrompida a sessão em andamento quando o servidor cai', async () => {
+    const { history, dataDir } = await store();
+    const owner = hashTeacherKey('chave-do-professor-de-teste-123456');
+    const running = { ...fakeRoom, inProgress: true } as unknown as Room;
+    const crashed = history.newId();
+    await history.checkpoint({ id: crashed, owner, packId: 'pack', room: running });
+    expect(history.list(owner)).toEqual([]);
+
+    // Sessão que terminou normalmente: o ponto de recuperação some.
+    const finished = history.newId();
+    await history.checkpoint({ id: finished, owner, packId: 'pack', room: running });
+    await history.saveRoom({ id: finished, owner, packId: 'pack', room: fakeRoom });
+
+    // "Queda": outro processo abre a mesma pasta sem que a sessão tenha terminado.
+    const reopened = new HistoryStore({ dataDir });
+    await reopened.init();
+    const list = reopened.list(owner);
+    expect(list.map((s) => s.id).sort()).toEqual([crashed, finished].sort());
+    expect(list.find((s) => s.id === crashed)!.interrupted).toBe(true);
+    expect(list.find((s) => s.id === finished)!.interrupted).toBeUndefined();
+    const record = await reopened.get(crashed, owner);
+    expect(record.answers[0]).toMatchObject({ code: 'x', status: 'started' });
+    expect(await readdir(join(dataDir, 'history', 'running'))).toEqual([]);
   });
 });

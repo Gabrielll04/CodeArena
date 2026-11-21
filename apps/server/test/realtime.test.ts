@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { io as connect, type Socket } from 'socket.io-client';
@@ -215,6 +215,23 @@ describe('sala em tempo real', () => {
     const saved = await emit<{ ok: true; savedAt: number }>(ana, 'assessment:save', { questionId: 'botao-clique-aqui', code: solution });
     expect(saved.ok).toBe(true);
     expect((await row).questions.map((q) => q.status)).toEqual(['started', 'empty']);
+
+    // A sessão em andamento já está em disco (no máximo 1 s depois), pronta para ser recuperada se o servidor cair.
+    const runningDir = join(dataDir, 'history', 'running');
+    const savedInCheckpoint = async () => {
+      for (const file of (await readdir(runningDir)).filter((f) => f.endsWith('.json'))) {
+        const checkpoint = JSON.parse(await readFile(join(runningDir, file), 'utf8')) as SessionHistory;
+        if (checkpoint.roomCode !== created.code) continue;
+        return checkpoint.answers.find((a) => a.questionId === 'botao-clique-aqui')?.code === solution;
+      }
+      return false;
+    };
+    let checkpointed = false;
+    for (let attempt = 0; attempt < 40 && !checkpointed; attempt++) {
+      await new Promise((r) => setTimeout(r, 100));
+      checkpointed = await savedInCheckpoint();
+    }
+    expect(checkpointed).toBe(true);
     expect(await emit(ana, 'question:submit', { code: solution })).toMatchObject({ ok: false });
 
     const moved = await emit<{ ok: true; snapshot: RoomSnapshot }>(ana, 'assessment:goto', { index: 1 });
@@ -232,6 +249,8 @@ describe('sala em tempo real', () => {
     expect((await ended).players.map((p) => p.name)).toEqual(['Ana']);
     const historyId = (await hostUpdate).historyId!;
     expect(historyId).toMatch(/^[0-9a-f-]{36}$/);
+    await server.history.get(historyId, '').catch(() => undefined);
+    expect(await readdir(join(dataDir, 'history', 'running'))).not.toContain(`${historyId}.json`);
 
     // Só a chave que criou a sala abre o histórico.
     expect((await server.app.inject({ method: 'GET', url: '/api/history' })).statusCode).toBe(401);
