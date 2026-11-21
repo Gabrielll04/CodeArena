@@ -38,7 +38,7 @@ export function ActivityQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot;
   const view = snapshot.me!.assessment!;
   // Cada room:update traz um objeto novo; a questão só muda quando o aluno navega (o componente é recriado).
   const question: PublicQuestion = useMemo(() => active.question, [active.question.id]);
-  const { saveAnswer, reportPaste, goTo, deliver } = usePlayer();
+  const { saveAnswer, reportPaste, goTo, deliver, rejoins } = usePlayer();
   const storageKey = draftKey(snapshot.code, question.id);
   const starter = plugin?.getStarterCode(question) ?? question.starterCode;
   const [code, setCode] = useState(() => sessionStore.get<string>(storageKey) ?? view.code ?? starter);
@@ -72,6 +72,11 @@ export function ActivityQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot;
     const timer = setTimeout(() => void flush(), AUTOSAVE_DELAY_MS);
     return () => clearTimeout(timer);
   }, [code]);
+
+  // De volta à sala depois de cair a conexão (ou de o servidor reiniciar): salva o que foi escrito enquanto isso.
+  useEffect(() => {
+    if (rejoins > 0) void flush();
+  }, [rejoins]);
 
   const navigate = async (index: number) => {
     setBusy(true);

@@ -76,25 +76,6 @@ export const systemClock: Clock = {
   clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
-interface PlayerState {
-  id: string;
-  token: string;
-  name: string;
-  avatar: AvatarId;
-  connected: boolean;
-  joinedAt: number;
-  totalXP: number;
-  correctCount: number;
-  lastCorrectAt: number | null;
-  streak: number;
-  rank: number | null;
-  previousRank: number | null;
-  lastQuestionXP: number;
-  /** Atividade: índice da questão em que o aluno está. */
-  position: number;
-  /** Atividade: o aluno entregou e não edita mais. */
-  delivered: boolean;
-}
 
 interface QuestionRecord {
   question: ResolvedQuestion;
@@ -127,11 +108,81 @@ export interface RoomOptions {
   sink: RoomSink;
   clock?: Clock;
   createId?: () => string;
+  /** Horário de criação (só ao restaurar uma sala; o padrão é agora). */
+  createdAt?: number;
   /** Id do registro desta sessão no histórico do professor (mostrado a ele no fim). */
   historyId?: string;
   /** Chamado uma vez, quando a sessão termina (para guardar no histórico). */
   onEnded?: (room: Room) => void;
+  /**
+   * Chamado depois de qualquer mudança no estado da sala (para gravar um ponto de recuperação com `toState`). Pode ser
+   * chamado muitas vezes seguidas: quem grava decide o intervalo.
+   */
+  onChange?: (room: Room) => void;
 }
+
+/**
+ * Estado completo da sala em JSON, para retomar a sessão depois de o servidor reiniciar (`Room.fromState`). Inclui os
+ * tokens de professor e alunos: guarde só no servidor.
+ */
+export interface RoomState {
+  version: 1;
+  /** Quando o estado foi gerado (relógio do servidor). */
+  savedAt: number;
+  code: string;
+  hostToken: string;
+  packTitle: string;
+  createdAt: number;
+  lastActivityAt: number;
+  questions: ResolvedQuestion[];
+  settings: RoomSettings;
+  phase: RoomPhase;
+  startedAt: number | null;
+  window: { startsAt: number; endsAt: number } | null;
+  players: PlayerState[];
+  history: QuestionRecordState[];
+  /** Índice de `history` da questão atual, ou -1. */
+  currentIndex: number;
+  report: SessionReport | null;
+}
+
+export interface PlayerState {
+  id: string;
+  token: string;
+  name: string;
+  avatar: AvatarId;
+  connected: boolean;
+  joinedAt: number;
+  totalXP: number;
+  correctCount: number;
+  lastCorrectAt: number | null;
+  streak: number;
+  rank: number | null;
+  previousRank: number | null;
+  lastQuestionXP: number;
+  /** Atividade: índice da questão em que o aluno está. */
+  position: number;
+  /** Atividade: o aluno entregou e não edita mais. */
+  delivered: boolean;
+}
+
+/** `QuestionRecord` sem o que só existe em memória (validações em andamento, intervalo entre envios). */
+export interface QuestionRecordState {
+  question: ResolvedQuestion;
+  index: number;
+  startsAt: number;
+  endsAt: number;
+  finishedAt: number | null;
+  answers: [string, PlayerAnswer][];
+  progress: [string, { done: number; total: number }][];
+  itemState: [string, [string, { done: boolean; firstAt: number }][]][];
+  pastes: [string, PasteLog][];
+  allowPaste: boolean;
+  codes: [string, { code: string; at: number }][];
+  results: QuestionResults | null;
+}
+
+export type RestoreOptions = Pick<RoomOptions, 'validator' | 'sink' | 'clock' | 'createId' | 'historyId' | 'onEnded' | 'onChange'>;
 
 const randomId = () => globalThis.crypto.randomUUID();
 
@@ -148,7 +199,7 @@ export class Room {
   private readonly sink: RoomSink;
   private readonly clock: Clock;
   private readonly createId: () => string;
-  private readonly options: Pick<RoomOptions, 'historyId' | 'onEnded'>;
+  private readonly options: Pick<RoomOptions, 'historyId' | 'onEnded' | 'onChange'>;
 
   private phase: RoomPhase = 'lobby';
   private settings: RoomSettings;
@@ -171,12 +222,23 @@ export class Room {
     this.packTitle = options.packTitle;
     this.questions = options.questions;
     this.validator = options.validator;
-    this.sink = options.sink;
+    // Tudo o que muda a sala passa por aqui ou por touch(): os dois avisam onChange.
+    const sink = options.sink;
+    this.sink = {
+      emit: (target, event, payload) => {
+        sink.emit(target, event, payload);
+        this.changed();
+      },
+      sync: () => {
+        sink.sync();
+        this.changed();
+      },
+    };
     this.clock = options.clock ?? systemClock;
     this.createId = options.createId ?? randomId;
-    this.options = { historyId: options.historyId, onEnded: options.onEnded };
+    this.options = { historyId: options.historyId, onEnded: options.onEnded, onChange: options.onChange };
     this.settings = { ...DEFAULT_ROOM_SETTINGS, ...options.settings };
-    this.createdAt = this.clock.now();
+    this.createdAt = options.createdAt ?? this.clock.now();
     this.lastActivityAt = this.createdAt;
   }
 
@@ -341,28 +403,54 @@ export class Room {
 
     const active = this.activeQuestion(record)!;
     this.sink.emit({ kind: 'all' }, 'question:loaded', { question: active, serverNow: now });
-
-    const begin = () => {
-      if (this.current !== record || this.phase !== 'countdown') return;
-      this.phase = 'question';
-      this.sink.emit({ kind: 'all' }, 'question:started', {
-        questionId: question.id,
-        startsAt,
-        endsAt,
-        serverNow: this.clock.now(),
-      });
-      this.sink.sync();
-    };
-    if (countdownMs > 0) {
-      this.schedule(begin, countdownMs);
-    } else {
+    if (countdownMs === 0) {
       this.sink.emit({ kind: 'all' }, 'question:started', { questionId: question.id, startsAt, endsAt, serverNow: now });
+    }
+    this.armTimers();
+    this.sink.sync();
+    return active;
+  }
+
+  /**
+   * Agenda o fim da contagem regressiva e o fim do prazo a partir dos horários guardados na sala (ao iniciar e ao
+   * restaurar depois de o servidor reiniciar).
+   */
+  private armTimers(): void {
+    if (this.phase !== 'countdown' && this.phase !== 'question') return;
+    const now = this.clock.now();
+    if (this.isAssessment) {
+      if (!this.window) return;
+      const { startsAt, endsAt } = this.window;
+      const questionId = this.history[0]!.question.id;
+      if (this.phase === 'countdown') {
+        this.schedule(() => {
+          if (this.phase !== 'countdown') return;
+          this.phase = 'question';
+          this.sink.emit({ kind: 'all' }, 'question:started', { questionId, startsAt, endsAt, serverNow: this.clock.now() });
+          this.sink.sync();
+        }, startsAt - now);
+      }
+      this.schedule(() => void this.endSession(), endsAt - now);
+      return;
+    }
+    const record = this.current;
+    if (!record || record.finishedAt !== null) return;
+    if (this.phase === 'countdown') {
+      this.schedule(() => {
+        if (this.current !== record || this.phase !== 'countdown') return;
+        this.phase = 'question';
+        this.sink.emit({ kind: 'all' }, 'question:started', {
+          questionId: record.question.id,
+          startsAt: record.startsAt,
+          endsAt: record.endsAt,
+          serverNow: this.clock.now(),
+        });
+        this.sink.sync();
+      }, record.startsAt - now);
     }
     this.schedule(() => {
       if (this.current === record && record.finishedAt === null) void this.finishQuestion();
-    }, endsAt - now);
-    this.sink.sync();
-    return active;
+    }, record.endsAt - now);
   }
 
   /**
@@ -388,18 +476,10 @@ export class Room {
 
     const active = this.activeQuestion(this.current)!;
     this.sink.emit({ kind: 'all' }, 'question:loaded', { question: active, serverNow: now });
-    const started = () => ({ questionId: active.question.id, startsAt, endsAt, serverNow: this.clock.now() });
-    if (countdownMs > 0) {
-      this.schedule(() => {
-        if (this.phase !== 'countdown') return;
-        this.phase = 'question';
-        this.sink.emit({ kind: 'all' }, 'question:started', started());
-        this.sink.sync();
-      }, countdownMs);
-    } else {
-      this.sink.emit({ kind: 'all' }, 'question:started', started());
+    if (countdownMs === 0) {
+      this.sink.emit({ kind: 'all' }, 'question:started', { questionId: active.question.id, startsAt, endsAt, serverNow: now });
     }
-    this.schedule(() => void this.endSession(), endsAt - now);
+    this.armTimers();
     this.sink.sync();
     return active;
   }
@@ -782,11 +862,13 @@ export class Room {
   }
 
   /**
-   * Dados da sessão encerrada para o histórico do professor: questões completas, alunos, placar e o último código de
-   * cada aluno em cada questão. Nunca inclui tokens. null antes do encerramento.
+   * Dados da sessão para o histórico do professor: questões completas, alunos, placar e o último código de cada aluno
+   * em cada questão. Nunca inclui tokens. Durante a sessão, serve de ponto de recuperação: o placar é o parcial e as
+   * questões abertas ainda não têm resultado. null antes do início.
    */
   historySnapshot(): Omit<SessionHistory, 'id' | 'version' | 'packId' | 'evaluations' | 'autoCheck'> | null {
-    if (!this.report) return null;
+    if (!this.report && !this.inProgress) return null;
+    const report = this.report ?? this.buildReport();
     const players: HistoryPlayer[] = [...this.players.values()]
       .sort((a, b) => a.joinedAt - b.joinedAt)
       .map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, delivered: p.delivered }));
@@ -814,13 +896,98 @@ export class Room {
       roomCode: this.code,
       packTitle: this.packTitle,
       startedAt: this.startedAt ?? this.createdAt,
-      endedAt: this.report.endedAt,
+      endedAt: report.endedAt,
       settings: { ...this.settings },
       questions: this.history.map((record) => record.question),
       players,
-      report: this.report,
+      report,
       answers,
     };
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Recuperação                                                       */
+  /* ---------------------------------------------------------------- */
+
+  /** Estado completo da sala, em JSON, para `Room.fromState`. Validações em andamento ficam de fora. */
+  toState(): RoomState {
+    return structuredClone({
+      version: 1,
+      savedAt: this.clock.now(),
+      code: this.code,
+      hostToken: this.hostToken,
+      packTitle: this.packTitle,
+      createdAt: this.createdAt,
+      lastActivityAt: this.lastActivityAt,
+      questions: this.questions,
+      settings: this.settings,
+      phase: this.phase,
+      startedAt: this.startedAt,
+      window: this.window,
+      players: [...this.players.values()],
+      history: this.history.map((record) => ({
+        question: record.question,
+        index: record.index,
+        startsAt: record.startsAt,
+        endsAt: record.endsAt,
+        finishedAt: record.finishedAt,
+        // Uma resposta em validação não tem resultado: o aluno envia de novo depois da retomada.
+        answers: [...record.answers.entries()].filter(([, answer]) => answer.status !== 'validating'),
+        progress: [...record.progress.entries()],
+        itemState: [...record.itemState.entries()].map(([playerId, items]) => [playerId, [...items.entries()]]),
+        pastes: [...record.pastes.entries()],
+        allowPaste: record.allowPaste,
+        codes: [...record.codes.entries()],
+        results: record.results,
+      })),
+      currentIndex: this.current ? this.history.indexOf(this.current) : -1,
+      report: this.report,
+    } satisfies RoomState);
+  }
+
+  /**
+   * Recria a sala a partir de `toState`, depois de o servidor reiniciar. Os alunos aparecem desconectados até voltarem
+   * com o próprio token. O tempo em que o servidor ficou fora não conta: os prazos abertos são adiados por ele.
+   */
+  static fromState(state: RoomState, options: RestoreOptions): Room {
+    if (state.version !== 1) throw new RoomError('invalid_state', `Versão de estado da sala não suportada: ${state.version}`);
+    const room = new Room({
+      ...options,
+      code: state.code,
+      hostToken: state.hostToken,
+      packTitle: state.packTitle,
+      questions: state.questions,
+      settings: state.settings,
+      createdAt: state.createdAt,
+    });
+    const pausedMs = Math.max(0, room.clock.now() - state.savedAt);
+    const open = state.phase === 'countdown' || state.phase === 'question';
+    room.phase = state.phase;
+    room.startedAt = state.startedAt;
+    room.report = state.report;
+    room.lastActivityAt = state.lastActivityAt;
+    room.window = state.window && open ? { startsAt: state.window.startsAt + pausedMs, endsAt: state.window.endsAt + pausedMs } : state.window;
+    room.players = new Map(state.players.map((player) => [player.id, { ...player, connected: false }]));
+    room.history = state.history.map((saved, index) => {
+      const record = room.createRecord(saved.question, saved.index, saved.startsAt, saved.endsAt);
+      const running = open && saved.finishedAt === null && (state.window !== null || index === state.currentIndex);
+      if (running) {
+        record.startsAt += pausedMs;
+        record.endsAt += pausedMs;
+      }
+      record.finishedAt = saved.finishedAt;
+      record.answers = new Map(saved.answers);
+      record.progress = new Map(saved.progress);
+      record.itemState = new Map(saved.itemState.map(([playerId, items]) => [playerId, new Map(items)]));
+      record.pastes = new Map(saved.pastes);
+      record.allowPaste = saved.allowPaste;
+      record.codes = new Map(saved.codes);
+      record.results = saved.results;
+      return record;
+    });
+    room.current = room.history[state.currentIndex] ?? null;
+    room.armTimers();
+    return room;
   }
 
   /* ---------------------------------------------------------------- */
@@ -1140,6 +1307,15 @@ export class Room {
 
   private touch(): void {
     this.lastActivityAt = this.clock.now();
+    this.changed();
+  }
+
+  private changed(): void {
+    try {
+      this.options.onChange?.(this);
+    } catch {
+      // falha ao gravar o ponto de recuperação não interrompe a sala
+    }
   }
 }
 
@@ -1168,6 +1344,14 @@ export class RoomManager {
     }
     const room = new Room({ ...options, code, hostToken: options.hostToken ?? randomId() });
     this.rooms.set(code, room);
+    return room;
+  }
+
+  /** Registra uma sala recriada com `Room.fromState`, com o mesmo código de antes. */
+  restore(state: RoomState, options: RestoreOptions): Room {
+    if (this.rooms.has(state.code)) throw new RoomError('invalid_state', `Já existe uma sala com o código ${state.code}`);
+    const room = Room.fromState(state, options);
+    this.rooms.set(room.code, room);
     return room;
   }
 

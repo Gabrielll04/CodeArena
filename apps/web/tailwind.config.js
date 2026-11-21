@@ -36,6 +36,11 @@ export default {
         panel: '0 1px 0 0 rgba(255,255,255,.04) inset, 0 20px 40px -24px rgba(0,0,0,.8)',
       },
       keyframes: {
+        // Aviso de sala aberta no botão do histórico: pula alguns pixels e volta.
+        'dot-bounce': {
+          '0%, 100%': { transform: 'translateY(0)', animationTimingFunction: 'cubic-bezier(0.8, 0, 1, 1)' },
+          '50%': { transform: 'translateY(-5px)', animationTimingFunction: 'cubic-bezier(0, 0, 0.2, 1)' },
+        },
         'pulse-ring': {
           '0%': { boxShadow: '0 0 0 0 rgba(185,255,59,.5)' },
           '100%': { boxShadow: '0 0 0 14px rgba(185,255,59,0)' },
@@ -43,6 +48,7 @@ export default {
       },
       animation: {
         'pulse-ring': 'pulse-ring 0.9s ease-out 1',
+        'dot-bounce': 'dot-bounce 1s infinite',
       },
     },
   },

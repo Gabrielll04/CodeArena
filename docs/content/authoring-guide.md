@@ -98,6 +98,12 @@ código e marque cada critério como **Atendido** ou **Não atendido**. Você po
 Em **Histórico** ficam todas as sessões encerradas: placar, respostas de cada aluno e avaliações. O histórico fica ligado a
 este navegador; para ver em outro, use **Copiar minha chave** e cole no outro navegador.
 
+Se o servidor cair ou for reiniciado no meio da aula, a sala volta sozinha quando ele subir de novo, com o mesmo código.
+Os alunos não precisam fazer nada: a página reconecta, o que eles escreveram enquanto isso é salvo e o tempo fora do ar
+não conta no prazo. Se você fechou a tela da sala, o botão **Histórico** mostra uma bolinha vermelha enquanto houver
+sala aberta, e a seção **Em andamento** do histórico tem **Voltar para a sala** (funciona em qualquer navegador com a
+sua chave).
+
 Numa guia anônima, a chave some quando a guia fecha e a sessão deixa de aparecer. Antes de fechar, abra a sessão e use
 **Dados (JSON)**. Depois, em qualquer navegador, **Importar sessão** traz a sessão de volta com respostas e avaliações.
 

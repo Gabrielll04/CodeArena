@@ -41,7 +41,9 @@ git pull
 docker compose up -d --build
 ```
 
-Ao receber o sinal de parada, o servidor encerra as sessões em andamento e grava tudo no histórico antes de sair.
+Atualizar no meio da aula não encerra as salas: o servidor grava cada sala aberta em `/data/codearena.db` (SQLite) e,
+ao subir de novo, ela volta com o mesmo código. Alunos e professor reconectam sozinhos, e o tempo fora do ar não conta
+no prazo. O mesmo vale para uma queda de energia ou um travamento.
 
 ## Backup
 
@@ -52,7 +54,8 @@ docker run --rm -v codearena_codearena-data:/data:ro -v "$PWD":/backup busybox \
   tar czf /backup/codearena-$(date +%F).tar.gz -C /data .
 ```
 
-O nome do volume leva o nome da pasta do projeto na frente (`codearena_`). Confira com `docker volume ls`.
+O nome do volume leva o nome da pasta do projeto na frente (`codearena_`). Confira com `docker volume ls`. O backup
+inclui `codearena.db`, com as salas abertas e os tokens de acesso a elas: guarde-o com o mesmo cuidado.
 
 ## Logs
 

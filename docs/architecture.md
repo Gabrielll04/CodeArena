@@ -333,8 +333,7 @@ própria e pode entregar antes do prazo.
 
 Ao encerrar, a sala chama `onEnded` e o servidor grava o registro (`room.historySnapshot()`) em
 `<dataDir>/history/<id>.json`: questões completas, alunos, placar, último código de cada aluno em cada questão e
-avaliações. Sessões abandonadas são encerradas antes de a sala ser descartada, e o desligamento do servidor encerra as
-salas em andamento. Em atividades, o servidor roda depois a checklist oficial em cada resposta (duas por vez) e guarda o
+avaliações. Sessões abandonadas são encerradas antes de a sala ser descartada. Em atividades, o servidor roda depois a checklist oficial em cada resposta (duas por vez) e guarda o
 resultado em `answers[].auto`, só como sugestão.
 
 Cada registro guarda o hash da chave do professor enviada em `room:create`. A API exige a chave no cabeçalho
@@ -343,6 +342,7 @@ Cada registro guarda o hash da chave do professor enviada em `room:create`. A AP
 | Rota | O que faz |
 | --- | --- |
 | `GET /api/history` | resumos das sessões da chave, mais recentes primeiro |
+| `GET /api/history/active` | salas ainda abertas da chave, com `hostToken` para o professor voltar a elas |
 | `GET /api/history/:id` | registro completo |
 | `PUT /api/history/:id/evaluations` | `{ entries: [{ playerId, questionId, marks, comment? }] }`; marca `null` remove |
 | `DELETE /api/history/:id` | exclui a sessão |
@@ -353,9 +353,14 @@ O snapshot do professor traz `historyId` depois do encerramento, para abrir a av
 
 - Aluno: `playerToken` fica no `localStorage`. Ao reconectar (ou recarregar), o cliente reenvia `room:join` com o token e
   recebe o mesmo jogador, com XP e resposta atual. O rascunho do código fica no `sessionStorage` por questão.
-- Professor: `hostToken` fica no `localStorage` por sala; `/host/<code>` retoma a sala.
-- O estado das salas fica em memória do servidor. Reiniciar o servidor encerra as salas (packs e histórico ficam em
-  disco). Salas inativas por 6 h são removidas.
+- Professor: `hostToken` fica no `localStorage` por sala; `/host/<code>` retoma a sala. Sem o token neste navegador,
+  `GET /api/history/active` devolve as salas abertas da chave do professor, e o histórico grava o token antes de abrir.
+- Servidor: as salas abertas ficam gravadas em `<dataDir>/codearena.db` (SQLite, uma linha por sala com `room.toState()`,
+  no máximo uma gravação por segundo, a cada `onChange`). Ao iniciar, `rooms.restore` recria cada sala com o mesmo código
+  e os mesmos tokens; os prazos abertos são adiados pelo tempo fora do ar, e os alunos voltam pelo token. Desligar o
+  servidor grava as salas e não as encerra. Salas paradas há mais de 6 h não voltam: a sessão vai para o histórico.
+  Decisão em [0005: Salas em SQLite](./decisoes/0005-salas-em-sqlite.md).
+- Aluno em atividade: ao reconectar, o código escrito sem conexão é salvo de novo.
 
 ## Persistência
 
@@ -363,7 +368,8 @@ O snapshot do professor traz `historyId` depois do encerramento, para abrir a av
 atômica (arquivo temporário + rename). Os packs de exemplo vêm do manifesto (`codearena.packs`) de cada plugin
 carregado, somente leitura, com id `exemplo-<nome do arquivo>`. `CODEARENA_CONTENT_DIR` acrescenta uma pasta de exemplos
 própria da instalação.
-A interface de armazenamento é pequena (`list/get/create/update/delete`) para permitir trocar por SQLite depois.
+A interface de armazenamento é pequena (`list/get/create/update/delete`) para permitir trocar por SQLite depois (as salas
+abertas já usam `codearena.db`).
 
 ## Segurança
 

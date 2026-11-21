@@ -92,6 +92,18 @@ export interface SessionHistorySummary {
   evaluatedCount: number;
 }
 
+/** Sala ainda aberta, listada no histórico do professor dono para ele voltar a ela. Traz o token do professor. */
+export interface ActiveRoomSummary {
+  roomCode: string;
+  hostToken: string;
+  mode: RoomMode;
+  packTitle: string;
+  phase: 'lobby' | 'countdown' | 'question' | 'review';
+  playerCount: number;
+  createdAt: number;
+  lastActivityAt: number;
+}
+
 export const CriterionMarkSchema = z
   .object({
     met: z.boolean(),

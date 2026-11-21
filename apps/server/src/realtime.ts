@@ -15,11 +15,13 @@ import {
   resolveQuestions,
   SubmitPayloadSchema,
   type Ack,
+  type ActiveRoomSummary,
   type ClientToServerEvents,
   type ErrorCode,
   type ServerToClientEvents,
 } from '@codearena/schemas';
 import { hashTeacherKey, type HistoryStore } from './historyStore';
+import type { RoomMeta, RoomStore } from './roomStore';
 import type { PackStore } from './packStore';
 
 interface SocketData {
@@ -63,9 +65,26 @@ export interface RealtimeDeps {
   plugins: PluginRegistry<QuizPlugin<any>>;
   validator: SubmissionValidator;
   history: HistoryStore;
+  roomStore: RoomStore;
+  /** Salas paradas há mais que isso não são retomadas ao iniciar: a sessão é encerrada e vai para o histórico. */
+  idleLimitMs: number;
+  log?: (message: string) => void;
 }
 
-export function attachRealtime({ io, rooms, packs, plugins, validator, history }: RealtimeDeps): void {
+/** Intervalo mínimo entre duas gravações da mesma sala no SQLite. */
+export const ROOM_SAVE_INTERVAL_MS = 1000;
+
+export function attachRealtime({
+  io,
+  rooms,
+  packs,
+  plugins,
+  validator,
+  history,
+  roomStore,
+  idleLimitMs,
+  log = () => {},
+}: RealtimeDeps): { saveAll(): void; activeRooms(owner: string): ActiveRoomSummary[] } {
   const sinkFor = (getRoom: () => Room | undefined): RoomSink => ({
     emit(target, event, payload) {
       const room = getRoom();
@@ -87,6 +106,63 @@ export function attachRealtime({ io, rooms, packs, plugins, validator, history }
       }
     },
   });
+
+  /** Grava a sala no SQLite; a sala que acabou (ou saiu da memória) é apagada. */
+  const persist = (room: Room, meta: RoomMeta) => {
+    try {
+      if (rooms.get(room.code) !== room || room.currentPhase === 'ended') roomStore.delete(room.code);
+      else roomStore.save(room, meta);
+    } catch (err) {
+      log(`Falha ao gravar a sala ${room.code}: ${(err as Error).message}`);
+    }
+  };
+
+  /** Ligações da sala com o servidor: transmissão, gravação a cada mudança e histórico no fim. */
+  const wiring = (meta: RoomMeta, getRoom: () => Room | undefined) => {
+    let timer: NodeJS.Timeout | null = null;
+    return {
+      validator,
+      sink: sinkFor(getRoom),
+      historyId: meta.historyId,
+      // Várias mudanças seguidas viram uma gravação por intervalo, com o estado mais recente.
+      onChange: () => {
+        if (timer) return;
+        timer = setTimeout(() => {
+          timer = null;
+          const room = getRoom();
+          if (room) persist(room, meta);
+        }, ROOM_SAVE_INTERVAL_MS);
+        timer.unref();
+      },
+      onEnded: (ended: Room) => {
+        roomStore.delete(ended.code);
+        void history.saveRoom({ id: meta.historyId, owner: meta.owner, packId: meta.packId, room: ended });
+      },
+    };
+  };
+  const metas = new WeakMap<Room, RoomMeta>();
+
+  // Salas que estavam abertas quando o servidor parou: voltam com o mesmo código, e os alunos reconectam pelo token.
+  const stored = roomStore.list();
+  stored.broken.forEach((code) => log(`Sala ${code} gravada com dados ilegíveis: não foi retomada`));
+  for (const saved of stored.rooms) {
+    let room: Room | undefined;
+    try {
+      room = rooms.restore(saved.state, wiring(saved, () => room));
+      metas.set(room, saved);
+    } catch (err) {
+      log(`Não foi possível retomar a sala ${saved.state.code}: ${(err as Error).message}`);
+      continue;
+    }
+    if (Date.now() - saved.state.lastActivityAt > idleLimitMs) {
+      // Parada há tempo demais para continuar: encerra e guarda no histórico, como a limpeza de salas inativas faria.
+      if (room.inProgress) void room.endSession();
+      else roomStore.delete(room.code);
+      rooms.delete(room.code);
+      continue;
+    }
+    log(`Sala ${room.code} retomada (${saved.state.packTitle})`);
+  }
 
   const authorizeHost = (payload: unknown): { room: Room } | { error: Extract<Ack, { ok: false }> } => {
     const parsed = parse(HostAuthPayloadSchema, payload);
@@ -128,21 +204,23 @@ export function attachRealtime({ io, rooms, packs, plugins, validator, history }
       if (missing.length) return ack(invalid(`Plugin não instalado no servidor: ${missing.join(', ')}`, 'plugin_missing'));
 
       let room: Room | undefined;
-      const historyId = history.newId();
-      const owner = parsed.data.teacherKey ? hashTeacherKey(parsed.data.teacherKey) : null;
+      const meta: RoomMeta = {
+        historyId: history.newId(),
+        owner: parsed.data.teacherKey ? hashTeacherKey(parsed.data.teacherKey) : null,
+        packId: stored.id,
+      };
       try {
         room = rooms.create({
           packTitle: stored.pack.pack.title,
           questions,
           settings: parsed.data.settings,
-          validator,
-          sink: sinkFor(() => room),
-          historyId,
-          onEnded: (ended) => void history.saveRoom({ id: historyId, owner, packId: stored.id, room: ended }),
+          ...wiring(meta, () => room),
         });
       } catch (err) {
         return ack(failure(err));
       }
+      metas.set(room, meta);
+      persist(room, meta);
       bindHost(socket, room);
       ack({ ok: true, code: room.code, hostToken: room.hostToken, snapshot: room.snapshotForHost() });
     });
@@ -312,4 +390,34 @@ export function attachRealtime({ io, rooms, packs, plugins, validator, history }
       if (others.length === 0) current.room.disconnect(current.playerId);
     });
   });
+
+  return {
+    /** Salas abertas de um professor, para ele voltar a elas pelo histórico (de qualquer navegador com a mesma chave). */
+    activeRooms(owner: string): ActiveRoomSummary[] {
+      const found: ActiveRoomSummary[] = [];
+      for (const room of rooms.list()) {
+        const phase = room.currentPhase;
+        if (metas.get(room)?.owner !== owner || phase === 'ended') continue;
+        const snapshot = room.snapshotForHost();
+        found.push({
+          roomCode: room.code,
+          hostToken: room.hostToken,
+          mode: snapshot.settings.mode,
+          packTitle: room.packTitle,
+          phase,
+          playerCount: snapshot.players.length,
+          createdAt: room.createdAt,
+          lastActivityAt: room.lastActivityAt,
+        });
+      }
+      return found.sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+    },
+    /** Grava agora todas as salas abertas (ao desligar o servidor, para retomar depois). */
+    saveAll() {
+      for (const room of rooms.list()) {
+        const meta = metas.get(room);
+        if (meta) persist(room, meta);
+      }
+    },
+  };
 }

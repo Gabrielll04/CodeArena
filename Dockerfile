@@ -1,5 +1,5 @@
 # Imagem de produção do CodeArena: API, Socket.IO e interface num servidor só, na porta 3000.
-# Os dados (packs e histórico) ficam em /data: monte um volume para não perdê-los ao atualizar.
+# Os dados (packs, histórico e salas abertas) ficam em /data: monte um volume para não perdê-los ao atualizar.
 
 FROM node:22-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true

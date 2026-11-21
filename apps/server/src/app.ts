@@ -4,13 +4,14 @@ import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
 import { Server } from 'socket.io';
 import { RoomManager } from '@codearena/core';
-import type { ClientToServerEvents, ServerToClientEvents } from '@codearena/schemas';
+import type { ActiveRoomSummary, ClientToServerEvents, ServerToClientEvents } from '@codearena/schemas';
 import type { ServerConfig } from './config';
 import { HistoryStore } from './historyStore';
 import { registerHttpRoutes } from './http';
 import { PackStore } from './packStore';
 import { loadServerPlugins } from './plugins';
 import { attachRealtime } from './realtime';
+import { RoomStore } from './roomStore';
 import { createSubmissionValidator } from './validation';
 
 const ROOM_IDLE_LIMIT_MS = 6 * 60 * 60 * 1000;
@@ -34,7 +35,9 @@ export async function buildServer(config: Omit<ServerConfig, 'port' | 'host'>) {
   const history = new HistoryStore({ dataDir: config.dataDir, validator, log: (m) => app.log.warn(m) });
   await history.init();
 
-  registerHttpRoutes(app, { packs, plugins, rooms, history });
+  // As rotas sobem antes do tempo real; a lista de salas abertas só é consultada depois que ele existe.
+  let activeRooms = (_owner: string): ActiveRoomSummary[] => [];
+  registerHttpRoutes(app, { packs, plugins, rooms, history, activeRooms: (owner) => activeRooms(owner) });
 
   if (config.webDist && existsSync(join(config.webDist, 'index.html'))) {
     await app.register(fastifyStatic, {
@@ -55,7 +58,19 @@ export async function buildServer(config: Omit<ServerConfig, 'port' | 'host'>) {
     maxHttpBufferSize: 256 * 1024,
     cors: { origin: true },
   });
-  attachRealtime({ io, rooms, packs, plugins, validator, history });
+  const roomStore = new RoomStore({ dataDir: config.dataDir });
+  const realtime = attachRealtime({
+    io,
+    rooms,
+    packs,
+    plugins,
+    validator,
+    history,
+    roomStore,
+    idleLimitMs: ROOM_IDLE_LIMIT_MS,
+    log: (m) => app.log.warn(m),
+  });
+  activeRooms = realtime.activeRooms;
 
   const sweeper = setInterval(() => {
     const now = Date.now();
@@ -64,19 +79,22 @@ export async function buildServer(config: Omit<ServerConfig, 'port' | 'host'>) {
       if (room.inProgress && now - room.lastActivityAt > ROOM_IDLE_LIMIT_MS) void room.endSession();
     }
     const removed = rooms.sweep(now, ROOM_IDLE_LIMIT_MS);
+    removed.forEach((code) => roomStore.delete(code));
     if (removed.length) app.log.info(`Salas inativas removidas: ${removed.join(', ')}`);
   }, 10 * 60 * 1000);
   sweeper.unref();
 
   app.addHook('onClose', async () => {
     clearInterval(sweeper);
-    // Sessões em andamento vão para o histórico antes de o servidor parar.
-    await Promise.allSettled(rooms.list().filter((room) => room.inProgress).map((room) => room.endSession()));
+    // As salas abertas ficam gravadas como estão e voltam quando o servidor subir de novo (ex.: uma atualização no
+    // meio da aula). Não encerra as sessões.
+    realtime.saveAll();
     await history.close();
     disposePlugins();
-    rooms.list().forEach((room) => rooms.delete(room.code));
+    rooms.list().forEach((room) => room.dispose());
+    roomStore.close();
     io.close();
   });
 
-  return { app, io, rooms, packs, plugins, history };
+  return { app, io, rooms, packs, plugins, history, roomStore };
 }

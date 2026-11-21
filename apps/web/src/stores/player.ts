@@ -29,6 +29,8 @@ interface PlayerStore {
   lastFinished: QuestionFinishedEvent | null;
   report: SessionReport | null;
   removedReason: string | null;
+  /** Quantas vezes o aluno voltou à sala depois de perder a conexão (o servidor pode ter reiniciado). */
+  rejoins: number;
   join(input: { code: string; name: string; avatar: AvatarId }): Promise<{ ok: true } | { ok: false; error: string }>;
   resume(code: string): Promise<boolean>;
   leave(): void;
@@ -68,8 +70,9 @@ export const usePlayer = create<PlayerStore>((set, get) => {
           avatar: session.avatar,
           playerToken: session.playerToken,
         }).then((res) => {
-          if (res.ok) accept(res.snapshot);
-          else set({ status: 'removed', removedReason: res.error });
+          if (!res.ok) return set({ status: 'removed', removedReason: res.error });
+          accept(res.snapshot);
+          set({ rejoins: get().rejoins + 1 });
         });
       }
     });
@@ -107,6 +110,7 @@ export const usePlayer = create<PlayerStore>((set, get) => {
     lastFinished: null,
     report: null,
     removedReason: null,
+    rejoins: 0,
 
     async join({ code, name, avatar }) {
       listen();

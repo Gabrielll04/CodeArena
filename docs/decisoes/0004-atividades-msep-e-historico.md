@@ -32,7 +32,7 @@ desempenho de todas as sessões.
    50. Atividade: média das questões, limitada a 50 se faltou crítico em alguma questão. Questão com critério sem marca
    fica pendente. As constantes ficam em `packages/core/src/grading.ts`.
 5. **Histórico persistido.** Toda sessão encerrada (competição ou atividade, inclusive as abandonadas ou interrompidas
-   pelo desligamento do servidor) vira um arquivo JSON em `<dataDir>/history`, com questões, alunos, placar, último
+   pela limpeza de salas paradas há 6 h) vira um arquivo JSON em `<dataDir>/history`, com questões, alunos, placar, último
    código de cada aluno em cada questão e as avaliações.
 6. **Histórico por professor, sem login.** O navegador do professor gera uma chave aleatória e a envia ao criar a sala;
    o servidor guarda só o hash. A API do histórico exige a chave no cabeçalho `x-teacher-key` e responde 404 para

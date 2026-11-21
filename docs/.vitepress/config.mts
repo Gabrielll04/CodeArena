@@ -62,7 +62,10 @@ export default defineConfig({
       },
       {
         text: 'Decisões',
-        items: [{ text: '0001: Plugins como pacotes', link: '/decisoes/0001-plugins-como-pacotes' }],
+        items: [
+          { text: '0001: Plugins como pacotes', link: '/decisoes/0001-plugins-como-pacotes' },
+          { text: '0005: Salas em SQLite', link: '/decisoes/0005-salas-em-sqlite' },
+        ],
       },
       {
         text: 'Comunidade',

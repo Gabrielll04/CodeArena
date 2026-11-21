@@ -576,6 +576,21 @@ describe('Room: atividade', () => {
     expect(JSON.stringify(history)).not.toContain('host-secret');
   });
 
+  it('durante a sessão, o histórico serve de ponto de recuperação com as respostas salvas', () => {
+    const { room } = assessmentSetup();
+    const ana = room.join({ name: 'Ana', avatar: 'bolt' });
+    expect(room.historySnapshot()).toBeNull();
+    room.startNextQuestion();
+    room.saveAnswer(ana.playerId, 'q1', 'a b');
+
+    const partial = room.historySnapshot()!;
+    expect(room.currentPhase).not.toBe('ended');
+    expect(partial.players.map((p) => p.name)).toEqual(['Ana']);
+    expect(partial.answers.find((a) => a.questionId === 'q1')).toMatchObject({ code: 'a b', status: 'started' });
+    expect(partial.report.players.map((p) => p.name)).toEqual(['Ana']);
+    expect(JSON.stringify(partial)).not.toContain('host-secret');
+  });
+
   it('não muda o modo depois de começar', () => {
     const { room } = assessmentSetup();
     room.join({ name: 'Ana', avatar: 'bolt' });
@@ -617,5 +632,95 @@ describe('RoomManager', () => {
     expect(a.code).not.toBe(b.code);
     expect(manager.sweep(Date.now() + 10_000, 1000).sort()).toEqual([a.code, b.code].sort());
     expect(manager.get(a.code)).toBeUndefined();
+  });
+});
+
+describe('Room: retomada depois de reiniciar o servidor', () => {
+  /** Recria a sala a partir do JSON gravado, como o servidor faz ao iniciar, com o mesmo relógio. */
+  function restart(room: Room, clock: FakeClock, downtimeMs: number) {
+    const saved = JSON.parse(JSON.stringify(room.toState()));
+    room.dispose();
+    clock.current += downtimeMs;
+    const events: Emitted[] = [];
+    const ended: Room[] = [];
+    const restored = new RoomManager().restore(saved, {
+      validator,
+      sink: { emit: (target, event, payload) => events.push({ target, event, payload }), sync: () => {} },
+      clock,
+      onEnded: (r) => ended.push(r),
+    });
+    return { restored, events, ended };
+  }
+
+  it('atividade: mesmo código, alunos voltam pelo token com as respostas e o tempo fora não conta', async () => {
+    const { room, clock } = setup({
+      countdownSeconds: 0,
+      questions: [activityQuestion('q1'), activityQuestion('q2')],
+      settings: { mode: 'assessment', assessmentMinutes: 30 },
+    });
+    const ana = room.join({ name: 'Ana', avatar: 'bolt' });
+    room.startNextQuestion();
+    await clock.advance(10 * 60_000);
+    room.saveAnswer(ana.playerId, 'q1', 'a b');
+    room.goTo(ana.playerId, 1);
+    const deadline = room.snapshotForPlayer(ana.playerId).question!.endsAt;
+
+    const { restored, ended } = restart(room, clock, 5 * 60_000);
+    expect(restored.code).toBe('123456');
+    expect(restored.isHost('host-secret')).toBe(true);
+    expect(restored.snapshotForHost().players[0]!.connected).toBe(false);
+
+    const back = restored.join({ name: 'Ana', avatar: 'bolt', playerToken: ana.playerToken });
+    expect(back).toMatchObject({ playerId: ana.playerId, reconnected: true });
+    const snapshot = restored.snapshotForPlayer(ana.playerId);
+    expect(snapshot.question!.question.id).toBe('q2');
+    expect(snapshot.question!.endsAt).toBe(deadline + 5 * 60_000);
+    expect(restored.historySnapshot()!.answers.find((a) => a.questionId === 'q1')!.code).toBe('a b');
+
+    // Continua salvando e termina no prazo adiado.
+    restored.saveAnswer(ana.playerId, 'q2', 'a');
+    await clock.advance(20 * 60_000 - 1);
+    expect(restored.currentPhase).toBe('question');
+    await clock.advance(1);
+    expect(restored.currentPhase).toBe('ended');
+    expect(ended).toEqual([restored]);
+  });
+
+  it('competição: a questão continua com o tempo que faltava e a resposta em validação pode ser reenviada', async () => {
+    const { room, clock } = setup({ countdownSeconds: 0, questions: [makeQuestion('q1', 100), makeQuestion('q2')] });
+    const ana = room.join({ name: 'Ana', avatar: 'bolt' });
+    const bia = room.join({ name: 'Bia', avatar: 'prism' });
+    room.startNextQuestion();
+    await clock.advance(40_000);
+    await room.submit(ana.playerId, 'ok');
+    // Bia estava em validação quando o servidor caiu: fica sem resposta.
+    void room.submit(bia.playerId, 'ok');
+    const state = room.toState();
+    expect(state.history[0]!.answers.map(([id]) => id)).toEqual([ana.playerId]);
+
+    const { restored } = restart(room, clock, 30_000);
+    const accepted = restored.snapshotForHost().question!;
+    expect(accepted.endsAt - clock.now()).toBe(60_000);
+    restored.join({ name: 'Bia', avatar: 'prism', playerToken: bia.playerToken });
+    expect((await restored.submit(bia.playerId, 'ok')).status).toBe('accepted');
+    // Todos responderam: fecha a questão com Ana na frente (respondeu antes).
+    await clock.advance(0);
+    expect(restored.currentPhase).toBe('review');
+    expect(restored.snapshotForHost().leaderboard[0]!.name).toBe('Ana');
+  });
+
+  it('avisa onChange a cada mudança, para o servidor gravar', () => {
+    let changes = 0;
+    const room = new Room({
+      code: '654321',
+      hostToken: 'h',
+      packTitle: 'Pack',
+      questions: [makeQuestion('q1')],
+      validator,
+      sink: { emit: () => {}, sync: () => {} },
+      onChange: () => changes++,
+    });
+    room.join({ name: 'Ana', avatar: 'bolt' });
+    expect(changes).toBeGreaterThan(0);
   });
 });

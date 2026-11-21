@@ -1,6 +1,7 @@
 import type { AuthoringWarning } from '@codearena/core';
 import type { ChecklistEvaluationResult } from '@codearena/plugin-sdk';
 import type {
+  ActiveRoomSummary,
   EvaluationEntry,
   Question,
   QuestionPack,
@@ -74,6 +75,7 @@ export const api = {
     call<{ code: string; phase: string; packTitle: string; playerCount: number; mode: RoomMode }>(
       `/api/rooms/${encodeURIComponent(code)}`,
     ),
+  activeRooms: () => call<ActiveRoomSummary[]>('/api/history/active', { headers: teacherHeaders() }),
   listHistory: () => call<SessionHistorySummary[]>('/api/history', { headers: teacherHeaders() }),
   getHistory: (id: string) => call<SessionHistory>(`/api/history/${encodeURIComponent(id)}`, { headers: teacherHeaders() }),
   saveEvaluations: (id: string, entries: EvaluationEntry[]) =>

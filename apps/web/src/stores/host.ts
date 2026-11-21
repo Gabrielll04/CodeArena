@@ -17,6 +17,11 @@ import { playCue } from '../lib/sound';
 
 const tokenKey = (code: string) => `codearena:host:${code}`;
 
+/** Guarda o token de uma sala aberta (vindo do histórico) para o professor voltar a ela por /host/<código>. */
+export function rememberHostToken(code: string, hostToken: string): void {
+  local.set(tokenKey(code), hostToken);
+}
+
 export interface FeedEntry extends QuestionSubmittedEvent {
   at: number;
 }

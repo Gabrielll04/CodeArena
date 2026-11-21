@@ -1,7 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import { evaluateChecklist, lintQuestion, type RoomManager } from '@codearena/core';
 import type { PluginRegistry, QuizPlugin } from '@codearena/plugin-sdk';
-import { EvaluationUpdateSchema, MAX_CODE_LENGTH, parseQuestion, TeacherKeySchema, toPublicQuestion } from '@codearena/schemas';
+import {
+  EvaluationUpdateSchema,
+  MAX_CODE_LENGTH,
+  parseQuestion,
+  TeacherKeySchema,
+  toPublicQuestion,
+  type ActiveRoomSummary,
+} from '@codearena/schemas';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { parseSessionImport } from './historyImport';
@@ -13,9 +20,16 @@ export const TEACHER_KEY_HEADER = 'x-teacher-key';
 
 export function registerHttpRoutes(
   app: FastifyInstance,
-  deps: { packs: PackStore; plugins: PluginRegistry<QuizPlugin<any>>; rooms: RoomManager; history: HistoryStore },
+  deps: {
+    packs: PackStore;
+    plugins: PluginRegistry<QuizPlugin<any>>;
+    rooms: RoomManager;
+    history: HistoryStore;
+    /** Salas abertas do professor (dono = hash da chave). */
+    activeRooms: (owner: string) => ActiveRoomSummary[];
+  },
 ): void {
-  const { packs, plugins, rooms, history } = deps;
+  const { packs, plugins, rooms, history, activeRooms } = deps;
 
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof PackValidationError) {
@@ -101,6 +115,9 @@ export function registerHttpRoutes(
   };
 
   app.get('/api/history', async (request) => history.list(ownerOf(request)));
+
+  // Salas ainda abertas: o professor volta a elas mesmo depois de sair da tela (ex.: o servidor caiu no meio da aula).
+  app.get('/api/history/active', async (request) => activeRooms(ownerOf(request)));
 
   app.get<{ Params: { id: string } }>('/api/history/:id', async (request) => history.get(request.params.id, ownerOf(request)));
 
