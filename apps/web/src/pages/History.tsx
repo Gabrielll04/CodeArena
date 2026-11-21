@@ -8,15 +8,6 @@ import { setTeacherKey, teacherKey } from '../lib/teacherKey';
 
 export const dateTime = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
-/** Sessão recuperada depois de uma queda do servidor: respostas até o último ponto gravado. */
-export function InterruptedBadge() {
-  return (
-    <span title="O servidor parou no meio da sessão. As respostas são as salvas até a queda." data-testid="interrupted-badge">
-      <Badge tone="amber">Interrompida</Badge>
-    </span>
-  );
-}
-
 /** Sessões encerradas pelo professor deste navegador, das mais recentes para as mais antigas. */
 export function HistoryPage() {
   const [sessions, setSessions] = useState<SessionHistorySummary[] | null>(null);
@@ -86,10 +77,7 @@ export function HistoryPage() {
                       </Link>
                     </td>
                     <td className="px-3 py-2">
-                      <span className="flex flex-wrap gap-1">
-                        {session.mode === 'assessment' ? <Badge tone="violet">Atividade</Badge> : <Badge>Competição</Badge>}
-                        {session.interrupted && <InterruptedBadge />}
-                      </span>
+                      {session.mode === 'assessment' ? <Badge tone="violet">Atividade</Badge> : <Badge>Competição</Badge>}
                     </td>
                     <td className="px-3 py-2 text-right font-mono">{session.playerCount}</td>
                     <td className="px-3 py-2 text-right text-xs">

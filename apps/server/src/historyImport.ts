@@ -61,7 +61,6 @@ export const SessionHistoryImportSchema = z.object({
     )
     .max(50_000),
   autoCheck: z.enum(['none', 'pending', 'done']),
-  interrupted: z.boolean().optional(),
 });
 
 /** Converte o corpo da importação; devolve a mensagem do primeiro problema quando o arquivo não serve. */

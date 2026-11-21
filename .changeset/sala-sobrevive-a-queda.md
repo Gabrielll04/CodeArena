@@ -4,7 +4,8 @@
 '@codearena/core': patch
 ---
 
-`Room.historySnapshot()` também funciona durante a sessão (antes só depois do encerramento): devolve as respostas
-salvas até o momento e o placar parcial, para o servidor gravar pontos de recuperação. Antes do início continua `null`.
-`SessionHistory` e `SessionHistorySummary` ganham o campo opcional `interrupted`, para sessões recuperadas depois de uma
-queda do servidor. Nada muda para quem só chama `historySnapshot()` no `onEnded`.
+Retomar a sala depois de o servidor reiniciar. `room.toState()` devolve o estado completo da sala em JSON (inclui os
+tokens: guarde só no servidor) e `Room.fromState(state, options)` ou `rooms.restore(state, options)` recria a sala com o
+mesmo código; os prazos abertos são adiados pelo tempo em que o servidor ficou parado e os alunos voltam desconectados
+até reconectarem pelo token. A nova opção `onChange` avisa a cada mudança da sala, e `historySnapshot()` também funciona
+durante a sessão, com o placar parcial. Nada muda para quem não usa essas opções.
