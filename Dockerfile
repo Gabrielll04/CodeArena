@@ -21,7 +21,6 @@ VOLUME /data
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:' + process.env.PORT + '/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
-# Sem pnpm na execução: o Node carrega o TypeScript do servidor pelo tsx. O aviso de "experimental" é do node:sqlite,
-# usado para gravar as salas abertas (/data/codearena.db).
+# Sem pnpm na execução: o Node carrega o TypeScript do servidor pelo tsx.
 WORKDIR /app/apps/server
-CMD ["node", "--disable-warning=ExperimentalWarning", "--import", "tsx", "src/index.ts"]
+CMD ["node", "--import", "tsx", "src/index.ts"]

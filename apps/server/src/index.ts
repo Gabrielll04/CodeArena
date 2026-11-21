@@ -1,6 +1,9 @@
+import './warnings';
 import { networkInterfaces } from 'node:os';
-import { buildServer } from './app';
 import { loadConfig } from './config';
+
+// Import dinâmico: o filtro de avisos precisa estar ativo antes de o node:sqlite ser carregado.
+const { buildServer } = await import('./app');
 
 const config = loadConfig();
 const { app } = await buildServer(config);
