@@ -82,6 +82,8 @@ export const api = {
       headers: teacherHeaders(),
       body: JSON.stringify({ entries }),
     }),
+  importHistory: (record: unknown) =>
+    call<SessionHistorySummary>('/api/history/import', { method: 'POST', headers: teacherHeaders(), body: JSON.stringify(record) }),
   deleteHistory: (id: string) =>
     call<void>(`/api/history/${encodeURIComponent(id)}`, { method: 'DELETE', headers: teacherHeaders() }),
   testQuestion: (question: Question, pluginId: string, code: string) =>

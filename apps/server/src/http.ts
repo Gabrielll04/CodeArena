@@ -4,6 +4,7 @@ import type { PluginRegistry, QuizPlugin } from '@codearena/plugin-sdk';
 import { EvaluationUpdateSchema, MAX_CODE_LENGTH, parseQuestion, TeacherKeySchema, toPublicQuestion } from '@codearena/schemas';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { parseSessionImport } from './historyImport';
 import { HistoryError, hashTeacherKey, type HistoryStore } from './historyStore';
 import { PackStoreError, PackValidationError, type PackStore } from './packStore';
 
@@ -102,6 +103,14 @@ export function registerHttpRoutes(
   app.get('/api/history', async (request) => history.list(ownerOf(request)));
 
   app.get<{ Params: { id: string } }>('/api/history/:id', async (request) => history.get(request.params.id, ownerOf(request)));
+
+  // A sessão inteira, com o código dos alunos, pode passar do limite padrão do corpo.
+  app.post('/api/history/import', { bodyLimit: 32 * 1024 * 1024 }, async (request, reply) => {
+    const owner = ownerOf(request);
+    const parsed = parseSessionImport(request.body);
+    if (!parsed.ok) return reply.status(400).send({ error: parsed.error });
+    return reply.status(201).send(await history.importRecord(parsed.record, owner));
+  });
 
   app.put<{ Params: { id: string } }>('/api/history/:id/evaluations', async (request, reply) => {
     const owner = ownerOf(request);

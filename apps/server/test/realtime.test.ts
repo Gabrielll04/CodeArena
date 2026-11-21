@@ -273,6 +273,20 @@ describe('sala em tempo real', () => {
       payload: { entries: [{ playerId, questionId: question.id, marks: { inexistente: { met: true, source: 'ia' } } }] },
     });
     expect(badItem.statusCode).toBe(422);
+
+    // O JSON baixado no histórico volta para outra chave (ex.: a sala foi aberta numa guia anônima).
+    const downloaded = (await server.app.inject({ method: 'GET', url: `/api/history/${historyId}`, headers })).json() as SessionHistory;
+    const imported = await server.app.inject({ method: 'POST', url: '/api/history/import', headers: otherKey, payload: downloaded });
+    expect(imported.statusCode).toBe(201);
+    const copyId = (imported.json() as { id: string }).id;
+    expect(copyId).not.toBe(historyId);
+    const copy = (await server.app.inject({ method: 'GET', url: `/api/history/${copyId}`, headers: otherKey })).json() as SessionHistory;
+    expect(copy.players).toEqual(downloaded.players);
+    expect(copy.evaluations).toEqual(downloaded.evaluations);
+    expect((await server.app.inject({ method: 'POST', url: '/api/history/import', headers, payload: downloaded })).statusCode).toBe(409);
+    const broken = await server.app.inject({ method: 'POST', url: '/api/history/import', headers, payload: { ...downloaded, players: [] } });
+    expect(broken.statusCode).toBe(400);
+    expect(broken.json().error).toContain('players');
   });
 
   it('recusa sala de pack inexistente e entrada em sala inexistente', async () => {

@@ -130,6 +130,21 @@ export class HistoryStore {
     });
   }
 
+  /**
+   * Traz para o histórico do professor uma sessão baixada antes (ex.: a chave que a criou era de uma guia anônima).
+   * Se o mesmo id já existe para outro professor, a cópia ganha um id novo; o registro original não muda.
+   */
+  importRecord(record: SessionHistory, owner: string): Promise<SessionHistorySummary> {
+    const existing = this.summaries.get(record.id);
+    if (existing?.owner === owner) return Promise.reject(new HistoryError(409, 'Esta sessão já está no seu histórico'));
+    const stored: StoredHistory = { ...record, id: existing ? this.newId() : record.id, owner };
+    return this.enqueue(stored.id, async () => {
+      await this.write(stored);
+      if (stored.autoCheck === 'pending') this.scheduleAutoCheck(stored.id);
+      return summarize(stored);
+    });
+  }
+
   /** Cria ou atualiza avaliações. Marcas null removem a avaliação do critério. */
   updateEvaluations(id: string, owner: string, entries: EvaluationEntry[]): Promise<SessionHistory> {
     return this.enqueue(id, async () => {

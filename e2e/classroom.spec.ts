@@ -473,6 +473,20 @@ test('competição também fica no histórico, com placar e respostas', async ({
   await expect(host.getByTestId('history-scoreboard')).toContainText('Ana');
   await expect(host.getByTestId('answer-botao-clique-aqui')).toContainText('Aceita');
   await expect(host.getByTestId('answer-botao-clique-aqui')).toContainText('Clique aqui');
+
+  // Outro navegador (outra chave) não vê a sessão até importar os dados baixados.
+  const [jsonFile] = await Promise.all([host.waitForEvent('download'), host.getByRole('button', { name: 'Dados (JSON)' }).click()]);
+  const other = await (await browser.newContext()).newPage();
+  await other.goto('/teacher/historico');
+  await expect(other.getByText('Nenhuma sessão encerrada ainda')).toBeVisible();
+  await other.getByTestId('history-import-file').setInputFiles({
+    name: 'sessao.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(await readDownload(jsonFile)),
+  });
+  await expect(other.getByTestId('history-row')).toHaveCount(1);
+  await other.getByTestId('history-row').getByRole('link').click();
+  await expect(other.getByTestId('history-scoreboard')).toContainText('Ana');
 });
 
 test('código com erro de sintaxe não conclui itens nem é enviado, mesmo com os trechos certos', async ({ page: host, browser }) => {
