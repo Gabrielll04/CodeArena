@@ -1,0 +1,3 @@
+# @codearena/plugin-host
+
+## 0.1.1
