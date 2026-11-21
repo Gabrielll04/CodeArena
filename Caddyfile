@@ -1,0 +1,4 @@
+{$CODEARENA_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy codearena:3000
+}

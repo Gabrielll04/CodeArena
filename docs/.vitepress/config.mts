@@ -32,6 +32,7 @@ export default defineConfig({
         text: 'Começar',
         items: [
           { text: 'Primeiros passos', link: '/guia/comecar' },
+          { text: 'Hospedar na escola', link: '/guia/hospedar' },
           { text: 'Arquitetura', link: '/architecture' },
         ],
       },

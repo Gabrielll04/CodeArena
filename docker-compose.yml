@@ -1,0 +1,38 @@
+# Hospedagem com HTTPS: o Caddy emite e renova o certificado do domínio e repassa o WebSocket do Socket.IO.
+# Uso: CODEARENA_DOMAIN=codearena.suaescola.edu.br docker compose up -d
+# Guia completo: docs/guia/hospedar.md
+
+services:
+  codearena:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - codearena-data:/data
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: "5" }
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      codearena:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      CODEARENA_DOMAIN: ${CODEARENA_DOMAIN:?defina CODEARENA_DOMAIN com o domínio do servidor}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: "5" }
+
+volumes:
+  codearena-data:
+  caddy-data:
+  caddy-config:

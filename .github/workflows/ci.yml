@@ -51,3 +51,22 @@ jobs:
           name: playwright-traces
           path: test-results/
           retention-days: 7
+
+  docker:
+    name: Imagem Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t codearena:ci .
+      - name: Servidor responde e fica saudável
+        run: |
+          docker run -d --name codearena -p 3000:3000 codearena:ci
+          for i in $(seq 1 45); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' codearena)" = healthy ] && break
+            sleep 2
+          done
+          docker inspect -f '{{.State.Health.Status}}' codearena | grep -qx healthy
+          curl -fsS http://localhost:3000/api/health
+          curl -fsS -o /dev/null http://localhost:3000/teacher
+      - if: failure()
+        run: docker logs codearena
