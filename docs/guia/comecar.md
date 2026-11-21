@@ -24,6 +24,8 @@ pnpm start
 
 Alunos na mesma rede entram pelo endereço exibido no log do servidor (ex.: `http://192.168.0.10:3000`).
 
+Para hospedar com HTTPS e acesso de fora da rede, veja [Hospedar na escola](./hospedar.md).
+
 ## Sua primeira aula
 
 1. Abra `/teacher` e clique em **Abrir sala** em um dos packs de exemplo.

@@ -90,6 +90,8 @@ pnpm start
 # abra http://localhost:3000 (alunos na mesma rede usam o IP exibido no log)
 ```
 
+Para hospedar com HTTPS (Docker + Caddy), veja [Hospedar na escola](docs/guia/hospedar.md).
+
 Variáveis opcionais: `PORT`, `HOST`, `CODEARENA_DATA_DIR` (packs criados; padrão `./data`),
 `CODEARENA_CONFIG` (lista de plugins; padrão `./codearena.config.json`), `CODEARENA_CONTENT_DIR` (pasta extra de packs
 de exemplo da instalação, opcional), `CODEARENA_LOG=silent`.
