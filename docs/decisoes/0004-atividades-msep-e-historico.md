@@ -34,6 +34,10 @@ desempenho de todas as sessões.
 5. **Histórico persistido.** Toda sessão encerrada (competição ou atividade, inclusive as abandonadas ou interrompidas
    pelo desligamento do servidor) vira um arquivo JSON em `<dataDir>/history`, com questões, alunos, placar, último
    código de cada aluno em cada questão e as avaliações.
+   Durante a sessão, o servidor grava um ponto de recuperação em `<dataDir>/history/running/<id>.json` a cada mudança
+   da sala (no máximo um por segundo). Se o processo cair sem encerrar a sessão (travamento, `kill -9`, falta de
+   energia), ao reiniciar ele move esse arquivo para o histórico com `interrupted: true` e o selo "Interrompida".
+   A sala em si não volta: os alunos não continuam a mesma sessão, mas nada do que foi salvo se perde.
 6. **Histórico por professor, sem login.** O navegador do professor gera uma chave aleatória e a envia ao criar a sala;
    o servidor guarda só o hash. A API do histórico exige a chave no cabeçalho `x-teacher-key` e responde 404 para
    sessões de outra chave. Para usar outro navegador, o professor copia a chave.

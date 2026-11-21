@@ -13,6 +13,13 @@ import {
 /** Registro em disco: o histórico mais o hash da chave do professor dono dele. */
 type StoredHistory = SessionHistory & { owner: string | null };
 
+interface SaveRoomInput {
+  id: string;
+  owner: string | null;
+  packId: string | null;
+  room: Room;
+}
+
 export class HistoryError extends Error {
   constructor(
     public readonly status: number,
@@ -53,6 +60,7 @@ function summarize(record: SessionHistory): SessionHistorySummary {
     playerCount: record.players.length,
     questionCount: record.questions.length,
     evaluatedCount: evaluatedCount(record),
+    ...(record.interrupted ? { interrupted: true } : {}),
   };
 }
 
@@ -66,6 +74,8 @@ function withoutOwner({ owner: _owner, ...record }: StoredHistory): SessionHisto
  */
 export class HistoryStore {
   private readonly dir: string;
+  /** Pontos de recuperação das sessões em andamento, um arquivo por sessão. */
+  private readonly runningDir: string;
   private summaries = new Map<string, SessionHistorySummary & { owner: string | null }>();
   /** Escritas por sessão, em fila (nunca duas ao mesmo tempo no mesmo arquivo). */
   private queues = new Map<string, Promise<unknown>>();
@@ -75,10 +85,12 @@ export class HistoryStore {
     private readonly options: { dataDir: string; validator?: SubmissionValidator; log?: (message: string) => void },
   ) {
     this.dir = join(options.dataDir, 'history');
+    this.runningDir = join(this.dir, 'running');
   }
 
   async init(): Promise<void> {
-    await mkdir(this.dir, { recursive: true });
+    await mkdir(this.runningDir, { recursive: true });
+    await this.recoverInterrupted();
     for (const file of (await readdir(this.dir)).filter((f) => f.endsWith('.json'))) {
       try {
         const record = JSON.parse(await readFile(join(this.dir, file), 'utf8')) as StoredHistory;
@@ -110,24 +122,88 @@ export class HistoryStore {
   }
 
   /** Guarda a sessão encerrada de uma sala. Atividades seguem para a verificação automática das respostas. */
-  saveRoom(input: { id: string; owner: string | null; packId: string | null; room: Room }): Promise<void> {
+  saveRoom(input: SaveRoomInput): Promise<void> {
     const snapshot = input.room.historySnapshot();
-    if (!snapshot || snapshot.players.length === 0) return Promise.resolve();
+    if (!snapshot || snapshot.players.length === 0) return this.enqueue(input.id, () => this.dropCheckpoint(input.id));
     const record: StoredHistory = {
       ...snapshot,
       id: input.id,
       version: 1,
       packId: input.packId,
       evaluations: [],
-      autoCheck: snapshot.mode === 'assessment' && this.options.validator ? 'pending' : 'none',
+      autoCheck: this.autoCheckFor(snapshot.mode),
       owner: input.owner,
     };
     // Já aparece na lista; quem abrir antes de o arquivo ser gravado espera a escrita (ver read).
     this.summaries.set(record.id, { ...summarize(record), owner: record.owner });
     return this.enqueue(input.id, async () => {
       await this.write(record);
+      await this.dropCheckpoint(record.id);
       if (record.autoCheck === 'pending') this.scheduleAutoCheck(record.id);
     });
+  }
+
+  /**
+   * Grava o estado de uma sessão em andamento, para recuperá-la se o servidor cair (travamento, falta de energia).
+   * Não aparece no histórico enquanto a sessão estiver rodando.
+   */
+  checkpoint(input: SaveRoomInput): Promise<void> {
+    return this.enqueue(input.id, async () => {
+      // A sessão pode ter terminado enquanto esperava na fila: o registro final já foi gravado.
+      if (!input.room.inProgress || this.closed) return;
+      const snapshot = input.room.historySnapshot();
+      if (!snapshot || snapshot.players.length === 0) return;
+      const record: StoredHistory = {
+        ...snapshot,
+        id: input.id,
+        version: 1,
+        packId: input.packId,
+        evaluations: [],
+        autoCheck: 'none',
+        owner: input.owner,
+      };
+      const file = this.checkpointFile(input.id);
+      const temp = `${file}.${process.pid}.tmp`;
+      await writeFile(temp, JSON.stringify(record), 'utf8');
+      await rename(temp, file);
+    }).catch((err: unknown) => {
+      // Sem disco no momento: a sala continua; o próximo ponto tenta de novo.
+      this.options.log?.(`Falha ao gravar o ponto de recuperação ${input.id}: ${(err as Error).message}`);
+    });
+  }
+
+  /** Sessões que estavam em andamento quando o servidor caiu entram no histórico como interrompidas. */
+  private async recoverInterrupted(): Promise<void> {
+    for (const file of (await readdir(this.runningDir)).filter((f) => f.endsWith('.json'))) {
+      const path = join(this.runningDir, file);
+      try {
+        const record = JSON.parse(await readFile(path, 'utf8')) as StoredHistory;
+        if (!ID_PATTERN.test(record.id) || record.version !== 1) continue;
+        const finished = await readFile(this.file(record.id), 'utf8').then(
+          () => true,
+          () => false,
+        );
+        if (!finished) {
+          await this.write({ ...record, interrupted: true, autoCheck: this.autoCheckFor(record.mode) });
+          this.options.log?.(`Sessão interrompida recuperada no histórico: ${record.packTitle} (sala ${record.roomCode})`);
+        }
+        await rm(path, { force: true });
+      } catch (err) {
+        this.options.log?.(`Falha ao recuperar a sessão ${file}: ${(err as Error).message}`);
+      }
+    }
+  }
+
+  private autoCheckFor(mode: SessionHistory['mode']): SessionHistory['autoCheck'] {
+    return mode === 'assessment' && this.options.validator ? 'pending' : 'none';
+  }
+
+  private checkpointFile(id: string): string {
+    return join(this.runningDir, `${id}.json`);
+  }
+
+  private async dropCheckpoint(id: string): Promise<void> {
+    await rm(this.checkpointFile(id), { force: true });
   }
 
   /**

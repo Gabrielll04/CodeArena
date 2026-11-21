@@ -77,6 +77,11 @@ export interface SessionHistory {
   evaluations: AnswerEvaluation[];
   /** Situação da verificação automática das respostas da atividade. */
   autoCheck: 'none' | 'pending' | 'done';
+  /**
+   * O servidor caiu no meio da sessão e ela foi recuperada do último ponto gravado: as respostas são as salvas até
+   * a queda e o placar é o parcial.
+   */
+  interrupted?: boolean;
 }
 
 export interface SessionHistorySummary {
@@ -90,6 +95,8 @@ export interface SessionHistorySummary {
   questionCount: number;
   /** Atividade: alunos com todas as respostas avaliadas. */
   evaluatedCount: number;
+  /** Recuperada depois de uma queda do servidor. */
+  interrupted?: boolean;
 }
 
 export const CriterionMarkSchema = z

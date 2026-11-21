@@ -42,6 +42,8 @@ docker compose up -d --build
 ```
 
 Ao receber o sinal de parada, o servidor encerra as sessões em andamento e grava tudo no histórico antes de sair.
+Se o processo morrer de repente (falta de energia, travamento), a sessão é recuperada no próximo início, marcada como
+**Interrompida** no Histórico.
 
 ## Backup
 

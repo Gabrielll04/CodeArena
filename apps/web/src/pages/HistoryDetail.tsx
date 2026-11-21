@@ -19,7 +19,7 @@ import { buildAiFile, parseAiReply, type AiImport } from '../lib/aiExport';
 import { api } from '../lib/api';
 import { answerIndex, answerKey, evaluationIndex, gradesCsv, pseudonym, studentGrades } from '../lib/evaluation';
 import { downloadFile, formatXP, plural, slugify } from '../lib/format';
-import { dateTime } from './History';
+import { dateTime, InterruptedBadge } from './History';
 
 const questionTitle = (question: ResolvedQuestion) => question.title ?? question.prompt.slice(0, 60);
 
@@ -118,6 +118,7 @@ export function HistoryDetailPage() {
               <div>
                 <p className="flex items-center gap-2 text-sm text-white/50">
                   {record.mode === 'assessment' ? <Badge tone="violet">Atividade</Badge> : <Badge>Competição</Badge>}
+                  {record.interrupted && <InterruptedBadge />}
                   {dateTime.format(record.startedAt)} · {plural(record.players.length, 'aluno')} ·{' '}
                   {plural(record.questions.length, 'questão', 'questões')}
                 </p>

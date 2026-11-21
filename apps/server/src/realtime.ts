@@ -65,11 +65,29 @@ export interface RealtimeDeps {
   history: HistoryStore;
 }
 
+/** Intervalo mínimo entre dois pontos de recuperação da mesma sala. */
+export const CHECKPOINT_INTERVAL_MS = 1000;
+
+/** Agenda no máximo uma chamada por intervalo; as mudanças do meio do intervalo entram na próxima. */
+function throttled(fn: () => void, ms: number): () => void {
+  let timer: NodeJS.Timeout | null = null;
+  return () => {
+    if (timer) return;
+    timer = setTimeout(() => {
+      timer = null;
+      fn();
+    }, ms);
+    timer.unref();
+  };
+}
+
 export function attachRealtime({ io, rooms, packs, plugins, validator, history }: RealtimeDeps): void {
-  const sinkFor = (getRoom: () => Room | undefined): RoomSink => ({
+  /** Toda mudança da sala passa pelo sink: cada emissão também agenda um ponto de recuperação em disco. */
+  const sinkFor = (getRoom: () => Room | undefined, onChange: () => void = () => {}): RoomSink => ({
     emit(target, event, payload) {
       const room = getRoom();
       if (!room) return;
+      onChange();
       const channel =
         target.kind === 'all'
           ? allChannel(room.code)
@@ -81,6 +99,7 @@ export function attachRealtime({ io, rooms, packs, plugins, validator, history }
     sync() {
       const room = getRoom();
       if (!room) return;
+      onChange();
       io.to(hostChannel(room.code)).emit('room:update', room.snapshotForHost());
       for (const player of room.snapshotForHost().players) {
         io.to(playerChannel(room.code, player.id)).emit('room:update', room.snapshotForPlayer(player.id));
@@ -130,13 +149,16 @@ export function attachRealtime({ io, rooms, packs, plugins, validator, history }
       let room: Room | undefined;
       const historyId = history.newId();
       const owner = parsed.data.teacherKey ? hashTeacherKey(parsed.data.teacherKey) : null;
+      const checkpoint = throttled(() => {
+        if (room) void history.checkpoint({ id: historyId, owner, packId: stored.id, room });
+      }, CHECKPOINT_INTERVAL_MS);
       try {
         room = rooms.create({
           packTitle: stored.pack.pack.title,
           questions,
           settings: parsed.data.settings,
           validator,
-          sink: sinkFor(() => room),
+          sink: sinkFor(() => room, checkpoint),
           historyId,
           onEnded: (ended) => void history.saveRoom({ id: historyId, owner, packId: stored.id, room: ended }),
         });
