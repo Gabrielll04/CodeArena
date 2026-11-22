@@ -261,6 +261,20 @@ lobby --start--> countdown --(startsAt)--> question --(todos acertaram | tempo |
   Ao encerrar, o servidor espera validações em andamento que chegaram dentro do prazo.
 - Encerramento automático quando todos os alunos **conectados** têm resposta aceita.
 
+### Pausa do professor
+
+Em `countdown` e `question` (competição e atividade), `host:pause` para o tempo sem mudar a fase. O snapshot passa a
+trazer `pausedAt` e os clientes congelam o cronômetro em `endsAt - pausedAt`.
+
+- Enquanto pausada, o servidor recusa `question:submit`, `assessment:save`, `assessment:goto` e `assessment:deliver`
+  e ignora `question:progress` e `question:paste`. O cliente trava o editor e o painel do plugin (preview, testes),
+  e guarda o que não foi salvo para enviar na retomada.
+- `host:resume` adia os prazos pelo tempo parado: na contagem regressiva, `startsAt` e `endsAt`; com a questão valendo,
+  só `endsAt`, e o intervalo fica em `pauses` da questão. Tempos de resposta, medianas por item e a linha do tempo
+  descontam esses intervalos (`activeElapsed`); o XP usa o tempo restante, que a pausa não consome.
+- Encerrar a questão ou a sessão durante a pausa fecha a pausa antes. A pausa é gravada no estado da sala: depois de
+  um reinício do servidor, a sala volta pausada e a retomada já desconta o tempo fora.
+
 ## Pontuação
 
 ```
@@ -281,6 +295,7 @@ Cliente -> servidor (todos com ack `{ ok: true, ... } | { ok: false, error, code
 | `room:join` | aluno | `{ code, name, avatar, playerToken? }` -> `{ playerId, playerToken, snapshot }` |
 | `room:leave` | aluno | - |
 | `host:start-question` / `host:finish-question` / `host:end-session` | professor | `{ code, hostToken }` |
+| `host:pause` / `host:resume` | professor | `{ code, hostToken }` (para e retoma o tempo; ver "Pausa do professor") |
 | `host:update-settings` | professor | `{ code, hostToken, settings }` |
 | `host:kick` | professor | `{ code, hostToken, playerId }` |
 | `question:progress` | aluno | `{ done, total, doneIds?, questionId? }` (contagem e ids dos itens concluídos, sem código; informativo) |

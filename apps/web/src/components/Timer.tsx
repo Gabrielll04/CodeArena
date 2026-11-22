@@ -3,20 +3,23 @@ import { useEffect, useRef } from 'react';
 import { useServerNow } from '../lib/clock';
 import { formatSeconds } from '../lib/format';
 import { playCue } from '../lib/sound';
-import { cx } from './ui';
+import { cx, Icon } from './ui';
 
 export interface TimerProps {
   startsAt: number;
   endsAt: number;
   finishedAt: number | null;
+  /** Sessão pausada pelo professor desde este horário: o tempo fica parado nele. */
+  pausedAt?: number | null;
   size?: 'md' | 'lg';
 }
 
-export function Timer({ startsAt, endsAt, finishedAt, size = 'md' }: TimerProps) {
-  const running = finishedAt === null;
+export function Timer({ startsAt, endsAt, finishedAt, pausedAt = null, size = 'md' }: TimerProps) {
+  const paused = finishedAt === null && pausedAt !== null;
+  const running = finishedAt === null && !paused;
   const now = useServerNow(running, 200);
   const total = endsAt - startsAt;
-  const reference = finishedAt ?? now;
+  const reference = finishedAt ?? pausedAt ?? now;
   const remaining = Math.max(0, Math.min(total, endsAt - Math.max(reference, startsAt)));
   const ratio = total > 0 ? remaining / total : 0;
   const urgent = running && remaining <= 10_000;
@@ -29,10 +32,18 @@ export function Timer({ startsAt, endsAt, finishedAt, size = 'md' }: TimerProps)
   }, [remaining, running]);
 
   return (
-    <div className="flex min-w-0 items-center gap-3" role="timer" aria-label={`Tempo restante ${formatSeconds(remaining)}`}>
+    <div
+      className="flex min-w-0 items-center gap-3"
+      role="timer"
+      aria-label={`Tempo restante ${formatSeconds(remaining)}${paused ? ', pausado' : ''}`}
+      data-paused={paused || undefined}
+    >
       <div className={cx('relative h-2 flex-1 overflow-hidden rounded-full bg-white/[0.08]', size === 'lg' && 'h-3')}>
         <motion.div
-          className={cx('absolute inset-y-0 left-0 rounded-full', urgent ? 'bg-coral' : ratio < 0.4 ? 'bg-amber' : 'bg-lime')}
+          className={cx(
+            'absolute inset-y-0 left-0 rounded-full',
+            paused ? 'bg-white/30' : urgent ? 'bg-coral' : ratio < 0.4 ? 'bg-amber' : 'bg-lime',
+          )}
           style={{ width: `${ratio * 100}%` }}
           transition={{ ease: 'linear' }}
         />
@@ -44,12 +55,22 @@ export function Timer({ startsAt, endsAt, finishedAt, size = 'md' }: TimerProps)
         className={cx(
           'font-mono font-bold tabular-nums',
           size === 'lg' ? 'text-4xl' : 'text-lg',
-          urgent ? 'text-coral' : 'text-white',
+          paused ? 'text-white/50' : urgent ? 'text-coral' : 'text-white',
         )}
         data-testid="timer"
       >
         {formatSeconds(remaining)}
       </motion.span>
+      {paused && <PausedBadge />}
     </div>
+  );
+}
+
+/** Selo de pausa ao lado do cronômetro. */
+export function PausedBadge() {
+  return (
+    <span className="flex shrink-0 items-center gap-1.5 rounded-md bg-amber-soft px-2 py-0.5 text-[11px] font-semibold text-amber ring-1 ring-amber/30" data-testid="paused-badge">
+      <Icon name="pause" className="h-3 w-3" /> Pausado
+    </span>
   );
 }

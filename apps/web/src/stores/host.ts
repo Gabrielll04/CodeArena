@@ -44,6 +44,9 @@ interface HostStore {
   startQuestion(): Promise<string | null>;
   finishQuestion(): Promise<string | null>;
   endSession(): Promise<string | null>;
+  /** Para o cronômetro e trava as respostas dos alunos até `resumeSession`. */
+  pauseSession(): Promise<string | null>;
+  resumeSession(): Promise<string | null>;
   updateSettings(settings: RoomSettingsPatch): Promise<string | null>;
   kick(playerId: string): Promise<string | null>;
 }
@@ -109,7 +112,7 @@ export const useHost = create<HostStore>((set, get) => {
   };
 
   const hostCall = async (
-    event: 'host:start-question' | 'host:finish-question' | 'host:end-session',
+    event: 'host:start-question' | 'host:finish-question' | 'host:end-session' | 'host:pause' | 'host:resume',
   ): Promise<string | null> => {
     const { code, hostToken } = get();
     if (!code || !hostToken) return 'Sala não carregada';
@@ -155,6 +158,8 @@ export const useHost = create<HostStore>((set, get) => {
     startQuestion: () => hostCall('host:start-question'),
     finishQuestion: () => hostCall('host:finish-question'),
     endSession: () => hostCall('host:end-session'),
+    pauseSession: () => hostCall('host:pause'),
+    resumeSession: () => hostCall('host:resume'),
 
     async updateSettings(settings) {
       const { code, hostToken } = get();

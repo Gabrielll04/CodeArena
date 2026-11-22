@@ -37,6 +37,8 @@ Para cada questão:
 3. "Iniciar questão" dispara uma contagem de 3 s para todos.
 4. Durante a questão você vê quantos itens cada aluno concluiu e, em "Itens da checklist, ao vivo", quantos alunos já concluíram cada item. Nunca aparece o código.
 5. A questão termina quando todos os conectados acertam, quando o tempo acaba ou em "Encerrar questão agora".
+   "Pausar" (também na contagem regressiva) para o cronômetro e trava o editor e o preview dos alunos até "Retomar";
+   o tempo parado não conta no tempo de resposta nem tira bônus de velocidade.
 6. O placar mostra XP ganho, mudança de posição e a solução esperada.
 7. "Encerrar sessão" gera o relatório (XP, acertos, tempo médio por aluno e acertos por questão), exportável em CSV e JSON.
 
@@ -63,6 +65,8 @@ Para atividades que valem nota, feitas em aula. Ao abrir a sala, escolha **Ativi
 - Todas as questões abrem juntas. Cada aluno vai e volta entre elas no próprio ritmo e entrega quando terminar.
 - Sem placar, sem XP e sem checklist automática: o aluno vê o problema e os critérios de avaliação, e resolve.
 - A resposta é salva enquanto o aluno escreve. No fim do tempo, a atividade encerra sozinha.
+- "Pausar" para o prazo: ninguém escreve, testa, muda de questão nem entrega até "Retomar", e o prazo final é adiado
+  pelo tempo parado.
 - Você acompanha quem já respondeu cada questão e quem entregou. As colagens aparecem em cada questão.
 
 ### Critérios críticos e desejáveis (MSEP)

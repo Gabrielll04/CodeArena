@@ -214,7 +214,7 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
   );
 }
 
-export function Icon({ name, className = 'h-4 w-4' }: { name: 'check' | 'arrow-up' | 'arrow-down' | 'sound' | 'mute' | 'plus' | 'trash' | 'copy' | 'download' | 'upload' | 'play' | 'stop' | 'up' | 'down' | 'eye' | 'warning' | 'bolt' | 'back' | 'link'; className?: string }) {
+export function Icon({ name, className = 'h-4 w-4' }: { name: 'check' | 'arrow-up' | 'arrow-down' | 'sound' | 'mute' | 'plus' | 'trash' | 'copy' | 'download' | 'upload' | 'play' | 'pause' | 'stop' | 'up' | 'down' | 'eye' | 'warning' | 'bolt' | 'back' | 'link'; className?: string }) {
   const paths: Record<typeof name, ReactNode> = {
     check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
     'arrow-up': <path d="M12 19V5m-6 6 6-6 6 6" />,
@@ -242,6 +242,7 @@ export function Icon({ name, className = 'h-4 w-4' }: { name: 'check' | 'arrow-u
     download: <path d="M12 4v11m-5-5 5 5 5-5M5 20h14" />,
     upload: <path d="M12 16V5m-5 5 5-5 5 5M5 20h14" />,
     play: <path d="M7 5v14l12-7z" />,
+    pause: <path d="M9 5v14M15 5v14" />,
     stop: <rect x="6" y="6" width="12" height="12" rx="2" />,
     up: <path d="m6 15 6-6 6 6" />,
     down: <path d="m6 9 6 6 6-6" />,

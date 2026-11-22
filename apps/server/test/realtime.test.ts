@@ -95,6 +95,33 @@ describe('API de packs', () => {
 });
 
 describe('sala em tempo real', () => {
+  it('só o professor pausa; os alunos recebem a pausa no snapshot e não enviam até a retomada', async () => {
+    const host = await client();
+    const created = await emit<{ ok: true; code: string; hostToken: string }>(host, 'room:create', {
+      packId: 'exemplo-react-native-fundamentos',
+      questionIds: ['botao-clique-aqui'],
+      settings: { countdownSeconds: 0 },
+    });
+    const auth = { code: created.code, hostToken: created.hostToken };
+    const ana = await client();
+    await emit(ana, 'room:join', { code: created.code, name: 'Ana', avatar: 'bolt' });
+    expect(await emit(host, 'host:start-question', auth)).toEqual({ ok: true });
+
+    expect(await emit(ana, 'host:pause', { code: created.code, hostToken: 'chute' })).toMatchObject({ ok: false, code: 'not_authorized' });
+    const paused = nextEvent(ana, 'room:update', (snapshot) => snapshot.pausedAt !== undefined);
+    expect(await emit(host, 'host:pause', auth)).toEqual({ ok: true });
+    expect((await paused).pausedAt).toBeTypeOf('number');
+
+    const solution = 'export default function App() {\n  return <Button title="Clique aqui" />;\n}';
+    expect(await emit(ana, 'question:submit', { code: solution })).toMatchObject({ ok: false, code: 'invalid_state' });
+
+    const resumed = nextEvent(ana, 'room:update', (snapshot) => snapshot.pausedAt === undefined);
+    expect(await emit(host, 'host:resume', auth)).toEqual({ ok: true });
+    await resumed;
+    const accepted = await emit<{ ok: true; answer: { status: string } }>(ana, 'question:submit', { code: solution });
+    expect(accepted.answer.status).toBe('accepted');
+  });
+
   it('executa o fluxo completo: criar, entrar, responder, placar e relatório', async () => {
     const host = await client();
     const created = await emit<{ ok: true; code: string; hostToken: string }>(host, 'room:create', {
