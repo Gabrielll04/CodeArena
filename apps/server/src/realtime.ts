@@ -266,7 +266,7 @@ export function attachRealtime({
     });
 
     const hostAction = (
-      event: 'host:start-question' | 'host:finish-question' | 'host:end-session',
+      event: 'host:start-question' | 'host:finish-question' | 'host:end-session' | 'host:pause' | 'host:resume',
       run: (room: Room) => unknown,
     ) => {
       socket.on(event, async (payload: unknown, rawAck: unknown) => {
@@ -284,6 +284,8 @@ export function attachRealtime({
     hostAction('host:start-question', (room) => room.startNextQuestion());
     hostAction('host:finish-question', (room) => room.finishQuestion());
     hostAction('host:end-session', (room) => room.endSession());
+    hostAction('host:pause', (room) => room.pause());
+    hostAction('host:resume', (room) => room.resume());
 
     socket.on('host:update-settings', (payload, rawAck) => {
       const ack = safeAck<Ack>(rawAck);

@@ -90,7 +90,15 @@ function PhaseView({ snapshot }: { snapshot: RoomSnapshot }) {
   }, [pluginId]);
   if (phase === 'lobby') return <Lobby snapshot={snapshot} />;
   if (phase === 'countdown' && question) {
-    return <Countdown startsAt={question.startsAt} index={question.index} total={question.total} title={question.question.title} />;
+    return (
+      <Countdown
+        startsAt={question.startsAt}
+        index={question.index}
+        total={question.total}
+        title={question.question.title}
+        pausedAt={snapshot.pausedAt ?? null}
+      />
+    );
   }
   const activity = snapshot.settings.mode === 'assessment';
   if (phase === 'question' && activity && snapshot.me?.assessment?.delivered) return <ActivityDelivered snapshot={snapshot} />;
@@ -221,6 +229,7 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
   const lastSubmitted = useRef<string | null>(null);
   const accepted = answer?.status === 'accepted';
   const locked = accepted && question.lockOnComplete;
+  const paused = snapshot.pausedAt !== undefined;
   const live = useChecklist(code, question, plugin, { enabled: !accepted });
 
   useEffect(() => {
@@ -240,7 +249,8 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
 
   // Envio automático quando a checklist completa (avaliação atualizada para o código atual).
   useEffect(() => {
-    if (accepted || submitting || !live.fresh || !live.evaluation.allRequiredDone) return;
+    // Pausada, o servidor recusa o envio: espera a retomada (o efeito roda de novo quando `paused` muda).
+    if (accepted || submitting || paused || !live.fresh || !live.evaluation.allRequiredDone) return;
     if (live.evaluatedCode !== code || lastSubmitted.current === code) return;
     lastSubmitted.current = code;
     setSubmitting(true);
@@ -256,7 +266,7 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
         }, 1500);
       }
     });
-  }, [accepted, submitting, live, code, submit, retryTick]);
+  }, [accepted, submitting, paused, live, code, submit, retryTick]);
 
   const rejected = lastResult && 'status' in lastResult && lastResult.status === 'rejected' ? lastResult : null;
   const failure = lastResult && 'error' in lastResult ? lastResult.error : null;
@@ -307,7 +317,7 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
           {active.index + 1}/{active.total}
         </span>
         <div className="min-w-0 flex-1">
-          <Timer startsAt={active.startsAt} endsAt={active.endsAt} finishedAt={active.finishedAt} />
+          <Timer startsAt={active.startsAt} endsAt={active.endsAt} finishedAt={active.finishedAt} pausedAt={snapshot.pausedAt} />
         </div>
         <span className="hidden shrink-0 text-xs text-white/50 sm:inline" data-testid="answered-count">
           {snapshot.answeredCount} de {snapshot.connectedCount} concluíram
@@ -320,6 +330,7 @@ function ActiveQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot; plugin: 
           code={code}
           onCodeChange={setCode}
           readOnly={locked}
+          paused={paused}
           live={
             accepted
               ? {

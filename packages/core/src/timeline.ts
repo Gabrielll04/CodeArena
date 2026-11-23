@@ -59,10 +59,29 @@ export function findPasteImpact(
   return best;
 }
 
+/** Intervalo em que o professor deixou a sessão pausada (relógio do servidor). */
+export interface PauseInterval {
+  from: number;
+  to: number;
+}
+
+/** Tempo desde `startsAt` até `at`, sem contar as pausas do professor nesse trecho. */
+export function activeElapsed(startsAt: number, at: number, pauses: readonly PauseInterval[] = []): number {
+  let paused = 0;
+  for (const pause of pauses) {
+    const from = Math.max(pause.from, startsAt);
+    const to = Math.min(pause.to, at);
+    if (to > from) paused += to - from;
+  }
+  return Math.max(0, at - startsAt - paused);
+}
+
 export interface TimelineInput {
   playerId: string;
   /** Início da questão no relógio do servidor. */
   startsAt: number;
+  /** Pausas do professor depois do início: não contam nos tempos da linha do tempo. */
+  pauses?: readonly PauseInterval[];
   checklist: ChecklistItem[];
   /** Primeira conclusão de cada item (relógio do servidor). */
   itemFirstAt: ReadonlyMap<string, number>;
@@ -72,7 +91,7 @@ export interface TimelineInput {
 
 /** Monta a linha do tempo de um aluno: itens concluídos, colagens e resposta aceita, em ordem. */
 export function buildPlayerTimeline(input: TimelineInput): PlayerTimeline {
-  const relative = (at: number) => Math.max(0, at - input.startsAt);
+  const relative = (at: number) => activeElapsed(input.startsAt, at, input.pauses);
   const events: TimelineEvent[] = [];
   const requiredDoneAtMs: number[] = [];
 

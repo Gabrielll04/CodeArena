@@ -533,3 +533,54 @@ test('sala aberta aparece no histórico e o botão do histórico avisa, mesmo se
   await expect(teacher).toHaveURL(new RegExp(`/host/${code}$`));
   await expect(teacher.getByTestId('host-room-code')).toHaveText(code);
 });
+
+test('professor pausa a questão: cronômetro parado, editor e preview travados até retomar', async ({ page: host, browser }) => {
+  const code = await createRoom(host, 'pack-exemplo-react-native-fundamentos');
+  const ana = await joinRoom(browser, code, 'Ana');
+  await host.getByTestId('start-question').click();
+  await expect(ana.getByTestId('question-prompt')).toContainText('Clique aqui');
+
+  await host.getByTestId('pause-toggle').click();
+  await expect(host.getByTestId('pause-banner')).toBeVisible();
+  await expect(ana.getByTestId('pause-overlay')).toBeVisible();
+  await expect(ana.getByTestId('paused-badge')).toBeVisible();
+  // O cronômetro não anda durante a pausa.
+  const frozen = await ana.getByTestId('timer').textContent();
+  await ana.waitForTimeout(2200);
+  await expect(ana.getByTestId('timer')).toHaveText(frozen!);
+  await expect(host.getByTestId('timer')).toHaveText(frozen!);
+
+  // Editor travado: o que o aluno tenta digitar não entra.
+  await ana.keyboard.insertText('export default function App() {}');
+  await expect(ana.getByTestId('checklist-count')).not.toHaveText('2/4');
+
+  await host.getByTestId('resume-session').click();
+  await expect(ana.getByTestId('pause-overlay')).toBeHidden();
+  await expect(host.getByTestId('pause-banner')).toBeHidden();
+  // Única aluna: a resposta aceita fecha a questão, e o tempo parado não entra no tempo de resposta.
+  await setEditorCode(ana, SOLUTION);
+  await expect(ana.getByTestId('review')).toBeVisible();
+  await expect(host.getByTestId('host-review')).toBeVisible();
+});
+
+test('professor pausa a atividade: alunos não mudam de questão nem entregam até retomar', async ({ page: host, browser }) => {
+  await host.goto('/teacher');
+  await host.getByTestId('pack-exemplo-react-native-fundamentos').getByTestId('open-room').click();
+  await host.getByText('Atividade', { exact: true }).click();
+  await host.getByTestId('create-room').click();
+  const code = (await host.getByTestId('host-room-code').textContent())!.trim();
+  const ana = await joinRoom(browser, code, 'Ana Paula Souza', null);
+  await host.getByTestId('start-question').click();
+  await expect(ana.getByTestId('question-nav')).toBeVisible();
+
+  await host.getByTestId('pause-toggle').click();
+  await expect(ana.getByTestId('pause-overlay')).toBeVisible();
+  await expect(ana.getByTestId('deliver')).toBeDisabled();
+  await expect(ana.getByTestId('question-nav').getByRole('button').nth(1)).toBeDisabled();
+
+  await host.getByTestId('pause-toggle').click();
+  await expect(ana.getByTestId('pause-overlay')).toBeHidden();
+  await ana.getByTestId('question-nav').getByRole('button').nth(1).click();
+  await expect(ana.getByTestId('question-nav').getByRole('button').nth(1)).toHaveAttribute('aria-current', 'step');
+  await expect(ana.getByTestId('deliver')).toBeEnabled();
+});

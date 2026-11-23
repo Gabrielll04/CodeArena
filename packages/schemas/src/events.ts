@@ -15,6 +15,8 @@ export const ClientEvent = {
   HostStartQuestion: 'host:start-question',
   HostFinishQuestion: 'host:finish-question',
   HostEndSession: 'host:end-session',
+  HostPause: 'host:pause',
+  HostResume: 'host:resume',
   HostUpdateSettings: 'host:update-settings',
   HostKick: 'host:kick',
   QuestionProgress: 'question:progress',
@@ -295,6 +297,11 @@ export interface RoomSnapshot {
   serverNow: number;
   /** Atividade avaliativa em andamento ou encerrada: começo e prazo (relógio do servidor). */
   assessment?: AssessmentWindow;
+  /**
+   * Sessão pausada pelo professor desde este horário (relógio do servidor). Enquanto pausada, o cronômetro fica parado
+   * em `endsAt - pausedAt` e os alunos não navegam, não escrevem e não enviam. Na retomada, os prazos são adiados.
+   */
+  pausedAt?: number;
   /** Visão do aluno. */
   me?: {
     playerId: string;
@@ -480,6 +487,9 @@ export interface ClientToServerEvents {
   'host:start-question': (payload: HostAuthPayload, ack: (res: Ack) => void) => void;
   'host:finish-question': (payload: HostAuthPayload, ack: (res: Ack) => void) => void;
   'host:end-session': (payload: HostAuthPayload, ack: (res: Ack) => void) => void;
+  /** Pausa o cronômetro e bloqueia as respostas dos alunos. */
+  'host:pause': (payload: HostAuthPayload, ack: (res: Ack) => void) => void;
+  'host:resume': (payload: HostAuthPayload, ack: (res: Ack) => void) => void;
   'host:update-settings': (payload: HostSettingsPayload, ack: (res: Ack) => void) => void;
   'host:kick': (payload: HostKickPayload, ack: (res: Ack) => void) => void;
   'question:progress': (payload: ProgressPayload) => void;

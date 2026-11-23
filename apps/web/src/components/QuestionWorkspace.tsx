@@ -8,7 +8,7 @@ import { DebugBar } from './DebugBar';
 import { CodeEditor, type PasteInfo } from './CodeEditor';
 import { PluginPanel, pluginPanelTitle } from './PluginPanel';
 import { Prompt } from './Prompt';
-import { Badge, cx } from './ui';
+import { Badge, cx, Icon } from './ui';
 
 export interface QuestionWorkspaceProps {
   question: PublicQuestion;
@@ -32,6 +32,8 @@ export interface QuestionWorkspaceProps {
   onPaste?: (paste: PasteInfo) => void;
   /** Atividade: mostra os critérios de avaliação, sem marcação automática. */
   criteria?: boolean;
+  /** Sessão pausada pelo professor: editor e painel do plugin ficam travados; o enunciado continua visível. */
+  paused?: boolean;
 }
 
 const PASTE_NOTICE_MS = 3000;
@@ -51,7 +53,14 @@ export function MissingPlugin({ pluginId }: { pluginId: string }) {
 }
 
 export function QuestionWorkspace(props: QuestionWorkspaceProps) {
-  const { question, plugin, code, onCodeChange, readOnly, live, mode, modelPath, status, editorOverlay, heading, onRestore, allowPaste = true, onPaste, criteria } = props;
+  const { question, plugin, code, onCodeChange, readOnly, live, mode, modelPath, status, editorOverlay, heading, onRestore, allowPaste = true, onPaste, criteria, paused = false } = props;
+  const locked = readOnly || paused;
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // `inert` tira o painel do foco e dos cliques (o React 18 não tipa o atributo, então vai pelo DOM).
+  useEffect(() => {
+    panelRef.current?.toggleAttribute('inert', paused);
+  }, [paused]);
   const [tab, setTab] = useState<MobileTab>('code');
   const [pasteNotice, setPasteNotice] = useState<string | null>(null);
   const toldAboutPaste = useRef(false);
@@ -138,12 +147,16 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
                   {evaluation.requiredDone}/{evaluation.requiredTotal}
                 </span>
               )}
-              {!allowPaste && !readOnly && (
+              {!allowPaste && !locked && (
                 <span className="font-semibold text-amber" data-testid="paste-disabled">
                   Colar desativado
                 </span>
               )}
-              {readOnly && <span className="font-semibold text-lime">Somente leitura</span>}
+              {paused ? (
+                <span className="font-semibold text-amber">Pausado</span>
+              ) : (
+                readOnly && <span className="font-semibold text-lime">Somente leitura</span>
+              )}
             </span>
           </div>
           {question.kind === 'debug' && (
@@ -151,22 +164,23 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
               original={plugin.getStarterCode(question)}
               current={code}
               language={plugin.editorLanguage}
-              readOnly={readOnly}
+              readOnly={locked}
               onRestore={() => onRestore?.()}
             />
           )}
           <div className="relative min-h-0 flex-1">
             <CodeEditor
               value={code}
-              onChange={readOnly ? undefined : onCodeChange}
+              onChange={locked ? undefined : onCodeChange}
               language={plugin.editorLanguage}
               path={modelPath}
-              readOnly={readOnly}
+              readOnly={locked}
               ariaLabel="Editor de código da resposta"
               allowPaste={allowPaste}
               onPaste={handlePaste}
             />
             {editorOverlay}
+            {paused && <PauseOverlay />}
             <div role="status" aria-live="polite" className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
               {pasteNotice && (
                 <p className="rounded-lg bg-ink-950/90 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/15" data-testid="paste-notice">
@@ -177,10 +191,35 @@ export function QuestionWorkspace(props: QuestionWorkspaceProps) {
           </div>
         </section>
 
-        <aside className={cx('min-h-0 flex-col lg:flex lg:border-l lg:border-white/[0.07]', tab === 'panel' ? 'flex' : 'hidden')} aria-label={panelTitle}>
-          <PluginPanel plugin={plugin} context={{ question, code, readOnly, evaluation, mode }} />
+        <aside
+          className={cx('relative min-h-0 flex-col lg:flex lg:border-l lg:border-white/[0.07]', tab === 'panel' ? 'flex' : 'hidden')}
+          aria-label={panelTitle}
+        >
+          {/* Durante a pausa, o painel fica coberto: preview e testes do plugin não recebem cliques nem teclado. */}
+          <div className="flex min-h-0 flex-1 flex-col" ref={panelRef}>
+            <PluginPanel plugin={plugin} context={{ question, code, readOnly: locked, evaluation, mode }} />
+          </div>
+          {paused && <PauseOverlay compact />}
         </aside>
       </div>
+    </div>
+  );
+}
+
+/** Cobre o editor (ou o painel do plugin) enquanto o professor deixa a sessão pausada. */
+function PauseOverlay({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-ink-950/60 p-4 backdrop-blur-[2px]" data-testid={compact ? undefined : 'pause-overlay'}>
+      {compact ? (
+        <p className="text-xs font-semibold text-white/60">Pausado pelo professor</p>
+      ) : (
+        <div role="status" className="max-w-xs rounded-2xl bg-ink-850 px-5 py-4 text-center ring-1 ring-amber/30">
+          <p className="flex items-center justify-center gap-2 font-display text-lg font-bold text-amber">
+            <Icon name="pause" className="h-5 w-5" /> Sessão pausada
+          </p>
+          <p className="mt-1 text-sm text-white/65">O professor pausou a sessão. O tempo está parado; você continua de onde parou.</p>
+        </div>
+      )}
     </div>
   );
 }
