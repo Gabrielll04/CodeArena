@@ -46,6 +46,8 @@ describe('mapa de capacidades', () => {
   it('dá a situação de cada capacidade por aluno, e critérios sem capacidade ficam de fora', () => {
     const map = buildCapabilityMap([first]);
     expect(map.capabilities.map((c) => c.key)).toEqual(['capacidade-tecnica:heranca', 'conhecimento:encapsulamento']);
+    // Só questões com crítico da capacidade (o desejável de Herança não conta duas vezes).
+    expect(map.capabilities[0]!.questions).toEqual([{ id: 'zumbi', title: 'O zumbi é um mob' }]);
     const [ana, bia] = map.students;
     expect(ana).toMatchObject({ key: 'ana souza', name: 'Ana Souza', sessionIds: ['s1'] });
     expect(ana!.cells['capacidade-tecnica:heranca']).toMatchObject({ status: 'to-recover', met: 1, unmet: 1 });

@@ -26,6 +26,8 @@ export interface CapabilityRef {
   key: string;
   type: CapabilityType;
   name: string;
+  /** Questões das atividades com um critério crítico desta capacidade: as que entram numa recuperação. */
+  questions: { id: string; title: string }[];
 }
 
 /** Um critério avaliado que conta como evidência da capacidade. */
@@ -83,11 +85,21 @@ export function capabilityKey(capability: { type: CapabilityType; name: string }
 
 export function buildCapabilityMap(input: CapabilitySessionInput[]): CapabilityMap {
   const sessions = [...input].sort((a, b) => a.startedAt - b.startedAt);
-  const capabilities = new Map<string, CapabilityRef>();
+  const capabilities = new Map<string, Omit<CapabilityRef, 'questions'>>();
+  const coverage = new Map<string, Map<string, string>>();
   const students = new Map<string, { name: string; sessionIds: Set<string>; evidence: Map<string, CapabilityEvidence[]> }>();
 
   for (const session of sessions) {
     const questions = new Map(session.questions.map((q) => [q.id, q]));
+    for (const question of session.questions) {
+      for (const item of question.checklist) {
+        if (item.optional || !item.capability) continue;
+        const covered = coverage.get(capabilityKey(item.capability)) ?? new Map<string, string>();
+        covered.delete(question.id);
+        covered.set(question.id, question.title);
+        coverage.set(capabilityKey(item.capability), covered);
+      }
+    }
     const names = new Map(session.players.map((p) => [p.id, p.name]));
     for (const evaluation of session.evaluations) {
       const question = questions.get(evaluation.questionId);
@@ -121,7 +133,10 @@ export function buildCapabilityMap(input: CapabilitySessionInput[]): CapabilityM
 
   return {
     sessions: sessions.map(({ id, packTitle, startedAt }) => ({ id, packTitle, startedAt })),
-    capabilities: [...capabilities.values()],
+    capabilities: [...capabilities.values()].map((capability) => ({
+      ...capability,
+      questions: [...(coverage.get(capability.key) ?? [])].map(([id, title]) => ({ id, title })),
+    })),
     students: [...students.entries()]
       .map(([key, student]) => ({
         key,
