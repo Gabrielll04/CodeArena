@@ -95,8 +95,16 @@ describe('notas da atividade', () => {
         { playerId: 'p-ana', questionId: 'botao', marks: { app: { met: true, source: 'professor' }, nomes: { met: false, source: 'ia' } }, updatedAt: 1 },
       ],
     };
-    expect(studentGrades(evaluated, 'p-ana').activity).toEqual({ grade: 50, capped: false });
+    expect(studentGrades(evaluated, 'p-ana').activity).toEqual({ grade: 50, missingCritical: false });
+    expect(studentGrades(evaluated, 'p-ana').toRecover).toEqual([]);
+    const missed: SessionHistory = {
+      ...record,
+      evaluations: [{ playerId: 'p-ana', questionId: 'botao', marks: { app: { met: false, source: 'professor' }, nomes: { met: true, source: 'professor' } }, updatedAt: 1 }],
+    };
+    // Crítico sem capacidade cai no texto do critério; a nota da atividade não ganha teto extra.
+    expect(studentGrades(missed, 'p-ana')).toMatchObject({ activity: { grade: 25, missingCritical: true }, toRecover: ['Criar o componente App'] });
+    expect(gradesCsv(missed)).toContain('"Ana Souza";25;25;"Criar o componente App"');
     expect(pseudonym(evaluated, 'p-bia')).toBe('aluno-02');
-    expect(gradesCsv(evaluated)).toBe('﻿aluno;q1;nota;faltou_critico\n"Ana Souza";50;50;nao\n"Bia";;;nao');
+    expect(gradesCsv(evaluated)).toBe('﻿aluno;q1;nota;capacidades_a_recuperar\n"Ana Souza";50;50;""\n"Bia";;;""');
   });
 });

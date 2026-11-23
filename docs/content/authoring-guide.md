@@ -93,7 +93,9 @@ código e marque cada critério como **Atendido** ou **Não atendido**. Você po
 
 - todos os críticos atendidos: de 50 a 100, conforme os desejáveis atendidos;
 - faltou algum crítico: no máximo 50;
-- nota da atividade: média das questões, e no máximo 50 se faltou crítico em alguma questão.
+- nota da atividade: média das notas das questões, sem teto. O crítico que faltou já pesa na questão dele; na
+  atividade, ele aparece como **A recuperar**, com a capacidade do critério (ou o texto dele, se não tiver capacidade).
+  O CSV traz essa lista na coluna `capacidades_a_recuperar`.
 
 **Notas (CSV)** abre direto no Excel e no Google Planilhas, pronto para o diário ou o Classroom.
 

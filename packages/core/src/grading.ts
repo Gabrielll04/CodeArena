@@ -6,7 +6,8 @@ import type { ChecklistItem } from '@codearena/schemas';
  * Itens obrigatórios da checklist são critérios críticos; itens opcionais são critérios desejáveis.
  * - Todos os críticos atendidos: de 50 a 100, conforme a fração de desejáveis atendidos (100 sem desejáveis).
  * - Algum crítico não atendido: a fração de todos os critérios atendidos aplicada a 50, nunca acima de 50.
- * - Atividade: média das questões; se faltou algum crítico em alguma questão, nunca acima de 50.
+ * - Atividade: média simples das notas das questões, sem teto. O crítico que faltou já pesa na nota da própria questão;
+ *   na atividade ele vira diagnóstico (capacidades a recuperar), e não uma segunda punição.
  */
 export const MAX_GRADE = 100;
 /** Teto quando falta algum critério crítico. */
@@ -65,14 +66,14 @@ export function msepQuestionGrade(
 export interface ActivityGradeResult {
   /** null enquanto alguma questão não foi avaliada por completo. */
   grade: number | null;
-  /** Faltou algum crítico em alguma questão: a nota fica limitada a 50. */
-  capped: boolean;
+  /** Faltou algum crítico em alguma questão (diagnóstico; não limita a nota da atividade). */
+  missingCritical: boolean;
 }
 
-/** Nota da atividade: média das questões, limitada a 50 se faltou algum crítico. */
+/** Nota da atividade: média das notas das questões. O teto de 50 vale só dentro de cada questão. */
 export function msepActivityGrade(questions: QuestionGradeResult[]): ActivityGradeResult {
-  const capped = questions.some((q) => q.allCriticalMet === false);
-  if (!questions.length || questions.some((q) => q.grade === null)) return { grade: null, capped };
+  const missingCritical = questions.some((q) => q.allCriticalMet === false);
+  if (!questions.length || questions.some((q) => q.grade === null)) return { grade: null, missingCritical };
   const mean = Math.round(questions.reduce((sum, q) => sum + q.grade!, 0) / questions.length);
-  return { grade: capped ? Math.min(mean, CRITICAL_CAP) : mean, capped };
+  return { grade: mean, missingCritical };
 }

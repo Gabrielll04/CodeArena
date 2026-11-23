@@ -29,7 +29,9 @@ desempenho de todas as sessões.
      a resposta em JSON. Os alunos vão para a IA só como `aluno-01`, `aluno-02`; os nomes não saem do CodeArena.
 4. **Nota MSEP de 0 a 100.** Por questão: todos os críticos atendidos dão de 50 a 100, conforme a fração de desejáveis
    atendidos (100 sem desejáveis); faltou algum crítico, a fração de todos os critérios aplicada a 50, nunca acima de
-   50. Atividade: média das questões, limitada a 50 se faltou crítico em alguma questão. Questão com critério sem marca
+   50. Atividade: média das notas das questões, sem teto (até 2026-11 era limitada a 50 se faltasse crítico em
+   qualquer questão, o que punia duas vezes o mesmo erro); os críticos que faltaram viram a lista de capacidades a
+   recuperar. Questão com critério sem marca
    fica pendente. As constantes ficam em `packages/core/src/grading.ts`.
 5. **Histórico persistido.** Toda sessão encerrada (competição ou atividade, inclusive as abandonadas ou interrompidas
    pela limpeza de salas paradas há 6 h) vira um arquivo JSON em `<dataDir>/history`, com questões, alunos, placar, último
