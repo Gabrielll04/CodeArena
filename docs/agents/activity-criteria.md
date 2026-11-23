@@ -18,6 +18,9 @@ faltou só um e todo o resto foi feito).
 2. Entre 2 e 4 críticos e de 1 a 4 desejáveis por questão. Críticos são o mínimo para a questão estar resolvida.
 3. Use `capability` em todo critério. O `name` é curto e reaproveitável entre questões ("Utilizar componentes de
    interface", "Tratar erros de entrada").
+   O [mapa de capacidades](../guia/capacidades.md) junta as atividades pelo nome (sem diferença de maiúsculas e
+   acentos): o mesmo nome em questões diferentes vira uma coluna só, e nomes variados para a mesma ideia espalham a
+   evidência. A recuperação usa as questões em que a capacidade aparece num critério crítico.
 4. Prefira regras verificáveis (`pluginRule`, `regex`, `contains`): na atividade elas viram uma sugestão automática para
    quem avalia, e a mesma questão funciona em salas de competição.
 5. Use `{ "type": "manual" }` só quando o código não basta para verificar (ex.: nomes descritivos, organização em
