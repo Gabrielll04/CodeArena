@@ -96,7 +96,7 @@ export function buildCapabilityMap(input: CapabilitySessionInput[]): CapabilityM
         if (item.optional || !item.capability) continue;
         const covered = coverage.get(capabilityKey(item.capability)) ?? new Map<string, string>();
         covered.delete(question.id);
-        covered.set(question.id, question.title);
+        covered.set(question.id, question.title ?? question.id);
         coverage.set(capabilityKey(item.capability), covered);
       }
     }
@@ -120,7 +120,7 @@ export function buildCapabilityMap(input: CapabilitySessionInput[]): CapabilityM
         list.push({
           sessionId: session.id,
           questionId: question.id,
-          questionTitle: question.title,
+          questionTitle: question.title ?? question.id,
           criterionId: item.id,
           criterionLabel: item.label,
           critical: !item.optional,
