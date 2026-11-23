@@ -41,6 +41,7 @@ export default defineConfig({
         items: [
           { text: 'Guia de autoria e aula', link: '/content/authoring-guide' },
           { text: 'Plugins e packs: como funciona', link: '/guia/plugins-e-packs' },
+          { text: 'Lançar notas no Classroom', link: '/guia/classroom' },
         ],
       },
       {
@@ -64,6 +65,8 @@ export default defineConfig({
         text: 'Decisões',
         items: [
           { text: '0001: Plugins como pacotes', link: '/decisoes/0001-plugins-como-pacotes' },
+          { text: '0003: Atividades avaliativas', link: '/decisoes/0003-atividades-avaliativas' },
+          { text: '0004: Notas MSEP e histórico', link: '/decisoes/0004-atividades-msep-e-historico' },
           { text: '0005: Salas em SQLite', link: '/decisoes/0005-salas-em-sqlite' },
         ],
       },

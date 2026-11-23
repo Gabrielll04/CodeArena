@@ -1,5 +1,10 @@
 # 0003: Atividades avaliativas e projetos guiados
 
+::: warning Substituída em parte
+A nota de 0 a 10 e o projeto guiado descritos aqui não valem mais. A nota atual (critérios MSEP, de 0 a 100) está na
+[0004](0004-atividades-msep-e-historico.md).
+:::
+
 - **Status:** substituída em parte pela [0004](0004-atividades-msep-e-historico.md) (nota, projeto guiado e correção automática durante a atividade).
 - **Data:** 2026-10-26
 

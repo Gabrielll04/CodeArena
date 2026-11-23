@@ -13,7 +13,8 @@
                                v                               v               |
               +-----------------------------------------------------+          | postMessage
               | apps/server (Fastify + Socket.IO)                   |          v
-              |  PackStore (JSON em disco)   RoomManager (memória)  |   iframe sandbox (preview RN)
+              |  PackStore (JSON em disco)   RoomManager            |
+              |  HistoryStore (JSON)   salas abertas: codearena.db  |   iframe sandbox (preview RN)
               |  validação oficial = @codearena/core + plugins      |   Web Worker (runner HTTP)
               |  plugins listados em codearena.config.json          |
               +--------------------------+--------------------------+
@@ -383,8 +384,9 @@ O snapshot do professor traz `historyId` depois do encerramento, para abrir a av
 atômica (arquivo temporário + rename). Os packs de exemplo vêm do manifesto (`codearena.packs`) de cada plugin
 carregado, somente leitura, com id `exemplo-<nome do arquivo>`. `CODEARENA_CONTENT_DIR` acrescenta uma pasta de exemplos
 própria da instalação.
-A interface de armazenamento é pequena (`list/get/create/update/delete`) para permitir trocar por SQLite depois (as salas
-abertas já usam `codearena.db`).
+As salas abertas ficam em `<dataDir>/codearena.db` (SQLite) e o histórico em `<dataDir>/history/` (um JSON por sessão).
+Packs e histórico ainda são arquivos JSON; a interface de armazenamento é pequena (`list/get/create/update/delete`) para
+permitir levá-los ao mesmo SQLite depois, sem mudar quem os usa. Para backup, basta copiar a pasta de dados inteira.
 
 ## Segurança
 
