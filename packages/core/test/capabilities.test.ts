@@ -70,6 +70,12 @@ describe('mapa de capacidades', () => {
     expect(map.sessions.map((s) => s.id)).toEqual(['s1', 's2']);
   });
 
+  it('um desejável numa atividade depois não recupera um crítico que faltou', () => {
+    const onlyDesirable = session('s2', 2, [{ playerId: 's2-ana', questionId: 'zumbi', marks: { reaproveita: mark(true) } }], [zumbi]);
+    const ana = buildCapabilityMap([first, onlyDesirable]).students[0]!;
+    expect(ana.cells['capacidade-tecnica:heranca']).toMatchObject({ status: 'to-recover', latestSessionId: 's1' });
+  });
+
   it('lista o que recuperar e monta as questões da recuperação só com críticos das capacidades pedidas', () => {
     const map = buildCapabilityMap([first]);
     expect(capabilitiesToRecover(map)).toEqual(['capacidade-tecnica:heranca']);

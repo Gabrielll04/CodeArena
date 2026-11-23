@@ -148,11 +148,15 @@ export function buildCapabilityMap(input: CapabilitySessionInput[]): CapabilityM
   };
 }
 
-/** Situação pela atividade mais recente (a evidência já vem em ordem de data). */
+/**
+ * Situação pela atividade mais recente que avaliou um critério crítico da capacidade (a evidência já vem em ordem de
+ * data). Um desejável sozinho, numa atividade depois, não recupera nem derruba um crítico.
+ */
 function cellFor(evidence: CapabilityEvidence[]): CapabilityCell {
-  const latestSessionId = evidence[evidence.length - 1]!.sessionId;
+  const decisive = [...evidence].reverse().find((e) => e.critical) ?? evidence[evidence.length - 1]!;
+  const latestSessionId = decisive.sessionId;
   const latest = evidence.filter((e) => e.sessionId === latestSessionId);
-  const earlier = evidence.filter((e) => e.sessionId !== latestSessionId);
+  const earlier = evidence.slice(0, evidence.indexOf(latest[0]!));
   const failsCritical = (list: CapabilityEvidence[]) => list.some((e) => e.critical && !e.met);
   const status: CapabilityStatus = failsCritical(latest)
     ? 'to-recover'
