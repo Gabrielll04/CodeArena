@@ -14,6 +14,8 @@ export function answerIndex(record: SessionHistory): Map<string, HistoryAnswer> 
 export interface StudentGrades {
   questions: { question: ResolvedQuestion; result: QuestionGradeResult }[];
   activity: ActivityGradeResult;
+  /** Capacidades dos critérios críticos não atendidos, sem repetir (MSEP: o que o aluno precisa recuperar). */
+  toRecover: string[];
 }
 
 /** Nota MSEP de cada questão e da atividade de um aluno, pelas marcas salvas. */
@@ -22,7 +24,14 @@ export function studentGrades(record: SessionHistory, playerId: string, evaluati
     question,
     result: msepQuestionGrade(question.checklist, evaluations.get(answerKey(playerId, question.id))?.marks ?? {}),
   }));
-  return { questions, activity: msepActivityGrade(questions.map((q) => q.result)) };
+  const toRecover = new Set<string>();
+  for (const { question } of questions) {
+    const marks = evaluations.get(answerKey(playerId, question.id))?.marks ?? {};
+    for (const item of question.checklist) {
+      if (!item.optional && marks[item.id]?.met === false) toRecover.add(item.capability?.name ?? item.label);
+    }
+  }
+  return { questions, activity: msepActivityGrade(questions.map((q) => q.result)), toRecover: [...toRecover] };
 }
 
 /** Código curto que identifica o aluno no arquivo para IA (os nomes não saem do CodeArena). */
@@ -39,7 +48,7 @@ const csvText = (value: string) => `"${value.replace(/"/g, '""')}"`;
  */
 export function gradesCsv(record: SessionHistory): string {
   const evaluations = evaluationIndex(record);
-  const header = ['aluno', ...record.questions.map((_, i) => `q${i + 1}`), 'nota', 'faltou_critico'];
+  const header = ['aluno', ...record.questions.map((_, i) => `q${i + 1}`), 'nota', 'capacidades_a_recuperar'];
   const lines = [...record.players]
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
     .map((player) => {
@@ -48,7 +57,7 @@ export function gradesCsv(record: SessionHistory): string {
         csvText(player.name),
         ...grades.questions.map((q) => (q.result.grade === null ? '' : String(q.result.grade))),
         grades.activity.grade === null ? '' : String(grades.activity.grade),
-        grades.activity.capped ? 'sim' : 'nao',
+        csvText(grades.toRecover.join(', ')),
       ];
     });
   return '﻿' + [header, ...lines].map((line) => line.join(';')).join('\n');

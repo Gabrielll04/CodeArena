@@ -452,9 +452,9 @@ test('atividade: respostas salvas sem correção automática, avaliação MSEP p
 
   const [csvFile] = await Promise.all([host.waitForEvent('download'), host.getByTestId('download-grades').click()]);
   const csv = await readDownload(csvFile);
-  expect(csv).toContain('aluno;q1;q2;nota;faltou_critico');
-  expect(csv).toContain('"Ana";50;100;75;nao');
-  expect(csv).toContain('"Bia";0;0;0;sim');
+  expect(csv).toContain('aluno;q1;q2;nota;capacidades_a_recuperar');
+  expect(csv).toContain('"Ana";50;100;75;""');
+  expect(csv).toMatch(/"Bia";0;0;0;"[^"]+"/);
 
   // Tudo fica no histórico do professor.
   await host.goto('/teacher/historico');

@@ -208,7 +208,7 @@ function ActivityEvaluation({ record, onSave }: { record: SessionHistory; onSave
                   <span className="block truncate text-sm font-semibold">{student.name}</span>
                   <span className="font-mono text-[11px] text-white/40">{pseudonym(record, student.id)}</span>
                 </span>
-                <span className={cx('font-mono text-sm font-bold', grade === null ? 'text-white/35' : grades.activity.capped ? 'text-coral' : 'text-lime')}>
+                <span className={cx('font-mono text-sm font-bold', grade === null ? 'text-white/35' : grades.activity.missingCritical ? 'text-amber' : 'text-lime')}>
                   {grade ?? '-'}
                 </span>
               </button>
@@ -281,12 +281,17 @@ function StudentEvaluation({
         </div>
         <div className="text-right">
           <p className="text-xs uppercase tracking-wider text-white/40">Nota</p>
-          <p className={cx('font-mono text-4xl font-bold', grades.activity.capped ? 'text-coral' : 'text-lime')} data-testid="final-grade">
+          <p className={cx('font-mono text-4xl font-bold', grades.activity.missingCritical ? 'text-amber' : 'text-lime')} data-testid="final-grade">
             {grades.activity.grade ?? '-'}
           </p>
           <p className="text-xs text-white/45">
-            {pending > 0 ? `${plural(pending, 'critério')} sem avaliação` : grades.activity.capped ? 'Faltou critério crítico' : 'Avaliado'}
+            {pending > 0 ? `${plural(pending, 'critério')} sem avaliação` : 'Avaliado'}
           </p>
+          {grades.toRecover.length > 0 && (
+            <p className="mt-1 max-w-xs text-xs text-amber" data-testid="to-recover">
+              A recuperar: {grades.toRecover.join(', ')}
+            </p>
+          )}
         </div>
       </Panel>
 
