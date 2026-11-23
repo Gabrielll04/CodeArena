@@ -12,9 +12,9 @@ const marks = (met: string[], unmet: string[] = []) =>
   Object.fromEntries([...met.map((id) => [id, { met: true }]), ...unmet.map((id) => [id, { met: false }])]);
 
 describe('nota MSEP', () => {
-  it('com todos os críticos, vai de 70 a 100 conforme os desejáveis', () => {
-    expect(msepQuestionGrade(checklist, marks(['a', 'b'], ['c', 'd'])).grade).toBe(70);
-    expect(msepQuestionGrade(checklist, marks(['a', 'b', 'c'], ['d'])).grade).toBe(85);
+  it('com todos os críticos, vai de 60 a 100 conforme os desejáveis', () => {
+    expect(msepQuestionGrade(checklist, marks(['a', 'b'], ['c', 'd'])).grade).toBe(60);
+    expect(msepQuestionGrade(checklist, marks(['a', 'b', 'c'], ['d'])).grade).toBe(80);
     expect(msepQuestionGrade(checklist, marks(['a', 'b', 'c', 'd'])).grade).toBe(100);
     expect(msepQuestionGrade(checklist.slice(0, 2), marks(['a', 'b'])).grade).toBe(100);
   });
@@ -34,7 +34,7 @@ describe('nota MSEP', () => {
     const full = msepQuestionGrade(checklist, marks(['a', 'b', 'c', 'd']));
     const half = msepQuestionGrade(checklist, marks(['a', 'b', 'c'], ['d']));
     const missing = msepQuestionGrade(checklist, marks(['a', 'c', 'd'], ['b']));
-    expect(msepActivityGrade([full, half])).toEqual({ grade: 93, missingCritical: false });
+    expect(msepActivityGrade([full, half])).toEqual({ grade: 90, missingCritical: false });
     // missing vale no máximo 50 sozinha; a atividade é (100 + 100 + 38) / 3.
     expect(missing.grade).toBe(38);
     expect(msepActivityGrade([full, full, missing])).toEqual({ grade: 79, missingCritical: true });
