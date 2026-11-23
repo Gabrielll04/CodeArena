@@ -93,7 +93,7 @@ código e marque cada critério como **Atendido** ou **Não atendido**. Você po
 
 - todos os críticos atendidos: de 75 a 100, conforme os desejáveis atendidos (os críticos valem 75, os desejáveis
   os outros 25);
-- faltou algum crítico: no máximo 50;
+- faltou algum crítico: no máximo 50. Faltou só um e todo o resto foi feito, 50; faltou mais, proporcionalmente menos;
 - nota da atividade: média das notas das questões, sem teto. O crítico que faltou já pesa na questão dele; na
   atividade, ele aparece como **A recuperar**, com a capacidade do critério (ou o texto dele, se não tiver capacidade).
   O CSV traz essa lista na coluna `capacidades_a_recuperar`.

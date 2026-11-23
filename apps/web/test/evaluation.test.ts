@@ -101,9 +101,9 @@ describe('notas da atividade', () => {
       ...record,
       evaluations: [{ playerId: 'p-ana', questionId: 'botao', marks: { app: { met: false, source: 'professor' }, nomes: { met: true, source: 'professor' } }, updatedAt: 1 }],
     };
-    // Crítico sem capacidade cai no texto do critério; a nota da atividade não ganha teto extra.
-    expect(studentGrades(missed, 'p-ana')).toMatchObject({ activity: { grade: 25, missingCritical: true }, toRecover: ['Criar o componente App'] });
-    expect(gradesCsv(missed)).toContain('"Ana Souza";25;25;"Criar o componente App"');
+    // Crítico sem capacidade cai no texto do critério. Faltou só ele e o desejável foi feito: 50.
+    expect(studentGrades(missed, 'p-ana')).toMatchObject({ activity: { grade: 50, missingCritical: true }, toRecover: ['Criar o componente App'] });
+    expect(gradesCsv(missed)).toContain('"Ana Souza";50;50;"Criar o componente App"');
     expect(pseudonym(evaluated, 'p-bia')).toBe('aluno-02');
     expect(gradesCsv(evaluated)).toBe('﻿aluno;q1;nota;capacidades_a_recuperar\n"Ana Souza";75;75;""\n"Bia";;;""');
   });
