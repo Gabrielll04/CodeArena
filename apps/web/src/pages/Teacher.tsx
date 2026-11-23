@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { parseQuestionPackJson, resolveQuestions, type QuestionPack, type RoomMode, type ValidationIssue } from '@codearena/schemas';
 import { IssueList } from '../components/IssueList';
 import { TopBar } from '../components/TopBar';
@@ -14,7 +14,8 @@ export function TeacherPage() {
   const [packs, setPacks] = useState<PackSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
-  const [roomDialog, setRoomDialog] = useState<{ summary: PackSummary; stored: StoredPack } | null>(null);
+  const [roomDialog, setRoomDialog] = useState<{ summary: PackSummary; stored: StoredPack; mode?: RoomMode } | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [opening, setOpening] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -41,17 +42,26 @@ export function TeacherPage() {
   };
 
   // Busca o pack antes de abrir o diálogo: assim ele já aparece completo, sem spinner e sem mudar de tamanho.
-  const openRoom = async (pack: PackSummary) => {
+  const openRoom = async (pack: PackSummary, mode?: RoomMode) => {
     setOpening(pack.id);
     setError(null);
     try {
-      setRoomDialog({ summary: pack, stored: await api.getPack(pack.id) });
+      setRoomDialog({ summary: pack, stored: await api.getPack(pack.id), mode });
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setOpening(null);
     }
   };
+
+  // Vindo da recuperação (mapa de capacidades): abre a sala do pack recém-criado, já no modo Atividade.
+  const packToOpen = searchParams.get('abrir');
+  useEffect(() => {
+    if (!packToOpen || !packs) return;
+    setSearchParams({}, { replace: true });
+    const pack = packs.find((p) => p.id === packToOpen);
+    if (pack) void openRoom(pack, 'assessment');
+  }, [packToOpen, packs]);
 
   const removePack = async (pack: PackSummary) => {
     if (!window.confirm(`Excluir "${pack.title}"? Esta ação não pode ser desfeita.`)) return;
@@ -166,7 +176,9 @@ export function TeacherPage() {
           load();
         }}
       />
-      {roomDialog && <CreateRoomDialog pack={roomDialog.summary} stored={roomDialog.stored} onClose={() => setRoomDialog(null)} />}
+      {roomDialog && (
+        <CreateRoomDialog pack={roomDialog.summary} stored={roomDialog.stored} initialMode={roomDialog.mode} onClose={() => setRoomDialog(null)} />
+      )}
     </div>
   );
 }
@@ -298,14 +310,24 @@ const ROOM_MODES: { id: RoomMode; label: string; description: string }[] = [
   { id: 'assessment', label: 'Atividade', description: 'Cada aluno no seu ritmo, sem placar. Você avalia as respostas depois.' },
 ];
 
-function CreateRoomDialog({ pack, stored, onClose }: { pack: PackSummary; stored: StoredPack; onClose: () => void }) {
+function CreateRoomDialog({
+  pack,
+  stored,
+  initialMode = 'competition',
+  onClose,
+}: {
+  pack: PackSummary;
+  stored: StoredPack;
+  initialMode?: RoomMode;
+  onClose: () => void;
+}) {
   const navigate = useNavigate();
   const create = useHost((s) => s.create);
   const [selected, setSelected] = useState<Set<string>>(() => new Set(stored.pack.questions.map((q) => q.id)));
   const [discreetMode, setDiscreet] = useState(false);
   const [allowPaste, setAllowPaste] = useState(true);
   const [streakEnabled, setStreak] = useState(false);
-  const [mode, setMode] = useState<RoomMode>('competition');
+  const [mode, setMode] = useState<RoomMode>(initialMode);
   const [minutes, setMinutes] = useState(50);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);

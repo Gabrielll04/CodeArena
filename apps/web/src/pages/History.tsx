@@ -41,6 +41,9 @@ export function HistoryPage() {
             <p className="mt-1 text-white/50">Sessões encerradas, com placar, respostas e avaliações.</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link to="/teacher/capacidades" data-testid="open-capabilities">
+              <Button variant="secondary">Capacidades da turma</Button>
+            </Link>
             <ImportSessionButton onImported={load} onError={setError} />
             <Link to="/teacher">
               <Button variant="secondary">Voltar à biblioteca</Button>
