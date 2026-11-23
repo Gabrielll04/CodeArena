@@ -5,7 +5,9 @@ import type { ChecklistItem } from '@codearena/schemas';
  *
  * Itens obrigatórios da checklist são critérios críticos; itens opcionais são critérios desejáveis.
  * - Todos os críticos atendidos: de 75 a 100, conforme a fração de desejáveis atendidos (100 sem desejáveis).
- * - Algum crítico não atendido: a fração de todos os critérios atendidos aplicada a 50, nunca acima de 50.
+ * - Algum crítico não atendido: no máximo 50. Os pontos do que foi feito (com os mesmos pesos) são comparados com o
+ *   melhor caso possível sem um crítico: faltou só um crítico e todo o resto foi feito, 50; faltou mais, proporcionalmente
+ *   menos.
  * - Atividade: média simples das notas das questões, sem teto. O crítico que faltou já pesa na nota da própria questão;
  *   na atividade ele vira diagnóstico (capacidades a recuperar), e não uma segunda punição.
  */
@@ -60,9 +62,16 @@ export function msepQuestionGrade(
     const share = result.desirableTotal ? result.desirableMet / result.desirableTotal : 1;
     return { ...result, allCriticalMet, grade: Math.round(CRITICAL_BASE + (MAX_GRADE - CRITICAL_BASE) * share) };
   }
-  const total = result.criticalTotal + result.desirableTotal;
-  const share = total ? (result.criticalMet + result.desirableMet) / total : 0;
-  return { ...result, allCriticalMet: false, grade: Math.min(CRITICAL_CAP, Math.round(CRITICAL_CAP * share)) };
+  // Mesmos pesos da questão completa; sem desejáveis, os críticos valem tudo.
+  const criticalWeight = result.desirableTotal ? CRITICAL_BASE : MAX_GRADE;
+  const points = (met: number, total: number, weight: number) => (total ? (weight * met) / total : 0);
+  const earned =
+    points(result.criticalMet, result.criticalTotal, criticalWeight) +
+    points(result.desirableMet, result.desirableTotal, MAX_GRADE - criticalWeight);
+  // Melhor caso sem todos os críticos: faltou um só, e todo o resto foi feito. Ele vale exatamente o teto.
+  const bestWithOneMissing = MAX_GRADE - criticalWeight / result.criticalTotal;
+  const grade = bestWithOneMissing > 0 ? (CRITICAL_CAP * earned) / bestWithOneMissing : 0;
+  return { ...result, allCriticalMet: false, grade: Math.min(CRITICAL_CAP, Math.round(grade)) };
 }
 
 export interface ActivityGradeResult {

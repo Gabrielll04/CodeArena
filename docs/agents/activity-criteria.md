@@ -8,7 +8,8 @@ checklist da questão vira a lista de **critérios de avaliação** da Metodolog
 - `capability` = o que o critério avalia: `capacidade-tecnica`, `capacidade-socioemocional` ou `conhecimento`, com o
   nome (`name`).
 
-Nota de 0 a 100: todos os críticos atendidos dão de 75 a 100, conforme os desejáveis; faltou algum crítico, no máximo 50.
+Nota de 0 a 100: todos os críticos atendidos dão de 75 a 100, conforme os desejáveis; faltou algum crítico, no máximo 50 (50 se
+faltou só um e todo o resto foi feito).
 
 ## Regras
 

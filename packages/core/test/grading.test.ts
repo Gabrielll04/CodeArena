@@ -19,9 +19,18 @@ describe('nota MSEP', () => {
     expect(msepQuestionGrade(checklist.slice(0, 2), marks(['a', 'b'])).grade).toBe(100);
   });
 
-  it('sem todos os críticos, nunca passa de 50', () => {
+  it('sem todos os críticos, nunca passa de 50: faltou só um e o resto foi feito, 50', () => {
     const result = msepQuestionGrade(checklist, marks(['a', 'c', 'd'], ['b']));
-    expect(result).toMatchObject({ grade: 38, allCriticalMet: false, criticalMet: 1, desirableMet: 2 });
+    expect(result).toMatchObject({ grade: 50, allCriticalMet: false, criticalMet: 1, desirableMet: 2 });
+    // Faltou um crítico e um desejável: 37,5 + 12,5 de 62,5 possíveis.
+    expect(msepQuestionGrade(checklist, marks(['a', 'c'], ['b', 'd'])).grade).toBe(40);
+    // Faltaram os dois críticos: só os desejáveis contam.
+    expect(msepQuestionGrade(checklist, marks(['c', 'd'], ['a', 'b'])).grade).toBe(20);
+    // Caso da tela: 3 críticos e 1 desejável, faltou só um crítico.
+    const four = [{ id: 'x', optional: false }, { id: 'y', optional: false }, { id: 'z', optional: false }, { id: 'w', optional: true }];
+    expect(msepQuestionGrade(four, marks(['x', 'y', 'w'], ['z'])).grade).toBe(50);
+    // Sem desejáveis, os críticos valem tudo.
+    expect(msepQuestionGrade(checklist.slice(0, 2), marks(['a'], ['b'])).grade).toBe(50);
     expect(msepQuestionGrade(checklist, marks([], ['a', 'b', 'c', 'd'])).grade).toBe(0);
   });
 
@@ -35,11 +44,11 @@ describe('nota MSEP', () => {
     const half = msepQuestionGrade(checklist, marks(['a', 'b', 'c'], ['d']));
     const missing = msepQuestionGrade(checklist, marks(['a', 'c', 'd'], ['b']));
     expect(msepActivityGrade([full, half])).toEqual({ grade: 94, missingCritical: false });
-    // missing vale no máximo 50 sozinha; a atividade é (100 + 100 + 38) / 3.
-    expect(missing.grade).toBe(38);
-    expect(msepActivityGrade([full, full, missing])).toEqual({ grade: 79, missingCritical: true });
-    // Nove questões completas e uma com crítico faltando: 94, e não 50.
-    expect(msepActivityGrade([...Array(9).fill(full), missing]).grade).toBe(94);
+    // missing vale no máximo 50 sozinha; a atividade é (100 + 100 + 50) / 3.
+    expect(missing.grade).toBe(50);
+    expect(msepActivityGrade([full, full, missing])).toEqual({ grade: 83, missingCritical: true });
+    // Nove questões completas e uma com crítico faltando: 95, e não 50.
+    expect(msepActivityGrade([...Array(9).fill(full), missing]).grade).toBe(95);
     expect(msepActivityGrade([full, msepQuestionGrade(checklist, {})])).toEqual({ grade: null, missingCritical: false });
   });
 });

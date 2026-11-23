@@ -29,8 +29,8 @@ desempenho de todas as sessões.
      a resposta em JSON. Os alunos vão para a IA só como `aluno-01`, `aluno-02`; os nomes não saem do CodeArena.
 4. **Nota MSEP de 0 a 100.** Por questão: todos os críticos atendidos dão de 75 a 100 (até 2026-11 eram 50 a 100, o que
    deixava com 50 quem acertou todos os críticos e só deixou de fazer um desejável), conforme a fração de desejáveis
-   atendidos (100 sem desejáveis); faltou algum crítico, a fração de todos os critérios aplicada a 50, nunca acima de
-   50. Atividade: média das notas das questões, sem teto (até 2026-11 era limitada a 50 se faltasse crítico em
+   atendidos (100 sem desejáveis); faltou algum crítico, no máximo 50: os pontos feitos (mesmos pesos) sobre o melhor
+   caso com um só crítico faltando, que vale exatamente 50. Atividade: média das notas das questões, sem teto (até 2026-11 era limitada a 50 se faltasse crítico em
    qualquer questão, o que punia duas vezes o mesmo erro); os críticos que faltaram viram a lista de capacidades a
    recuperar. Questão com critério sem marca
    fica pendente. As constantes ficam em `packages/core/src/grading.ts`.

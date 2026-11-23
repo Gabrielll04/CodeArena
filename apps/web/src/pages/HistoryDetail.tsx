@@ -171,7 +171,7 @@ function ActivityEvaluation({ record, onSave }: { record: SessionHistory; onSave
       <Panel className="flex flex-wrap items-center justify-between gap-3 p-4">
         <p className="max-w-2xl text-sm text-white/60">
           Nota de 0 a 100. Com todos os critérios críticos: de 75 a 100, conforme os desejáveis. Faltou algum crítico: no
-          máximo 50.
+          máximo 50 (50 se faltou só um e o resto foi feito).
         </p>
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" size="sm" onClick={() => downloadFile(`avaliacao-${slug}-turma.md`, buildAiFile(record), 'text/markdown')} data-testid="ai-export-class">
