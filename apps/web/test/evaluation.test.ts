@@ -95,7 +95,7 @@ describe('notas da atividade', () => {
         { playerId: 'p-ana', questionId: 'botao', marks: { app: { met: true, source: 'professor' }, nomes: { met: false, source: 'ia' } }, updatedAt: 1 },
       ],
     };
-    expect(studentGrades(evaluated, 'p-ana').activity).toEqual({ grade: 60, missingCritical: false });
+    expect(studentGrades(evaluated, 'p-ana').activity).toEqual({ grade: 75, missingCritical: false });
     expect(studentGrades(evaluated, 'p-ana').toRecover).toEqual([]);
     const missed: SessionHistory = {
       ...record,
@@ -105,6 +105,6 @@ describe('notas da atividade', () => {
     expect(studentGrades(missed, 'p-ana')).toMatchObject({ activity: { grade: 25, missingCritical: true }, toRecover: ['Criar o componente App'] });
     expect(gradesCsv(missed)).toContain('"Ana Souza";25;25;"Criar o componente App"');
     expect(pseudonym(evaluated, 'p-bia')).toBe('aluno-02');
-    expect(gradesCsv(evaluated)).toBe('﻿aluno;q1;nota;capacidades_a_recuperar\n"Ana Souza";60;60;""\n"Bia";;;""');
+    expect(gradesCsv(evaluated)).toBe('﻿aluno;q1;nota;capacidades_a_recuperar\n"Ana Souza";75;75;""\n"Bia";;;""');
   });
 });

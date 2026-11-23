@@ -27,7 +27,7 @@ desempenho de todas as sessões.
      só uma sugestão;
    - uma IA: o CodeArena gera um arquivo Markdown (turma ou aluno) com instruções, questões, critérios e respostas, e lê
      a resposta em JSON. Os alunos vão para a IA só como `aluno-01`, `aluno-02`; os nomes não saem do CodeArena.
-4. **Nota MSEP de 0 a 100.** Por questão: todos os críticos atendidos dão de 60 a 100 (até 2026-11 eram 50 a 100, o que
+4. **Nota MSEP de 0 a 100.** Por questão: todos os críticos atendidos dão de 75 a 100 (até 2026-11 eram 50 a 100, o que
    deixava com 50 quem acertou todos os críticos e só deixou de fazer um desejável), conforme a fração de desejáveis
    atendidos (100 sem desejáveis); faltou algum crítico, a fração de todos os critérios aplicada a 50, nunca acima de
    50. Atividade: média das notas das questões, sem teto (até 2026-11 era limitada a 50 se faltasse crítico em
