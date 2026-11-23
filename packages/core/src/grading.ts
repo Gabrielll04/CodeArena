@@ -4,7 +4,7 @@ import type { ChecklistItem } from '@codearena/schemas';
  * Notas das atividades, pela Metodologia SENAI de Educação Profissional (MSEP), de 0 a 100.
  *
  * Itens obrigatórios da checklist são critérios críticos; itens opcionais são critérios desejáveis.
- * - Todos os críticos atendidos: de 50 a 100, conforme a fração de desejáveis atendidos (100 sem desejáveis).
+ * - Todos os críticos atendidos: de 70 a 100, conforme a fração de desejáveis atendidos (100 sem desejáveis).
  * - Algum crítico não atendido: a fração de todos os critérios atendidos aplicada a 50, nunca acima de 50.
  * - Atividade: média simples das notas das questões, sem teto. O crítico que faltou já pesa na nota da própria questão;
  *   na atividade ele vira diagnóstico (capacidades a recuperar), e não uma segunda punição.
@@ -12,6 +12,8 @@ import type { ChecklistItem } from '@codearena/schemas';
 export const MAX_GRADE = 100;
 /** Teto quando falta algum critério crítico. */
 export const CRITICAL_CAP = 50;
+/** Nota com todos os críticos e nenhum desejável: os críticos valem 70 e os desejáveis, os outros 30. */
+export const CRITICAL_BASE = 70;
 
 export interface CriterionState {
   met: boolean;
@@ -56,7 +58,7 @@ export function msepQuestionGrade(
 
   if (allCriticalMet) {
     const share = result.desirableTotal ? result.desirableMet / result.desirableTotal : 1;
-    return { ...result, allCriticalMet, grade: Math.round(CRITICAL_CAP + (MAX_GRADE - CRITICAL_CAP) * share) };
+    return { ...result, allCriticalMet, grade: Math.round(CRITICAL_BASE + (MAX_GRADE - CRITICAL_BASE) * share) };
   }
   const total = result.criticalTotal + result.desirableTotal;
   const share = total ? (result.criticalMet + result.desirableMet) / total : 0;

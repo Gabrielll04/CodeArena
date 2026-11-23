@@ -91,7 +91,8 @@ código e marque cada critério como **Atendido** ou **Não atendido**. Você po
 
 **Nota de 0 a 100:**
 
-- todos os críticos atendidos: de 50 a 100, conforme os desejáveis atendidos;
+- todos os críticos atendidos: de 70 a 100, conforme os desejáveis atendidos (os críticos valem 70, os desejáveis
+  os outros 30);
 - faltou algum crítico: no máximo 50;
 - nota da atividade: média das notas das questões, sem teto. O crítico que faltou já pesa na questão dele; na
   atividade, ele aparece como **A recuperar**, com a capacidade do critério (ou o texto dele, se não tiver capacidade).

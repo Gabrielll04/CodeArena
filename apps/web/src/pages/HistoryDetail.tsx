@@ -170,7 +170,7 @@ function ActivityEvaluation({ record, onSave }: { record: SessionHistory; onSave
     <div className="space-y-5">
       <Panel className="flex flex-wrap items-center justify-between gap-3 p-4">
         <p className="max-w-2xl text-sm text-white/60">
-          Nota de 0 a 100. Com todos os critérios críticos: de 50 a 100, conforme os desejáveis. Faltou algum crítico: no
+          Nota de 0 a 100. Com todos os critérios críticos: de 70 a 100, conforme os desejáveis. Faltou algum crítico: no
           máximo 50.
         </p>
         <div className="flex flex-wrap gap-2">
