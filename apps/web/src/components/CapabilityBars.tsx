@@ -94,14 +94,10 @@ export function CapabilityBars({
                   ))}
                 </div>
                 <p className="text-right">
-                  {count['to-recover'] > 0 ? (
-                    <>
-                      <span className="font-mono text-sm font-bold tabular-nums text-white">{count['to-recover']}</span>
-                      <span className="block text-[11px] leading-tight text-white/40">a recuperar</span>
-                    </>
-                  ) : (
-                    <span className="text-[11px] text-white/35">nenhum a recuperar</span>
-                  )}
+                  <span className={cx('font-mono text-sm font-bold tabular-nums', count['to-recover'] ? 'text-white' : 'text-white/30')}>
+                    {count['to-recover']}
+                  </span>
+                  <span className="block text-[11px] leading-tight text-white/40">a recuperar</span>
                 </p>
               </div>
             </li>
