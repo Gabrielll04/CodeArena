@@ -24,6 +24,10 @@ pnpm start
 
 Alunos na mesma rede entram pelo endereço exibido no log do servidor (ex.: `http://192.168.0.10:3000`).
 
+No Windows, dá para pular o terminal: clique duas vezes em `iniciar-codearena.bat`, na pasta do CodeArena. Na primeira
+vez ele instala as dependências e gera a interface; depois só inicia o servidor e abre a área do professor no navegador.
+Para parar, feche a janela.
+
 Para hospedar com HTTPS e acesso de fora da rede, veja [Hospedar na escola](./hospedar.md).
 
 ## Sua primeira aula

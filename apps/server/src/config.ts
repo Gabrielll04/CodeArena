@@ -19,8 +19,9 @@ export interface ServerConfig {
   logger: boolean;
 }
 
-export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
-  const production = env.NODE_ENV === 'production';
+export function loadConfig(env: NodeJS.ProcessEnv = process.env, argv: string[] = process.argv): ServerConfig {
+  // `--production` faz o mesmo que NODE_ENV=production e funciona em qualquer terminal (no Windows, inclusive).
+  const production = env.NODE_ENV === 'production' || argv.includes('--production');
   return {
     port: Number(env.PORT ?? (production ? 3000 : 3001)),
     host: env.HOST ?? '0.0.0.0',
