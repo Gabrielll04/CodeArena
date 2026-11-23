@@ -365,6 +365,25 @@ Cada registro guarda o hash da chave do professor enviada em `room:create`. A AP
 
 O snapshot do professor traz `historyId` depois do encerramento, para abrir a avaliação.
 
+## Capacidades
+
+`buildCapabilityMap` (`packages/core/src/capabilities.ts`) recebe as atividades avaliadas e devolve o mapa da turma:
+as capacidades (chave `tipo:nome normalizado`, com as questões que as avaliam), os alunos (casados entre sessões pelo
+nome normalizado) e, para cada par aluno e capacidade, a situação e as evidências (critério, atendido ou não, crítico ou
+desejável, questão e sessão). A situação vem da última sessão que avaliou a capacidade com um critério crítico:
+`to-recover` se faltou um crítico, `developing` se faltou só desejável, `recovered` se atendeu depois de ter faltado
+um crítico antes e `developed` nos outros casos. `recoveryQuestions` escolhe as questões que avaliam as capacidades
+pedidas com um critério crítico, sem repetir, na versão mais recente. Tudo é calculado na hora, a partir do histórico;
+nada novo é gravado.
+
+| Rota | O que faz |
+| --- | --- |
+| `GET /api/capabilities?sessions=a,b` | mapa das atividades avaliadas da chave (todas, sem `sessions`) |
+| `POST /api/capabilities/recovery` | `{ sessions, capabilities, title? }`; cria o pack de recuperação (etiqueta `recuperacao`) e devolve 201 com ele, ou 422 se nenhuma questão cobre as capacidades |
+
+A tela fica em `/teacher/capacidades` (`apps/web/src/pages/Capabilities.tsx`). Ao criar a recuperação, ela navega para
+`/teacher?abrir=<packId>`, que abre o diálogo da sala já no modo Atividade.
+
 ## Reconexão
 
 - Aluno: `playerToken` fica no `localStorage`. Ao reconectar (ou recarregar), o cliente reenvia `room:join` com o token e
