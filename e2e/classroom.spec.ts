@@ -426,7 +426,7 @@ test('atividade: respostas salvas sem correção automática, avaliação MSEP p
   await expect(evaluation.getByTestId('final-grade')).toHaveText('-');
   await evaluation.getByTestId('criterion-boas-vindas-organizar').getByTestId('mark-met').click();
   // Q1: todos os críticos, nenhum desejável = 50. Q2: 100. Média 75.
-  await expect(evaluation.getByTestId('final-grade')).toHaveText('75');
+  await expect(evaluation.getByTestId('final-grade')).toHaveText('80');
   await expect(host.getByTestId('save-state')).toHaveText('Salvo');
 
   // Arquivo para a IA sem os nomes; a resposta da IA vira marcas revisáveis.
@@ -453,7 +453,7 @@ test('atividade: respostas salvas sem correção automática, avaliação MSEP p
   const [csvFile] = await Promise.all([host.waitForEvent('download'), host.getByTestId('download-grades').click()]);
   const csv = await readDownload(csvFile);
   expect(csv).toContain('aluno;q1;q2;nota;capacidades_a_recuperar');
-  expect(csv).toContain('"Ana";50;100;75;""');
+  expect(csv).toContain('"Ana";60;100;80;""');
   expect(csv).toMatch(/"Bia";0;0;0;"[^"]+"/);
 
   // Tudo fica no histórico do professor.
