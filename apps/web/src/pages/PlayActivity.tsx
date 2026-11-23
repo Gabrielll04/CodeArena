@@ -15,7 +15,12 @@ export const draftKey = (room: string, questionId: string) => `codearena:draft:$
 /** Espera de digitação antes de salvar a resposta no servidor. */
 const AUTOSAVE_DELAY_MS = 1000;
 
-type SaveState = { state: 'idle' } | { state: 'saving' } | { state: 'saved'; at: number } | { state: 'error'; message: string };
+type SaveState =
+  | { state: 'idle' }
+  | { state: 'saving' }
+  | { state: 'saved'; at: number }
+  | { state: 'pending' }
+  | { state: 'error'; message: string };
 
 const NAV_TONE: Record<AssessmentQuestionProgress['status'], string> = {
   empty: 'bg-white/[0.06] text-white/70',
@@ -48,6 +53,9 @@ export function ActivityQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot;
   const lastSaved = useRef<string | null>(view.code ?? starter);
   const latest = useRef(code);
   latest.current = code;
+  const paused = snapshot.pausedAt !== undefined;
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
 
   useEffect(() => sessionStore.set(storageKey, code), [code, storageKey]);
 
@@ -55,6 +63,11 @@ export function ActivityQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot;
   const flush = async (): Promise<boolean> => {
     const current = latest.current;
     if (current === lastSaved.current) return true;
+    // Pausada, o servidor recusa: o rascunho fica no navegador e é salvo na retomada.
+    if (pausedRef.current) {
+      setSave({ state: 'pending' });
+      return false;
+    }
     setSave({ state: 'saving' });
     const res = await saveAnswer(question.id, current);
     if (!res.ok) {
@@ -77,6 +90,11 @@ export function ActivityQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot;
   useEffect(() => {
     if (rejoins > 0) void flush();
   }, [rejoins]);
+
+  // Retomada depois da pausa: salva o que ficou pendente.
+  useEffect(() => {
+    if (!paused) void flush();
+  }, [paused]);
 
   const navigate = async (index: number) => {
     setBusy(true);
@@ -110,6 +128,8 @@ export function ActivityQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot;
         </p>
       ) : save.state === 'saved' ? (
         <p className="text-white/55">{save.at ? `Resposta salva às ${timeFormat.format(save.at)}.` : 'Resposta salva.'}</p>
+      ) : save.state === 'pending' ? (
+        <p className="text-amber">Sessão pausada. A última alteração é salva quando o professor retomar.</p>
       ) : save.state === 'error' ? (
         <p className="text-coral">{save.message}</p>
       ) : (
@@ -125,10 +145,10 @@ export function ActivityQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot;
           {active.index + 1}/{active.total}
         </span>
         <div className="min-w-0 flex-1">
-          <Timer startsAt={active.startsAt} endsAt={active.endsAt} finishedAt={active.finishedAt} />
+          <Timer startsAt={active.startsAt} endsAt={active.endsAt} finishedAt={active.finishedAt} pausedAt={snapshot.pausedAt} />
         </div>
-        <QuestionNavigator questions={view.questions} current={active.index} disabled={busy} onSelect={(index) => void navigate(index)} />
-        <Button variant="primary" size="sm" onClick={() => setConfirming(true)} disabled={busy} data-testid="deliver">
+        <QuestionNavigator questions={view.questions} current={active.index} disabled={busy || paused} onSelect={(index) => void navigate(index)} />
+        <Button variant="primary" size="sm" onClick={() => setConfirming(true)} disabled={busy || paused} data-testid="deliver">
           <Icon name="check" /> Entregar
         </Button>
       </div>
@@ -139,6 +159,7 @@ export function ActivityQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot;
           code={code}
           onCodeChange={setCode}
           readOnly={false}
+          paused={paused}
           live={live}
           mode="play"
           criteria
@@ -150,7 +171,7 @@ export function ActivityQuestion({ snapshot, plugin }: { snapshot: RoomSnapshot;
         />
       </div>
       <Dialog
-        open={confirming}
+        open={confirming && !paused}
         onClose={() => setConfirming(false)}
         title="Entregar a atividade?"
         footer={

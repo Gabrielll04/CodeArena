@@ -32,7 +32,7 @@ import {
   type SessionReport,
 } from '@codearena/schemas';
 import { calculateStreakBonus, calculateXP, rankPlayers } from './scoring';
-import { buildPlayerTimeline, createPasteLog, recordPaste, type PasteLog } from './timeline';
+import { activeElapsed, buildPlayerTimeline, createPasteLog, recordPaste, type PasteLog, type PauseInterval } from './timeline';
 
 export class RoomError extends Error {
   constructor(
@@ -95,6 +95,8 @@ interface QuestionRecord {
   lastSubmitAt: Map<string, number>;
   /** Último código de cada aluno: salvo na atividade ou enviado na competição (vai para o histórico). */
   codes: Map<string, { code: string; at: number }>;
+  /** Pausas do professor depois do início da questão: não contam nos tempos dos alunos. */
+  pauses: PauseInterval[];
   results: QuestionResults | null;
 }
 
@@ -144,6 +146,8 @@ export interface RoomState {
   /** Índice de `history` da questão atual, ou -1. */
   currentIndex: number;
   report: SessionReport | null;
+  /** Desde quando a sessão está pausada pelo professor (ausente em estados gravados antes da pausa existir). */
+  pausedAt?: number | null;
 }
 
 export interface PlayerState {
@@ -179,6 +183,7 @@ export interface QuestionRecordState {
   pastes: [string, PasteLog][];
   allowPaste: boolean;
   codes: [string, { code: string; at: number }][];
+  pauses?: PauseInterval[];
   results: QuestionResults | null;
 }
 
@@ -213,6 +218,8 @@ export class Room {
   private startedAt: number | null = null;
   /** Atividade: começo e prazo, iguais para todas as questões. */
   private window: { startsAt: number; endsAt: number } | null = null;
+  /** Pausa do professor: desde quando o tempo está parado (relógio do servidor), ou null. */
+  private pausedAt: number | null = null;
   lastActivityAt: number;
 
   constructor(options: RoomOptions) {
@@ -252,6 +259,10 @@ export class Room {
 
   get currentSettings(): RoomSettings {
     return this.settings;
+  }
+
+  get isPaused(): boolean {
+    return this.pausedAt !== null;
   }
 
   getPlayerByToken(token: string): PlayerPublic | null {
@@ -417,6 +428,7 @@ export class Room {
    */
   private armTimers(): void {
     if (this.phase !== 'countdown' && this.phase !== 'question') return;
+    if (this.pausedAt !== null) return;
     const now = this.clock.now();
     if (this.isAssessment) {
       if (!this.window) return;
@@ -454,6 +466,58 @@ export class Room {
   }
 
   /**
+   * Pausa do professor: o cronômetro para e os alunos não navegam, não escrevem e não enviam até a retomada.
+   * Só vale com o tempo correndo (contagem regressiva ou questão). Pausar de novo não muda nada.
+   */
+  pause(): void {
+    if (this.phase !== 'countdown' && this.phase !== 'question') {
+      throw new RoomError('invalid_state', 'Só é possível pausar com uma questão em andamento');
+    }
+    if (this.pausedAt !== null) return;
+    this.pausedAt = this.clock.now();
+    this.clearTimers();
+    this.touch();
+    this.sink.sync();
+  }
+
+  /** Retoma a sessão pausada: os prazos são adiados pelo tempo da pausa e o cronômetro volta de onde parou. */
+  resume(): void {
+    if (this.pausedAt === null) return;
+    this.closePause();
+    this.touch();
+    this.armTimers();
+    this.sink.sync();
+  }
+
+  /**
+   * Fecha a pausa em andamento. Na contagem regressiva, o início e o prazo são adiados juntos; com a questão
+   * valendo, só o prazo é adiado e a pausa fica registrada para não contar nos tempos dos alunos.
+   */
+  private closePause(): void {
+    const from = this.pausedAt;
+    if (from === null) return;
+    this.pausedAt = null;
+    const to = this.clock.now();
+    const delta = Math.max(0, to - from);
+    if (delta === 0) return;
+    const shift = (span: { startsAt: number; endsAt: number }) => {
+      if (from < span.startsAt) span.startsAt += delta;
+      span.endsAt += delta;
+    };
+    const running = this.isAssessment ? this.history : this.current ? [this.current] : [];
+    for (const record of running) {
+      if (record.finishedAt !== null) continue;
+      if (from >= record.startsAt) record.pauses.push({ from, to });
+      shift(record);
+    }
+    if (this.isAssessment && this.window) shift(this.window);
+  }
+
+  private assertNotPaused(): void {
+    if (this.pausedAt !== null) throw new RoomError('invalid_state', 'A sessão está pausada pelo professor');
+  }
+
+  /**
    * Atividade avaliativa: todas as questões abrem juntas, com o mesmo prazo, e cada aluno navega no próprio ritmo.
    * Ao fim do prazo a sessão é encerrada.
    */
@@ -487,6 +551,7 @@ export class Room {
   /** Atividade: o aluno vai para outra questão. Devolve o snapshot dele. */
   goTo(playerId: string, index: number): RoomSnapshot {
     const player = this.activityPlayer(playerId);
+    this.assertNotPaused();
     if (!this.history[index]) throw new RoomError('invalid_state', 'Questão não encontrada');
     this.touch();
     player.position = index;
@@ -502,6 +567,7 @@ export class Room {
     const player = this.activityPlayer(playerId);
     if (this.phase !== 'question') throw new RoomError('invalid_state', 'A atividade ainda não começou');
     if (player.delivered) throw new RoomError('invalid_state', 'Você já entregou a atividade');
+    this.assertNotPaused();
     const record = this.history.find((r) => r.question.id === questionId);
     if (!record) throw new RoomError('invalid_state', 'Questão não encontrada');
     const now = this.clock.now();
@@ -517,6 +583,7 @@ export class Room {
   deliver(playerId: string): RoomSnapshot {
     const player = this.activityPlayer(playerId);
     if (this.phase !== 'question') throw new RoomError('invalid_state', 'A atividade ainda não começou');
+    this.assertNotPaused();
     player.delivered = true;
     this.touch();
     this.emitRow(player);
@@ -546,6 +613,7 @@ export class Room {
       pending: new Map(),
       lastSubmitAt: new Map(),
       codes: new Map(),
+      pauses: [],
       results: null,
     };
   }
@@ -576,7 +644,7 @@ export class Room {
    */
   reportProgress(playerId: string, done: number, total: number, doneIds?: string[], questionId?: string): void {
     // Na atividade não há checklist automática: nada a acompanhar.
-    if (this.isAssessment) return;
+    if (this.isAssessment || this.pausedAt !== null) return;
     const record = this.recordFor(playerId, questionId);
     if (!record || record.finishedAt !== null || !this.players.has(playerId)) return;
     const required = record.question.checklist.filter(countsForAcceptance);
@@ -604,7 +672,7 @@ export class Room {
   reportPaste(playerId: string, chars: number, blocked: boolean, questionId?: string): void {
     const record = this.recordFor(playerId, questionId);
     const now = this.clock.now();
-    if (!record || record.finishedAt !== null || this.phase !== 'question' || !this.players.has(playerId)) return;
+    if (!record || record.finishedAt !== null || this.phase !== 'question' || this.pausedAt !== null || !this.players.has(playerId)) return;
     if (now < record.startsAt || now > record.endsAt || record.answers.get(playerId)?.status === 'accepted') return;
     let log = record.pastes.get(playerId);
     if (!log) record.pastes.set(playerId, (log = createPasteLog()));
@@ -666,6 +734,7 @@ export class Room {
     if (this.phase === 'countdown' || receivedAt < record.startsAt) {
       throw new RoomError('invalid_state', 'A questão ainda não começou');
     }
+    this.assertNotPaused();
     const previous = record.lastSubmitAt.get(playerId);
     if (previous !== undefined && receivedAt - previous < SUBMIT_INTERVAL_MS && record.finishedAt === null) {
       throw new RoomError('invalid_state', 'Aguarde um instante antes de reenviar');
@@ -770,6 +839,8 @@ export class Room {
       // Respostas que chegaram dentro do prazo e ainda estão em validação são concluídas antes do placar.
       await Promise.allSettled([...record.pending.values()]);
       this.clearTimers();
+      // Encerrar durante a pausa: o tempo parado não conta, e a próxima questão começa sem pausa.
+      this.closePause();
       const now = this.clock.now();
       record.finishedAt = Math.min(now, record.endsAt);
 
@@ -845,6 +916,7 @@ export class Room {
   /** Fecha todas as questões da atividade. As respostas ficam como foram salvas. */
   private async finishAssessment(): Promise<void> {
     if (!this.window) return;
+    this.closePause();
     const finishedAt = Math.min(this.clock.now(), this.window.endsAt);
     for (const record of this.history) {
       record.finishedAt = finishedAt;
@@ -938,10 +1010,12 @@ export class Room {
         pastes: [...record.pastes.entries()],
         allowPaste: record.allowPaste,
         codes: [...record.codes.entries()],
+        pauses: record.pauses,
         results: record.results,
       })),
       currentIndex: this.current ? this.history.indexOf(this.current) : -1,
       report: this.report,
+      pausedAt: this.pausedAt,
     } satisfies RoomState);
   }
 
@@ -960,8 +1034,10 @@ export class Room {
       settings: state.settings,
       createdAt: state.createdAt,
     });
-    const pausedMs = Math.max(0, room.clock.now() - state.savedAt);
     const open = state.phase === 'countdown' || state.phase === 'question';
+    // Pausada pelo professor: continua pausada, e a retomada já desconta o tempo em que o servidor ficou fora.
+    const pausedAt = open ? (state.pausedAt ?? null) : null;
+    const pausedMs = pausedAt !== null ? 0 : Math.max(0, room.clock.now() - state.savedAt);
     room.phase = state.phase;
     room.startedAt = state.startedAt;
     room.report = state.report;
@@ -982,10 +1058,12 @@ export class Room {
       record.pastes = new Map(saved.pastes);
       record.allowPaste = saved.allowPaste;
       record.codes = new Map(saved.codes);
+      record.pauses = saved.pauses ?? [];
       record.results = saved.results;
       return record;
     });
     room.current = room.history[state.currentIndex] ?? null;
+    room.pausedAt = pausedAt;
     room.armTimers();
     return room;
   }
@@ -1122,6 +1200,7 @@ export class Room {
       report: this.report,
       serverNow: this.clock.now(),
       ...(this.isAssessment && this.window ? { assessment: { ...this.window } } : {}),
+      ...(this.pausedAt !== null ? { pausedAt: this.pausedAt } : {}),
     };
   }
 
@@ -1186,6 +1265,7 @@ export class Room {
     return buildPlayerTimeline({
       playerId,
       startsAt: record.startsAt,
+      pauses: record.pauses,
       checklist: record.question.checklist,
       itemFirstAt: firstAt,
       pastes: record.pastes.get(playerId),
@@ -1225,7 +1305,7 @@ export class Room {
 
   private computeResults(record: QuestionRecord): QuestionResults {
     const correct = [...record.answers.entries()].filter(([, a]) => a.status === 'accepted');
-    const times = correct.map(([id, a]) => ({ id, timeMs: Math.max(0, a.receivedAt - record.startsAt) }));
+    const times = correct.map(([id, a]) => ({ id, timeMs: this.elapsed(record, a.receivedAt) }));
     const fastest = times.reduce<{ id: string; timeMs: number } | null>(
       (best, t) => (!best || t.timeMs < best.timeMs ? t : best),
       null,
@@ -1234,7 +1314,7 @@ export class Room {
       const doneAt: number[] = [];
       for (const player of this.players.values()) {
         const state = record.itemState.get(player.id)?.get(item.id);
-        if (state?.done) doneAt.push(Math.max(0, state.firstAt - record.startsAt));
+        if (state?.done) doneAt.push(this.elapsed(record, state.firstAt));
       }
       return {
         id: item.id,
@@ -1270,7 +1350,7 @@ export class Room {
           questionId: record.question.id,
           correct,
           xp: correct ? answer!.xp : 0,
-          timeMs: correct ? Math.max(0, answer!.receivedAt - record.startsAt) : null,
+          timeMs: correct ? this.elapsed(record, answer!.receivedAt) : null,
         };
       });
       const times = perQuestion.map((q) => q.timeMs).filter((t): t is number => t !== null);
@@ -1294,6 +1374,11 @@ export class Room {
       questions: finished.map((r) => r.results!),
       players,
     };
+  }
+
+  /** Tempo de questão até `at`, sem as pausas do professor. */
+  private elapsed(record: QuestionRecord, at: number): number {
+    return activeElapsed(record.startsAt, at, record.pauses);
   }
 
   private schedule(fn: () => void, ms: number): void {

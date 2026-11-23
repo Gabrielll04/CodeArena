@@ -620,6 +620,129 @@ describe('Room: histórico da competição', () => {
   });
 });
 
+describe('Room: pausa do professor', () => {
+  it('para o cronômetro, recusa respostas e adia o prazo pelo tempo parado', async () => {
+    const { room, clock } = setup({ countdownSeconds: 0, questions: [makeQuestion('q1', 100), makeQuestion('q2')] });
+    const ana = room.join({ name: 'Ana', avatar: 'bolt' });
+    room.join({ name: 'Bia', avatar: 'prism' });
+    const { endsAt } = room.startNextQuestion();
+    await clock.advance(40_000);
+
+    room.pause();
+    expect(room.isPaused).toBe(true);
+    expect(room.snapshotForPlayer(ana.playerId).pausedAt).toBe(clock.now());
+    await expect(room.submit(ana.playerId, 'ok')).rejects.toThrow(/pausada/);
+
+    // O prazo original passa durante a pausa e a questão continua aberta.
+    await clock.advance(120_000);
+    expect(room.currentPhase).toBe('question');
+
+    room.resume();
+    const snapshot = room.snapshotForHost();
+    expect(snapshot.pausedAt).toBeUndefined();
+    expect(snapshot.question!.endsAt).toBe(endsAt + 120_000);
+    expect(snapshot.question!.endsAt - clock.now()).toBe(60_000);
+
+    // XP pelo tempo restante (60 de 100 s) e tempo de resposta sem a pausa.
+    await clock.advance(10_000);
+    const answer = await room.submit(ana.playerId, 'ok');
+    expect(answer).toMatchObject({ status: 'accepted', remainingMs: 50_000, xp: 750 });
+    await room.finishQuestion();
+    expect(room.snapshotForHost().lastResults!.averageTimeMs).toBe(50_000);
+    expect(room.snapshotForHost().timelines![0]!.players.find((p) => p.playerId === ana.playerId)!.events).toContainEqual({
+      kind: 'accepted',
+      atMs: 50_000,
+    });
+  });
+
+  it('na contagem regressiva, adia o início e o prazo juntos', async () => {
+    const { room, clock, events } = setup({ countdownSeconds: 3 });
+    room.join({ name: 'Ana', avatar: 'bolt' });
+    const active = room.startNextQuestion();
+    await clock.advance(1000);
+    room.pause();
+    await clock.advance(10_000);
+    expect(room.currentPhase).toBe('countdown');
+    expect(events.some((e) => e.event === 'question:started')).toBe(false);
+
+    room.resume();
+    expect(room.snapshotForHost().question).toMatchObject({ startsAt: active.startsAt + 10_000, endsAt: active.endsAt + 10_000 });
+    await clock.advance(1999);
+    expect(room.currentPhase).toBe('countdown');
+    await clock.advance(1);
+    expect(room.currentPhase).toBe('question');
+  });
+
+  it('só pausa com o tempo correndo; pausar e retomar de novo não muda nada', async () => {
+    const { room, clock } = setup({ countdownSeconds: 0 });
+    room.join({ name: 'Ana', avatar: 'bolt' });
+    expect(() => room.pause()).toThrowError(RoomError);
+    room.startNextQuestion();
+    room.pause();
+    const pausedAt = room.snapshotForHost().pausedAt;
+    await clock.advance(5000);
+    room.pause();
+    expect(room.snapshotForHost().pausedAt).toBe(pausedAt);
+    room.resume();
+    room.resume();
+    expect(room.snapshotForHost().question!.endsAt - clock.now()).toBe(100_000);
+  });
+
+  it('encerrar a questão durante a pausa fecha a pausa e a próxima começa normal', async () => {
+    const { room, clock } = setup({ countdownSeconds: 0 });
+    room.join({ name: 'Ana', avatar: 'bolt' });
+    room.startNextQuestion();
+    room.pause();
+    await clock.advance(5000);
+    await room.finishQuestion();
+    expect(room.currentPhase).toBe('review');
+    expect(room.isPaused).toBe(false);
+    expect(() => room.pause()).toThrowError(RoomError);
+    const next = room.startNextQuestion();
+    expect(next.endsAt - clock.now()).toBe(100_000);
+  });
+
+  it('atividade: bloqueia salvar, navegar e entregar, e adia o prazo final', async () => {
+    const { room, clock } = assessmentSetup();
+    const ana = room.join({ name: 'Ana', avatar: 'bolt' });
+    room.startNextQuestion();
+    const deadline = room.snapshotForHost().assessment!.endsAt;
+    room.saveAnswer(ana.playerId, 'q1', 'a');
+    room.pause();
+    expect(() => room.saveAnswer(ana.playerId, 'q1', 'a b')).toThrow(/pausada/);
+    expect(() => room.goTo(ana.playerId, 1)).toThrow(/pausada/);
+    expect(() => room.deliver(ana.playerId)).toThrow(/pausada/);
+    expect(room.historySnapshot()!.answers.find((a) => a.questionId === 'q1')!.code).toBe('a');
+
+    await clock.advance(40 * 60_000);
+    expect(room.currentPhase).toBe('question');
+    room.resume();
+    expect(room.snapshotForPlayer(ana.playerId).assessment!.endsAt).toBe(deadline + 40 * 60_000);
+    expect(room.snapshotForPlayer(ana.playerId).question!.endsAt).toBe(deadline + 40 * 60_000);
+    room.saveAnswer(ana.playerId, 'q1', 'a b');
+    room.goTo(ana.playerId, 1);
+    await clock.advance(30 * 60_000);
+    expect(room.currentPhase).toBe('ended');
+  });
+
+  it('continua pausada depois de o servidor reiniciar, e a retomada desconta o tempo fora', async () => {
+    const { room, clock } = setup({ countdownSeconds: 0 });
+    room.join({ name: 'Ana', avatar: 'bolt' });
+    room.startNextQuestion();
+    await clock.advance(30_000);
+    room.pause();
+    const saved = JSON.parse(JSON.stringify(room.toState()));
+    room.dispose();
+    await clock.advance(60_000);
+    const restored = new RoomManager().restore(saved, { validator, sink: { emit: () => {}, sync: () => {} }, clock });
+    expect(restored.isPaused).toBe(true);
+    await clock.advance(200_000);
+    expect(restored.currentPhase).toBe('question');
+    restored.resume();
+    expect(restored.snapshotForHost().question!.endsAt - clock.now()).toBe(70_000);
+  });
+});
+
 describe('RoomManager', () => {
   it('gera códigos de 6 dígitos únicos e remove salas inativas', () => {
     let n = 0;

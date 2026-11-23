@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { QuestionSchema } from '@codearena/schemas';
-import { MAX_PASTE_EVENTS, buildPlayerTimeline, createPasteLog, findPasteImpact, recordPaste } from '../src';
+import { MAX_PASTE_EVENTS, activeElapsed, buildPlayerTimeline, createPasteLog, findPasteImpact, recordPaste } from '../src';
+
+describe('activeElapsed', () => {
+  it('desconta só a parte das pausas entre o início e o momento medido', () => {
+    expect(activeElapsed(1000, 5000)).toBe(4000);
+    expect(activeElapsed(1000, 5000, [{ from: 2000, to: 3000 }])).toBe(3000);
+    // Pausa que termina depois do momento medido conta só até ele.
+    expect(activeElapsed(1000, 2500, [{ from: 2000, to: 3000 }])).toBe(1000);
+    expect(activeElapsed(1000, 9000, [{ from: 2000, to: 3000 }, { from: 6000, to: 8000 }])).toBe(5000);
+    expect(activeElapsed(1000, 500)).toBe(0);
+  });
+});
 
 describe('findPasteImpact', () => {
   it('liga a colagem grande aos itens concluídos logo depois', () => {

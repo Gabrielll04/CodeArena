@@ -19,7 +19,8 @@ import { describePasteImpact, PasteChips, TimelinePanel } from '../components/Ti
 import { Timer } from '../components/Timer';
 import { ConnectionBanner, TopBar } from '../components/TopBar';
 import { Badge, Button, cx, Dialog, EmptyState, Icon, Panel, Spinner, Toggle } from '../components/ui';
-import { downloadFile, formatDuration, formatXP, plural } from '../lib/format';
+import { useServerNow } from '../lib/clock';
+import { downloadFile, formatDuration, formatSeconds, formatXP, plural } from '../lib/format';
 import { useHost } from '../stores/host';
 
 export function HostPage() {
@@ -62,6 +63,7 @@ export function HostPage() {
           <span className="hidden truncate text-sm text-white/50 md:inline">{snapshot.packTitle}</span>
         </div>
       </TopBar>
+      {snapshot.pausedAt !== undefined && <PauseBanner pausedAt={snapshot.pausedAt} />}
       <div className="min-h-0 flex-1 overflow-auto">
         <HostPhase snapshot={snapshot} />
       </div>
@@ -82,6 +84,48 @@ function useAction() {
   return { busy, error, run };
 }
 
+/** Faixa fixa enquanto a sessão está pausada: fica visível em qualquer rolagem e na tela projetada. */
+function PauseBanner({ pausedAt }: { pausedAt: number }) {
+  const { resumeSession } = useHost();
+  const { busy, error, run } = useAction();
+  const now = useServerNow(true, 1000);
+  return (
+    <div role="status" className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 bg-amber/15 px-4 py-2 text-sm text-amber" data-testid="pause-banner">
+      <span className="flex items-center gap-2 font-semibold">
+        <Icon name="pause" /> Sessão pausada há {formatSeconds(Math.max(0, now - pausedAt))}
+      </span>
+      <span className="text-amber/80">O tempo está parado e os alunos não podem escrever, testar nem mudar de questão.</span>
+      <Button variant="primary" size="sm" loading={busy} onClick={() => void run(resumeSession)} data-testid="resume-session">
+        <Icon name="play" /> Retomar
+      </Button>
+      {error && <span className="text-coral">{error}</span>}
+    </div>
+  );
+}
+
+/** Pausar e retomar a sessão (contagem regressiva, questão ou atividade em andamento). */
+function PauseButton({ snapshot, className }: { snapshot: RoomSnapshot; className?: string }) {
+  const { pauseSession, resumeSession } = useHost();
+  const { busy, error, run } = useAction();
+  const paused = snapshot.pausedAt !== undefined;
+  return (
+    <>
+      <Button
+        variant={paused ? 'primary' : 'secondary'}
+        className={className}
+        loading={busy}
+        onClick={() => void run(paused ? resumeSession : pauseSession)}
+        aria-pressed={paused}
+        title={paused ? 'Retomar o tempo e liberar o editor dos alunos' : 'Parar o tempo e travar o editor dos alunos'}
+        data-testid="pause-toggle"
+      >
+        <Icon name={paused ? 'play' : 'pause'} /> {paused ? 'Retomar' : 'Pausar'}
+      </Button>
+      {error && <p className="text-sm text-coral">{error}</p>}
+    </>
+  );
+}
+
 function HostPhase({ snapshot }: { snapshot: RoomSnapshot }) {
   const assessment = snapshot.settings.mode === 'assessment';
   if (assessment && snapshot.phase === 'question') return <HostActivity snapshot={snapshot} />;
@@ -91,13 +135,19 @@ function HostPhase({ snapshot }: { snapshot: RoomSnapshot }) {
       return <HostLobby snapshot={snapshot} />;
     case 'countdown':
       return snapshot.question ? (
-        <div className="h-full">
-          <Countdown
-            startsAt={snapshot.question.startsAt}
-            index={snapshot.question.index}
-            total={snapshot.question.total}
-            title={assessment ? snapshot.packTitle : (snapshot.question.question.title ?? snapshot.question.question.prompt)}
-          />
+        <div className="flex h-full flex-col">
+          <div className="min-h-0 flex-1">
+            <Countdown
+              startsAt={snapshot.question.startsAt}
+              index={snapshot.question.index}
+              total={snapshot.question.total}
+              title={assessment ? snapshot.packTitle : (snapshot.question.question.title ?? snapshot.question.question.prompt)}
+              pausedAt={snapshot.pausedAt ?? null}
+            />
+          </div>
+          <div className="flex flex-col items-center gap-2 pb-8">
+            <PauseButton snapshot={snapshot} />
+          </div>
         </div>
       ) : null;
     case 'question':
@@ -231,7 +281,7 @@ function HostQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
           </div>
           {active.question.title && <h2 className="font-display text-2xl font-bold">{active.question.title}</h2>}
           <Prompt text={active.question.prompt} className="whitespace-pre-wrap text-lg leading-relaxed text-white/90" />
-          <Timer startsAt={active.startsAt} endsAt={active.endsAt} finishedAt={active.finishedAt} size="lg" />
+          <Timer startsAt={active.startsAt} endsAt={active.endsAt} finishedAt={active.finishedAt} pausedAt={snapshot.pausedAt} size="lg" />
         </Panel>
         <Panel className="p-5">
           <h3 className="mb-1 text-xs font-bold uppercase tracking-[0.14em] text-white/50">Itens da checklist, ao vivo</h3>
@@ -239,9 +289,12 @@ function HostQuestion({ snapshot }: { snapshot: RoomSnapshot }) {
           <ItemInsights rows={liveRows} />
         </Panel>
         {error && <p className="text-sm text-coral">{error}</p>}
-        <Button variant="danger" loading={busy} onClick={() => void run(finishQuestion)} data-testid="finish-question">
-          <Icon name="stop" /> Encerrar questão agora
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <PauseButton snapshot={snapshot} />
+          <Button variant="danger" loading={busy} onClick={() => void run(finishQuestion)} data-testid="finish-question">
+            <Icon name="stop" /> Encerrar questão agora
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-5">
@@ -667,7 +720,7 @@ function HostActivity({ snapshot }: { snapshot: RoomSnapshot }) {
             de {snapshot.players.length} entregaram
           </span>
         </div>
-        <Timer startsAt={period.startsAt} endsAt={period.endsAt} finishedAt={null} size="lg" />
+        <Timer startsAt={period.startsAt} endsAt={period.endsAt} finishedAt={null} pausedAt={snapshot.pausedAt} size="lg" />
       </Panel>
 
       <Panel className="overflow-x-auto p-2">
@@ -730,9 +783,12 @@ function HostActivity({ snapshot }: { snapshot: RoomSnapshot }) {
       <p className="text-xs text-white/40">As respostas ficam salvas. Você avalia cada uma depois de encerrar.</p>
 
       {error && <p className="text-sm text-coral">{error}</p>}
-      <Button variant="danger" onClick={() => setConfirming(true)} data-testid="end-assessment">
-        <Icon name="stop" /> Encerrar atividade
-      </Button>
+      <div className="flex flex-wrap items-center gap-3">
+        <PauseButton snapshot={snapshot} />
+        <Button variant="danger" onClick={() => setConfirming(true)} data-testid="end-assessment">
+          <Icon name="stop" /> Encerrar atividade
+        </Button>
+      </div>
       <Dialog
         open={confirming}
         onClose={() => setConfirming(false)}

@@ -33,6 +33,7 @@ Para hospedar com HTTPS e acesso de fora da rede, veja [Hospedar na escola](./ho
 3. Os alunos acessam `/join`, digitam o código, escolhem nome e avatar.
 4. Clique em **Iniciar questão**. A contagem regressiva começa para todos ao mesmo tempo.
 5. Acompanhe os itens da checklist ao vivo, encerre a questão e veja o placar.
+   Precisa da atenção da turma? **Pausar** para o cronômetro e trava o editor dos alunos até você clicar em **Retomar**.
 6. Ao final, **Encerrar sessão** gera o relatório com a revisão da turma.
 
 ![Lobby do professor](../images/07-lobby-professor.png)
