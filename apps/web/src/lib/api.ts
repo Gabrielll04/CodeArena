@@ -1,4 +1,4 @@
-import type { AuthoringWarning } from '@codearena/core';
+import type { AuthoringWarning, CapabilityMap } from '@codearena/core';
 import type { ChecklistEvaluationResult } from '@codearena/plugin-sdk';
 import type {
   ActiveRoomSummary,
@@ -88,6 +88,12 @@ export const api = {
     call<SessionHistorySummary>('/api/history/import', { method: 'POST', headers: teacherHeaders(), body: JSON.stringify(record) }),
   deleteHistory: (id: string) =>
     call<void>(`/api/history/${encodeURIComponent(id)}`, { method: 'DELETE', headers: teacherHeaders() }),
+  capabilityMap: (sessionIds?: string[]) =>
+    call<CapabilityMap>(`/api/capabilities${sessionIds ? `?sessions=${sessionIds.map(encodeURIComponent).join(',')}` : ''}`, {
+      headers: teacherHeaders(),
+    }),
+  createRecovery: (input: { sessions: string[]; capabilities: string[]; capabilityNames: string[]; title?: string }) =>
+    call<StoredPack>('/api/capabilities/recovery', { method: 'POST', headers: teacherHeaders(), body: JSON.stringify(input) }),
   testQuestion: (question: Question, pluginId: string, code: string) =>
     call<{ evaluation: ChecklistEvaluationResult; warnings: AuthoringWarning[] }>('/api/questions/test', {
       method: 'POST',

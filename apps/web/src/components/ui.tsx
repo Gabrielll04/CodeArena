@@ -214,7 +214,7 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
   );
 }
 
-export function Icon({ name, className = 'h-4 w-4' }: { name: 'check' | 'arrow-up' | 'arrow-down' | 'sound' | 'mute' | 'plus' | 'trash' | 'copy' | 'download' | 'upload' | 'play' | 'pause' | 'stop' | 'up' | 'down' | 'eye' | 'warning' | 'bolt' | 'back' | 'link'; className?: string }) {
+export function Icon({ name, className = 'h-4 w-4' }: { name: 'check' | 'arrow-up' | 'arrow-down' | 'sound' | 'mute' | 'plus' | 'trash' | 'copy' | 'download' | 'upload' | 'play' | 'pause' | 'stop' | 'up' | 'down' | 'eye' | 'warning' | 'bolt' | 'back' | 'link' | 'x' | 'half'; className?: string }) {
   const paths: Record<typeof name, ReactNode> = {
     check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
     'arrow-up': <path d="M12 19V5m-6 6 6-6 6 6" />,
@@ -255,6 +255,13 @@ export function Icon({ name, className = 'h-4 w-4' }: { name: 'check' | 'arrow-u
     warning: <path d="M12 9v4m0 4h.01M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />,
     bolt: <path d="M13 2 4 14h7l-1 8 9-12h-7z" />,
     back: <path d="M19 12H5m6-6-6 6 6 6" />,
+    x: <path d="M7 7l10 10M17 7 7 17" />,
+    half: (
+      <>
+        <circle cx="12" cy="12" r="7" />
+        <path d="M12 5a7 7 0 0 1 0 14z" fill="currentColor" />
+      </>
+    ),
     link: <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />,
   };
   return (
