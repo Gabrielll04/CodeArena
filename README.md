@@ -71,6 +71,21 @@ Guia: [`docs/agents/debug-questions.md`](docs/agents/debug-questions.md).
 | --- | --- |
 | ![Quantos alunos concluíram cada item, ao vivo](docs/images/09-professor-acompanhando.png) | ![Item que mais travou, com mediana de tempo](docs/images/14-onde-a-turma-travou.png) |
 
+### Mapa de capacidades e recuperação
+
+Junta as atividades avaliadas e mostra, por capacidade e por aluno, quem desenvolveu, quem está em desenvolvimento, quem
+precisa recuperar e quem já recuperou. Dele sai um pack de recuperação só com as questões das capacidades que faltaram.
+
+[![Do histórico ao mapa de capacidades e à sala de recuperação](docs/images/capacidades-demo.gif)](docs/public/videos/capacidades-demo.mp4)
+
+| Por capacidade | Por aluno, com as evidências |
+| --- | --- |
+| ![Barras com quantos alunos estão em cada situação](docs/images/23-capacidades-por-capacidade.png) | ![Matriz aluno por capacidade com a dica de evidências](docs/images/24-capacidades-por-aluno.png) |
+
+![Criar recuperação só com as capacidades que faltaram](docs/images/25-capacidades-recuperacao.png)
+
+Guia: [`docs/guia/capacidades.md`](docs/guia/capacidades.md).
+
 Mais telas: [`docs/images`](docs/images) (home, biblioteca, importação com erros, editor de questões, relatório final).
 
 ## Rodando localmente
@@ -150,6 +165,8 @@ pnpm screenshots   # sobe um servidor temporário na porta 3200 e regrava docs/i
 O script (`scripts/screenshots.mjs`) conduz uma sessão completa com Playwright; rode-o depois de mudar a interface.
 Para regravar só algumas imagens: `SHOTS_ONLY="10-,14-" pnpm screenshots` (prefixos dos nomes de arquivo).
 O vídeo da aula (`docs/public/videos/aula-demo.mp4` e o GIF) é regravado com `pnpm build && pnpm demo:video` (precisa de `ffmpeg` instalado).
+As telas e o vídeo do mapa de capacidades (`docs/images/22..25-*.png`, `capacidades-demo.*`) são regravados com
+`pnpm build && pnpm media:capacidades`, com uma turma fictícia (`e2e/fixtures/capability-sessions.mjs`).
 
 ## Site de documentação
 

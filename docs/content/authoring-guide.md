@@ -105,6 +105,9 @@ código e marque cada critério como **Atendido** ou **Não atendido**. Você po
 Em **Histórico** ficam todas as sessões encerradas: placar, respostas de cada aluno e avaliações. O histórico fica ligado a
 este navegador; para ver em outro, use **Copiar minha chave** e cole no outro navegador.
 
+**Capacidades da turma** junta as atividades avaliadas num mapa por capacidade e por aluno e cria a recuperação só com
+as questões do que faltou. Veja [Mapa de capacidades e recuperação](../guia/capacidades.md).
+
 Se o servidor cair ou for reiniciado no meio da aula, a sala volta sozinha quando ele subir de novo, com o mesmo código.
 Os alunos não precisam fazer nada: a página reconecta, o que eles escreveram enquanto isso é salvo e o tempo fora do ar
 não conta no prazo. Se você fechou a tela da sala, o botão **Histórico** mostra uma bolinha vermelha enquanto houver

@@ -5,3 +5,4 @@ export * from './room';
 export * from './authoring';
 export * from './timeline';
 export * from './grading';
+export * from './capabilities';

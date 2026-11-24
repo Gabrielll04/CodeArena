@@ -41,6 +41,7 @@ export default defineConfig({
         items: [
           { text: 'Guia de autoria e aula', link: '/content/authoring-guide' },
           { text: 'Plugins e packs: como funciona', link: '/guia/plugins-e-packs' },
+          { text: 'Mapa de capacidades e recuperação', link: '/guia/capacidades' },
           { text: 'Lançar notas no Classroom', link: '/guia/classroom' },
         ],
       },

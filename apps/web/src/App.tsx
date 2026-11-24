@@ -11,6 +11,7 @@ const PackEditorPage = lazy(() => import('./pages/PackEditor').then((m) => ({ de
 const HostPage = lazy(() => import('./pages/Host').then((m) => ({ default: m.HostPage })));
 const HistoryPage = lazy(() => import('./pages/History').then((m) => ({ default: m.HistoryPage })));
 const HistoryDetailPage = lazy(() => import('./pages/HistoryDetail').then((m) => ({ default: m.HistoryDetailPage })));
+const CapabilitiesPage = lazy(() => import('./pages/Capabilities').then((m) => ({ default: m.CapabilitiesPage })));
 
 function Loading() {
   return (
@@ -32,6 +33,7 @@ export function App() {
         <Route path="/teacher/packs/:id/edit" element={<PackEditorPage />} />
         <Route path="/teacher/historico" element={<HistoryPage />} />
         <Route path="/teacher/historico/:id" element={<HistoryDetailPage />} />
+        <Route path="/teacher/capacidades" element={<CapabilitiesPage />} />
         <Route path="/host/:code" element={<HostPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

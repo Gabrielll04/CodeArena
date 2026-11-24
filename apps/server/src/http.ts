@@ -1,5 +1,11 @@
 import type { FastifyInstance } from 'fastify';
-import { evaluateChecklist, lintQuestion, type RoomManager } from '@codearena/core';
+import {
+  buildCapabilityMap,
+  evaluateChecklist,
+  lintQuestion,
+  recoveryQuestions,
+  type RoomManager,
+} from '@codearena/core';
 import type { PluginRegistry, QuizPlugin } from '@codearena/plugin-sdk';
 import {
   EvaluationUpdateSchema,
@@ -136,6 +142,49 @@ export function registerHttpRoutes(
       return reply.status(400).send({ error: body.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') });
     }
     return history.updateEvaluations(request.params.id, owner, body.data.entries);
+  });
+
+  /* Capacidades: as atividades avaliadas do professor, juntas por aluno e por capacidade. */
+  const assessments = async (owner: string, ids?: string[]) => {
+    const own = history.list(owner).filter((summary) => summary.mode === 'assessment');
+    const chosen = ids ? own.filter((summary) => ids.includes(summary.id)) : own;
+    return Promise.all(chosen.map((summary) => history.get(summary.id, owner)));
+  };
+  const SessionIdsSchema = z.array(z.string().min(1).max(80)).max(100);
+
+  app.get<{ Querystring: { sessions?: string } }>('/api/capabilities', async (request, reply) => {
+    const owner = ownerOf(request);
+    const ids = request.query.sessions ? SessionIdsSchema.safeParse(request.query.sessions.split(',')) : null;
+    if (ids && !ids.success) return reply.status(400).send({ error: 'Lista de atividades inválida' });
+    return buildCapabilityMap(await assessments(owner, ids?.data));
+  });
+
+  const RecoverySchema = z.object({
+    sessions: SessionIdsSchema.min(1, 'Escolha pelo menos uma atividade'),
+    capabilities: z.array(z.string().min(1).max(200)).min(1, 'Escolha pelo menos uma capacidade').max(100),
+    title: z.string().trim().min(1).max(120).optional(),
+    capabilityNames: z.array(z.string().trim().min(1).max(140)).max(100).optional(),
+  });
+
+  // Recuperação: um pack novo com as questões das capacidades escolhidas, pronto para abrir como atividade.
+  app.post('/api/capabilities/recovery', async (request, reply) => {
+    const owner = ownerOf(request);
+    const body = RecoverySchema.safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: body.error.issues.map((i) => i.message).join('; ') });
+    const questions = recoveryQuestions(await assessments(owner, body.data.sessions), body.data.capabilities);
+    if (questions.length === 0) return reply.status(422).send({ error: 'Nenhuma questão dessas atividades avalia essas capacidades' });
+    const names = body.data.capabilityNames?.join(', ');
+    const stored = await packs.create({
+      pack: {
+        title: body.data.title ?? `Recuperação${names ? `: ${names}` : ''}`.slice(0, 120),
+        description: `Recuperação gerada pelo mapa de capacidades${names ? ` (${names})` : ''}.`.slice(0, 500),
+        pluginId: questions[0]!.pluginId,
+        version: '1.0.0',
+        tags: ['recuperacao'],
+      },
+      questions: questions.slice(0, 100),
+    });
+    return reply.status(201).send(stored);
   });
 
   app.delete<{ Params: { id: string } }>('/api/history/:id', async (request, reply) => {
